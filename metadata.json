@@ -1,0 +1,6 @@
+{
+  "name": "Areva Paints | Architectural Coatings & Color Visualizer",
+  "description": "Browse professional architectural coatings, explore shades with the interactive room color visualizer, calculate paint coverage, and connect with authorized regional dealers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
