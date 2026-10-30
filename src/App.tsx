@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Product } from './types';
 import { COLOR_SHADES } from './data/paintsData';
-import { Navbar } from './components/Navbar';
 import { HeroSlider } from './components/HeroSlider';
 import { ColorTicker } from './components/ColorTicker';
 import { ColorBubbleGame } from './components/ColorBubbleGame';
@@ -15,17 +14,25 @@ import { GrandCtaBanner } from './components/GrandCtaBanner';
 import { EnquiryModal } from './components/EnquiryModal';
 import { ImprovementRoadmapModal } from './components/ImprovementRoadmapModal';
 import { LiveCameraARVisualizer } from './components/LiveCameraARVisualizer';
+import { SwatchSampleOrderModal } from './components/SwatchSampleOrderModal';
+import { PainterLoyaltyPortal } from './components/PainterLoyaltyPortal';
 import { ProjectDownloadModal } from './components/ProjectDownloadModal';
+import { AttachedPageViewer } from './components/AttachedPageViewer';
 import { Footer } from './components/Footer';
-import { MessageSquare, Sparkles, ArrowUp, Download } from 'lucide-react';
+import { MessageSquare, ArrowUp } from 'lucide-react';
 
 export default function App() {
+  // View mode switcher: 'attached' (shows the user's attached HTML file), 'react' (modern React platform), 'split' (side-by-side)
+  const [viewMode, setViewMode] = useState<'attached' | 'react' | 'split'>('attached');
+
   // Global Color State (synced across Visualizer, Catalog, Calculator, and Inspiration)
   const [selectedColorHex, setSelectedColorHex] = useState<string>(COLOR_SHADES[7].hex); // Terracotta Hearth
   const [selectedColorName, setSelectedColorName] = useState<string>(COLOR_SHADES[7].name);
 
   // Modal States
   const [isLiveArOpen, setIsLiveArOpen] = useState(false);
+  const [isSwatchOpen, setIsSwatchOpen] = useState(false);
+  const [isLoyaltyOpen, setIsLoyaltyOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [detailProduct, setDetailProduct] = useState<Product | null>(null);
   const [isEnquiryOpen, setIsEnquiryOpen] = useState(false);
@@ -67,111 +74,179 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-[#1b1340] pb-16 md:pb-0">
-      
-      {/* Top Navbar */}
-      <Navbar
-        onOpenVisualizer={() => scrollToSection('visualizer')}
-        onOpenCalculator={() => scrollToSection('calculator')}
-        onOpenImprovements={() => setIsImprovementsOpen(true)}
-        onOpenEnquiry={() => handleOpenEnquiry({ topic: 'Request a quotation' })}
-        onOpenLiveAR={() => setIsLiveArOpen(true)}
-        onOpenDownload={() => setIsDownloadOpen(true)}
-        activeSection="home"
-      />
+    <div className="min-h-screen flex flex-col font-sans text-[#1b1340]">
+      {/* Main Content Area */}
+      {viewMode === 'attached' ? (
+        <div className="flex-1 w-full h-screen">
+          <AttachedPageViewer onBackToReact={() => setViewMode('react')} />
+        </div>
+      ) : viewMode === 'split' ? (
+        <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-stone-300">
+          {/* Left Column: Modern React Suite */}
+          <div className="h-[calc(100vh-140px)] overflow-y-auto">
+            <div className="bg-stone-900 text-stone-200 text-xs px-4 py-2 font-bold sticky top-0 z-20 flex items-center justify-between">
+              <span>✨ Modern React Architectural Platform</span>
+              <span className="text-amber-400 font-mono text-[10px]">React 19 + TypeScript</span>
+            </div>
+            <HeroSlider
+              onOpenVisualizer={() => scrollToSection('visualizer')}
+              onExploreProducts={() => scrollToSection('products')}
+              onOpenLiveAR={() => setIsLiveArOpen(true)}
+              onSelectCategory={(_catId) => scrollToSection('products')}
+            />
+            <ColorTicker
+              onSelectColor={handleSelectColor}
+              onOpenVisualizer={() => scrollToSection('visualizer')}
+            />
+            <ColorBubbleGame />
+            <ProductCatalog
+              selectedColorHex={selectedColorHex}
+              selectedColorName={selectedColorName}
+              onViewProductDetails={(prod) => setDetailProduct(prod)}
+              onOpenVisualizerWithProduct={(_prod) => scrollToSection('visualizer')}
+              onRequestQuoteForProduct={(prod) => {
+                handleOpenEnquiry({
+                  topic: 'Request a quotation',
+                  product: prod.name,
+                  message: `Please share technical specifications, packaging sizes, and trade pricing for ${prod.name}.`,
+                });
+              }}
+            />
+            <ColorVisualizer
+              selectedColorHex={selectedColorHex}
+              selectedColorName={selectedColorName}
+              onSelectColor={handleSelectColor}
+              onOpenLiveAR={() => setIsLiveArOpen(true)}
+              onRequestQuote={(shadeName, shadeCode) => {
+                handleOpenEnquiry({
+                  topic: 'Request a quotation',
+                  shade: `${shadeName} (${shadeCode})`,
+                  message: `I visualized the shade ${shadeName} on my room walls.`,
+                });
+              }}
+            />
+            <PaintCalculator
+              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown }) => {
+                handleOpenEnquiry({
+                  topic: 'Request a quotation',
+                  product: productName,
+                  message: `Paint Calculator: ${productName} for ${paintableArea} sq ft (${litersNeeded} L).`,
+                });
+              }}
+              selectedColorHex={selectedColorHex}
+              selectedColorName={selectedColorName}
+            />
+            <DealersAndServices />
+          </div>
 
-      {/* Main Content */}
-      <main className="flex-1">
-        
-        {/* Grand Multi-Slide Hero Carousel with Sliding Images & Color Swatches */}
-        <HeroSlider
-          onOpenVisualizer={() => scrollToSection('visualizer')}
-          onExploreProducts={() => scrollToSection('products')}
-          onOpenLiveAR={() => setIsLiveArOpen(true)}
-          onSelectCategory={(catId) => {
-            scrollToSection('products');
-          }}
-        />
+          {/* Right Column: Attached HTML Page View */}
+          <div className="h-[calc(100vh-140px)] flex flex-col">
+            <div className="bg-stone-900 text-stone-200 text-xs px-4 py-2 font-bold sticky top-0 z-20 flex items-center justify-between">
+              <span>📄 Attached HTML Single-File Website</span>
+              <span className="text-emerald-400 font-mono text-[10px]">areva-paints_a2364c60.html</span>
+            </div>
+            <div className="flex-1">
+              <iframe
+                src="/assets/aistudio/areva-paints_a2364c60.html"
+                title="Attached HTML Preview in Split View"
+                className="w-full h-full border-0"
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <main className="flex-1">
+            {/* Grand Multi-Slide Hero Carousel with Sliding Images & Color Swatches */}
+            <HeroSlider
+              onOpenVisualizer={() => scrollToSection('visualizer')}
+              onExploreProducts={() => scrollToSection('products')}
+              onOpenLiveAR={() => setIsLiveArOpen(true)}
+              onSelectCategory={(_catId) => {
+                scrollToSection('products');
+              }}
+            />
 
-        {/* Continuous Gliding Color Marquee Ticker */}
-        <ColorTicker
-          onSelectColor={handleSelectColor}
-          onOpenVisualizer={() => scrollToSection('visualizer')}
-        />
+            {/* Continuous Gliding Color Marquee Ticker */}
+            <ColorTicker
+              onSelectColor={handleSelectColor}
+              onOpenVisualizer={() => scrollToSection('visualizer')}
+            />
 
-        {/* Pop the Colour Bubbles Interactive Game Arena */}
-        <ColorBubbleGame />
+            {/* Pop the Colour Bubbles Interactive Game Arena */}
+            <ColorBubbleGame />
 
-        {/* 8-Category Colorful Tiles & Formulations Product Catalog */}
-        <ProductCatalog
-          selectedColorHex={selectedColorHex}
-          selectedColorName={selectedColorName}
-          onViewProductDetails={(prod) => setDetailProduct(prod)}
-          onOpenVisualizerWithProduct={(prod) => {
-            scrollToSection('visualizer');
-          }}
-          onRequestQuoteForProduct={(prod) => {
-            handleOpenEnquiry({
-              topic: 'Request a quotation',
-              product: prod.name,
-              message: `Please share technical specifications, packaging sizes, and trade pricing for ${prod.name}.`,
-            });
-          }}
-        />
+            {/* 8-Category Colorful Tiles & Formulations Product Catalog */}
+            <ProductCatalog
+              selectedColorHex={selectedColorHex}
+              selectedColorName={selectedColorName}
+              onViewProductDetails={(prod) => setDetailProduct(prod)}
+              onOpenVisualizerWithProduct={(_prod) => {
+                scrollToSection('visualizer');
+              }}
+              onRequestQuoteForProduct={(prod) => {
+                handleOpenEnquiry({
+                  topic: 'Request a quotation',
+                  product: prod.name,
+                  message: `Please share technical specifications, packaging sizes, and trade pricing for ${prod.name}.`,
+                });
+              }}
+            />
 
-        {/* Interactive Color Studio & Room Visualizer */}
-        <ColorVisualizer
-          selectedColorHex={selectedColorHex}
-          selectedColorName={selectedColorName}
-          onSelectColor={handleSelectColor}
-          onOpenLiveAR={() => setIsLiveArOpen(true)}
-          onRequestQuote={(shadeName, shadeCode) => {
-            handleOpenEnquiry({
-              topic: 'Request a quotation',
-              shade: `${shadeName} (${shadeCode})`,
-              message: `I visualized the shade ${shadeName} on my room walls and would like a price quotation and dealer availability.`,
-            });
-          }}
-        />
+            {/* Interactive Color Studio & Room Visualizer */}
+            <ColorVisualizer
+              selectedColorHex={selectedColorHex}
+              selectedColorName={selectedColorName}
+              onSelectColor={handleSelectColor}
+              onOpenLiveAR={() => setIsLiveArOpen(true)}
+              onRequestQuote={(shadeName, shadeCode) => {
+                handleOpenEnquiry({
+                  topic: 'Request a quotation',
+                  shade: `${shadeName} (${shadeCode})`,
+                  message: `I visualized the shade ${shadeName} on my room walls and would like a price quotation and dealer availability.`,
+                });
+              }}
+            />
 
-        {/* Designer Inspiration & Project Gallery */}
-        <InspirationGallery
-          onSelectColor={handleSelectColor}
-          onOpenVisualizer={() => scrollToSection('visualizer')}
-        />
+            {/* Designer Inspiration & Project Gallery */}
+            <InspirationGallery
+              onSelectColor={handleSelectColor}
+              onOpenVisualizer={() => scrollToSection('visualizer')}
+            />
 
-        {/* Precision Paint Coverage Calculator */}
-        <PaintCalculator
-          onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown }) => {
-            handleOpenEnquiry({
-              topic: 'Request a quotation',
-              product: productName,
-              message: `Paint Calculator Estimate: ${productName} for ${paintableArea} sq ft. Estimated volume: ${litersNeeded} Litres (${canBreakdown}).`,
-            });
-          }}
-          selectedColorHex={selectedColorHex}
-          selectedColorName={selectedColorName}
-        />
+            {/* Precision Paint Coverage Calculator */}
+            <PaintCalculator
+              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown }) => {
+                handleOpenEnquiry({
+                  topic: 'Request a quotation',
+                  product: productName,
+                  message: `Paint Calculator Estimate: ${productName} for ${paintableArea} sq ft. Estimated volume: ${litersNeeded} Litres (${canBreakdown}).`,
+                });
+              }}
+              selectedColorHex={selectedColorHex}
+              selectedColorName={selectedColorName}
+            />
 
-        {/* Dealers & On-Site Technical Services */}
-        <DealersAndServices />
+            {/* Dealers & On-Site Technical Services */}
+            <DealersAndServices />
 
-        {/* Grand Vibrant Multi-Gradient Call-to-Action Banner */}
-        <GrandCtaBanner
-          onOpenVisualizer={() => scrollToSection('visualizer')}
-          onOpenEnquiry={() => handleOpenEnquiry({ topic: 'Request a quotation' })}
-          onOpenDownload={() => setIsDownloadOpen(true)}
-        />
+            {/* Grand Vibrant Multi-Gradient Call-to-Action Banner */}
+            <GrandCtaBanner
+              onOpenVisualizer={() => scrollToSection('visualizer')}
+              onOpenEnquiry={() => handleOpenEnquiry({ topic: 'Request a quotation' })}
+              onOpenDownload={() => setIsDownloadOpen(true)}
+            />
+          </main>
 
-      </main>
-
-      {/* Grand Colorful Footer */}
-      <Footer
-        onOpenImprovements={() => setIsImprovementsOpen(true)}
-        onOpenVisualizer={() => scrollToSection('visualizer')}
-        onOpenCalculator={() => scrollToSection('calculator')}
-        onOpenDownload={() => setIsDownloadOpen(true)}
-      />
+          {/* Grand Colorful Footer */}
+          <Footer
+            onOpenImprovements={() => setIsImprovementsOpen(true)}
+            onOpenVisualizer={() => scrollToSection('visualizer')}
+            onOpenCalculator={() => scrollToSection('calculator')}
+            onOpenDownload={() => setIsDownloadOpen(true)}
+          />
+        </>
+      )}
 
       {/* Technical Data Sheet (TDS) Modal */}
       <ProductDetailModal
@@ -203,6 +278,23 @@ export default function App() {
       <ImprovementRoadmapModal
         isOpen={isImprovementsOpen}
         onClose={() => setIsImprovementsOpen(false)}
+        onOpenLiveAR={() => setIsLiveArOpen(true)}
+        onOpenSwatches={() => setIsSwatchOpen(true)}
+        onOpenLoyalty={() => setIsLoyaltyOpen(true)}
+      />
+
+      {/* Point 2: Peel-and-Stick Swatch Sample Packs Modal */}
+      <SwatchSampleOrderModal
+        isOpen={isSwatchOpen}
+        onClose={() => setIsSwatchOpen(false)}
+        onOpenEnquiry={() => handleOpenEnquiry({ topic: 'Color Consultation', shade: selectedColorName })}
+      />
+
+      {/* Point 3: Contractor & Painter Loyalty App / QR Reward Engine Modal */}
+      <PainterLoyaltyPortal
+        isOpen={isLoyaltyOpen}
+        onClose={() => setIsLoyaltyOpen(false)}
+        onOpenEnquiry={() => handleOpenEnquiry({ topic: 'Contractor Partnership' })}
       />
 
       {/* Full Project Code Download Modal */}

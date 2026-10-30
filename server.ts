@@ -399,6 +399,16 @@ app.get('/api/project/info', (_req: Request, res: Response) => {
   });
 });
 
+// 11. Attached HTML Page Direct Access Endpoints
+app.get(['/attached-page', '/areva-html', '/attached-version'], (_req: Request, res: Response) => {
+  const attachedHtmlPath = path.resolve(__dirname, 'public/assets/aistudio/areva-paints_a2364c60.html');
+  if (fs.existsSync(attachedHtmlPath)) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.sendFile(attachedHtmlPath);
+  }
+  return res.status(404).send('Attached file not found.');
+});
+
 // ==========================================
 // VITE DEV SERVER / PRODUCTION STATIC SERVER
 // ==========================================

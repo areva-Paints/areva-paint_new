@@ -4,11 +4,17 @@ import { X, CheckCircle2, Smartphone, Sparkles, Paintbrush, Layers, Shield, File
 interface ImprovementRoadmapModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenLiveAR?: () => void;
+  onOpenSwatches?: () => void;
+  onOpenLoyalty?: () => void;
 }
 
 export const ImprovementRoadmapModal: React.FC<ImprovementRoadmapModalProps> = ({
   isOpen,
   onClose,
+  onOpenLiveAR,
+  onOpenSwatches,
+  onOpenLoyalty,
 }) => {
   if (!isOpen) return null;
 
@@ -52,40 +58,96 @@ export const ImprovementRoadmapModal: React.FC<ImprovementRoadmapModalProps> = (
 
           {/* Strategic Modern Suggestions Grid */}
           <div className="space-y-4">
-            <h3 className="font-display font-bold text-base text-stone-950">
-              Top 6 Recommendations for Modernizing Areva Paints
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-bold text-base text-stone-950">
+                Top Modernization Recommendations (All 3 Points Implemented)
+              </h3>
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
+                ✓ Points 1, 2 & 3 Active
+              </span>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
-              <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/60 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-stone-900 text-sm">
-                  <Camera className="w-4 h-4 text-amber-700" />
-                  <span>1. WebXR Live Camera AR Wall Projection</span>
+              <div className="p-4 rounded-2xl border-2 border-emerald-500/50 bg-emerald-50/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-stone-900 text-sm">
+                    <Camera className="w-4 h-4 text-amber-700" />
+                    <span>1. WebXR Live Camera AR Wall Projection</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    Active Feature
+                  </span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  Implement browser-based WebXR plane detection. Users point their smartphone camera at their living room walls and see real-time 3D wall recoloring live in their camera viewfinder with automatic door/furniture occlusion.
+                  Real-time room wall recoloring in camera viewfinder with hue, saturation, and finish blending (Matte / Satin / Sheen) plus daylight simulation.
                 </p>
+                {onOpenLiveAR && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenLiveAR();
+                    }}
+                    className="w-full py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Launch AR Camera Visualizer</span>
+                  </button>
+                )}
               </div>
 
-              <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/60 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-stone-900 text-sm">
-                  <Box className="w-4 h-4 text-amber-700" />
-                  <span>2. Peel-and-Stick Swatch Sample Packs</span>
+              <div className="p-4 rounded-2xl border-2 border-emerald-500/50 bg-emerald-50/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-stone-900 text-sm">
+                    <Box className="w-4 h-4 text-amber-700" />
+                    <span>2. Peel-and-Stick Swatch Sample Packs</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    Active Feature
+                  </span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  Offer low-cost physical 8×10" peel-and-stick coated sample swatches with real paint emulsion. Homeowners test them on different walls under morning and evening daylight before ordering full 20L drums.
+                  Interactive 8"×10" peel-and-stick actual paint sample sheets order flow with morning/sunset lighting preview and instant dispatch tracker.
                 </p>
+                {onOpenSwatches && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenSwatches();
+                    }}
+                    className="w-full py-2 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>Order Swatch Sample Packs</span>
+                  </button>
+                )}
               </div>
 
-              <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/60 space-y-2">
-                <div className="flex items-center gap-2 font-bold text-stone-900 text-sm">
-                  <QrCode className="w-4 h-4 text-amber-700" />
-                  <span>3. Contractor & Painter Loyalty App</span>
+              <div className="p-4 rounded-2xl border-2 border-emerald-500/50 bg-emerald-50/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 font-bold text-stone-900 text-sm">
+                    <QrCode className="w-4 h-4 text-amber-700" />
+                    <span>3. Contractor & Painter Loyalty App</span>
+                  </div>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                    Active Feature
+                  </span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  Print unique serialized QR codes under the lids of Areva paint cans. Registered painters scan them with their phone camera to instantly earn cash rewards and loyalty tier benefits directly to their UPI/bank.
+                  Can-lid holographic QR code scanner simulator, real-time points wallet, instant UPI cashback payouts (PhonePe/GPay), and contractor tier rewards.
                 </p>
+                {onOpenLoyalty && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenLoyalty();
+                    }}
+                    className="w-full py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Open Contractor Loyalty Portal</span>
+                  </button>
+                )}
               </div>
 
               <div className="p-4 rounded-2xl border border-stone-200 bg-stone-50/60 space-y-2">
