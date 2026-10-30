@@ -3,7 +3,6 @@ import { Product } from './types';
 import { COLOR_SHADES } from './data/paintsData';
 import { HeroSlider } from './components/HeroSlider';
 import { ColorTicker } from './components/ColorTicker';
-import { ColorBubbleGame } from './components/ColorBubbleGame';
 import { ProductCatalog } from './components/ProductCatalog';
 import { ColorVisualizer } from './components/ColorVisualizer';
 import { InspirationGallery } from './components/InspirationGallery';
@@ -18,6 +17,7 @@ import { SwatchSampleOrderModal } from './components/SwatchSampleOrderModal';
 import { PainterLoyaltyPortal } from './components/PainterLoyaltyPortal';
 import { ProjectDownloadModal } from './components/ProjectDownloadModal';
 import { AttachedPageViewer } from './components/AttachedPageViewer';
+import { DrivingBubble } from './components/DrivingBubble';
 import { Footer } from './components/Footer';
 import { MessageSquare, ArrowUp } from 'lucide-react';
 
@@ -98,7 +98,6 @@ export default function App() {
               onSelectColor={handleSelectColor}
               onOpenVisualizer={() => scrollToSection('visualizer')}
             />
-            <ColorBubbleGame />
             <ProductCatalog
               selectedColorHex={selectedColorHex}
               selectedColorName={selectedColorName}
@@ -172,9 +171,6 @@ export default function App() {
               onSelectColor={handleSelectColor}
               onOpenVisualizer={() => scrollToSection('visualizer')}
             />
-
-            {/* Pop the Colour Bubbles Interactive Game Arena */}
-            <ColorBubbleGame />
 
             {/* 8-Category Colorful Tiles & Formulations Product Catalog */}
             <ProductCatalog
@@ -340,6 +336,9 @@ export default function App() {
           <ArrowUp className="w-5 h-5" />
         </button>
       )}
+
+      {/* Driving Bubble in React Mode */}
+      {viewMode !== 'attached' && <DrivingBubble />}
 
     </div>
   );

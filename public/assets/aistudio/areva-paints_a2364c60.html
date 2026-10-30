@@ -145,19 +145,35 @@ header::after{content:"";display:block;height:4px;background:linear-gradient(90d
 .g3>.box:nth-child(6n+1){border-top:6px solid var(--coral)}.g3>.box:nth-child(6n+2){border-top:6px solid var(--sun)}.g3>.box:nth-child(6n+3){border-top:6px solid var(--teal)}.g3>.box:nth-child(6n+4){border-top:6px solid var(--sky)}.g3>.box:nth-child(6n+5){border-top:6px solid var(--violet)}.g3>.box:nth-child(6n){border-top:6px solid var(--pink)}
 .cert:nth-child(4n+1){border-color:var(--coral)}.cert:nth-child(4n+2){border-color:var(--sun)}.cert:nth-child(4n+3){border-color:var(--teal)}.cert:nth-child(4n){border-color:var(--violet)}
 footer{background:linear-gradient(120deg,#5f0f2c,#a01c43 60%,#c0305f)}
-/* bubble game */
-.hud{display:flex;justify-content:flex-start;align-items:end;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
-.score{font:800 1.4rem "Bricolage Grotesque",sans-serif;background:var(--surface);border:2px solid var(--line);border-radius:99px;padding:.4rem 1.2rem}.score b{color:var(--coral)}
-.arena{position:relative;height:clamp(300px,48vh,400px);border-radius:28px;overflow:hidden;background:linear-gradient(160deg,#1b1340,#6c4cf5 55%,#ff4fa3);box-shadow:var(--shadow);touch-action:manipulation}
-.bub{position:absolute;bottom:34px;border-radius:50%;border:0;padding:0;cursor:pointer;background:radial-gradient(circle at 30% 28%,#fff 0 7%,rgba(255,255,255,.4) 8% 17%,var(--c) 46%,color-mix(in srgb,var(--c) 68%,#000) 100%);box-shadow:inset 0 -6px 14px rgba(0,0,0,.2),0 6px 18px rgba(0,0,0,.25);animation:rise linear forwards,wob 1.6s ease-in-out infinite alternate,grow .9s ease-out backwards}
-@keyframes rise{to{transform:translate(var(--sx),calc(-1 * var(--h)))}}
-@keyframes wob{from{translate:-10px 0}to{translate:10px 0}}
-@keyframes grow{from{scale:.25}to{scale:1}}
-.sp{position:absolute;pointer-events:none;translate:-50% -50%;animation:sprinkle 1s cubic-bezier(.25,.6,.4,1) forwards}
-@keyframes sprinkle{0%{transform:translate(0,0) rotate(0);opacity:1}40%{transform:translate(calc(var(--dx)*.75),var(--up)) rotate(calc(var(--r)*.5));opacity:1}100%{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
-.src{position:absolute;left:50%;bottom:4px;translate:-50% 0;font-size:2.4rem;line-height:1}
-.hint{position:absolute;left:1rem;top:.8rem;color:rgba(255,255,255,.85);font-weight:700}
-.bub:hover,.bub:focus-visible{scale:1.08}
+/* Multi-Bubble Color Carnival */
+#roam-layer{position:fixed;inset:0;pointer-events:none;z-index:999999;overflow:hidden}
+.drive-bub{position:fixed;top:0;left:0;border-radius:50%;border:0;padding:0;cursor:pointer;pointer-events:auto;touch-action:none;
+  background:radial-gradient(circle at 30% 28%,#ffffff 0% 14%,rgba(255,255,255,0.75) 15% 26%,var(--c,#ff5a5f) 54%,color-mix(in srgb,var(--c,#ff5a5f) 72%,#000) 100%);
+  box-shadow:inset 0 -6px 14px rgba(0,0,0,0.24),0 8px 24px rgba(0,0,0,0.28),0 0 20px var(--c,#ff5a5f);
+  transition:transform 0.04s linear,scale .18s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change:transform;
+  user-select:none;
+}
+.drive-bub::before{content:"";position:absolute;inset:-15px;border-radius:50%;cursor:pointer}
+.drive-bub:hover{scale:1.22}
+.drive-bub:active{scale:0.88}
+.drive-bub .tag{position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);background:rgba(27,19,64,0.92);color:#fff;font-family:sans-serif;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap;pointer-events:none;box-shadow:0 3px 8px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.3);letter-spacing:0.3px}
+.roam-sp{position:fixed;pointer-events:none;transform:translate(-50%,-50%);animation:sprinkleRoam 1.1s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;z-index:9999999}
+@keyframes sprinkleRoam{
+  0%{transform:translate(0,0) scale(1) rotate(0deg);opacity:1}
+  50%{transform:translate(var(--dx),var(--up)) scale(1.2) rotate(calc(var(--r)*0.5));opacity:1}
+  100%{transform:translate(calc(var(--dx)*1.3),var(--dy)) scale(0.15) rotate(var(--r));opacity:0}
+}
+.roam-splat{position:fixed;pointer-events:none;transform:translate(-50%,-50%);border-radius:40% 60% 70% 30% / 40% 50% 60% 55%;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.3));animation:splatFade 1.6s ease-out forwards;z-index:999998}
+@keyframes splatFade{0%{transform:translate(-50%,-50%) scale(0.3);opacity:0.95}30%{transform:translate(-50%,-50%) scale(1.1);opacity:0.85}100%{transform:translate(-50%,-50%) scale(1.25);opacity:0}}
+.roam-ring{position:fixed;pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);animation:ringBurst .65s ease-out forwards;z-index:9999998;border:3px solid var(--c,#ff5a5f)}
+@keyframes ringBurst{0%{width:10px;height:10px;opacity:1}100%{width:190px;height:190px;opacity:0}}
+.roam-float-score{position:fixed;pointer-events:none;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:18px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,0.9),0 0 18px var(--c,#ff5a5f);transform:translate(-50%,-50%);animation:floatUp .95s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;z-index:9999999;white-space:nowrap}
+@keyframes floatUp{0%{opacity:1;transform:translate(-50%,-50%) scale(0.5)}35%{transform:translate(-50%,-120%) scale(1.2)}100%{opacity:0;transform:translate(-50%,-210%) scale(0.9)}}
+.roam-hud{position:fixed;bottom:18px;left:18px;z-index:99999;background:rgba(27,19,64,0.92);backdrop-filter:blur(12px);color:#fff;border:1px solid rgba(255,255,255,0.25);box-shadow:0 12px 32px rgba(0,0,0,0.4);border-radius:999px;padding:6px 14px;font-family:"Bricolage Grotesque",sans-serif;font-size:13px;display:flex;align-items:center;gap:10px;pointer-events:auto;user-select:none;transition:transform .2s ease}
+.roam-hud:hover{transform:translateY(-2px)}
+.roam-hud b{color:var(--coral,#ff5a5f);font-size:15px}
+.roam-hud .combo{background:linear-gradient(135deg,#ff5a5f,#ffb800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;font-size:12px}
 .vh{position:absolute;opacity:0;width:1px;height:1px}.btn:focus-within{outline:3px solid var(--violet);outline-offset:3px}
 .room canvas{display:block;width:100%;height:auto;cursor:crosshair;touch-action:manipulation}
 #ps .dot{width:42px;height:42px}#ps input.dot{padding:0}
@@ -272,7 +288,6 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 </div>
 
 <div class="mq" aria-hidden="true"><div id="mq"></div></div>
-<section id="play" style="padding-bottom:0"><div class="wrap"><div class="hud"><div class="score">Popped: <b id="score">0</b><button class="btn btn-line" id="rs" type="button">Reset</button></div></div><div class="arena" id="arena"><div class="src" aria-hidden="true">🎨</div><div class="hint" aria-hidden="true">Tap the bubbles</div></div><p class="note" id="gm" aria-live="polite">Tap any bubble and watch it explode into colour!</p></div></section>
 
 <section id="products"><div class="wrap">
   <h2>Products for every surface</h2>
@@ -515,14 +530,338 @@ else if(d.r){role=d.r;roles();if(signed)dash();if(!$("#lg").open)$("#lg").showMo
 paint(C[5][2],C[5][0]+" ("+C[5][1]+")");drawSw();drawG();roles();
 $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c[2]+'"></i>'+c[0]+'</span>').join("");
 
-/* Bubble pop game on the home page. */
-/* bubble game: bubbles rise from one spot at the bottom; popping sprinkles coloured bits for 1 second */
-const AR=$("#arena"),pal=["#ff5a5f","#ffb800","#0fb5a2","#2d9cff","#6c4cf5","#ff4fa3","#8bd450","#ff7a18"],still=matchMedia("(prefers-reduced-motion:reduce)").matches;let score=0,bt;
-function spawn(){if(AR.querySelectorAll(".bub").length>=7)return;const s=64+Math.random()*56,w=AR.clientWidth,b=document.createElement("button");b.className="bub";b.setAttribute("aria-label","Pop bubble");b.style.cssText="width:"+s+"px;height:"+s+"px;left:"+(w/2-s/2)+"px;--c:"+pal[Math.random()*pal.length|0]+";--h:"+(AR.clientHeight+10)+"px;--sx:"+((Math.random()-.5)*w*.8)+"px;animation-duration:"+(7+Math.random()*4)+"s,"+(1.2+Math.random())+"s,.9s";if(still){b.style.bottom=Math.random()*(AR.clientHeight-s)+"px";b.style.left=Math.random()*(w-s)+"px"}b.addEventListener("animationend",e=>{if(e.animationName=="rise")b.remove()});AR.appendChild(b)}
-function sprinkle(x,y,n){const cols=pal.concat(["#ffffff","#ffe066"]);for(let i=0;i<n;i++){const d=document.createElement("i"),a=-Math.PI/2+(Math.random()-.5)*2.6,k=30+Math.random()*80,w=4+Math.random()*5,long=Math.random()<.5;d.className="sp";d.style.cssText="left:"+x+"px;top:"+y+"px;width:"+(long?w*2.2:w)+"px;height:"+w+"px;border-radius:"+(long?"3px":"50%")+";background:"+cols[Math.random()*cols.length|0]+";--dx:"+Math.cos(a)*k+"px;--up:"+(Math.sin(a)*k*.9-10)+"px;--dy:"+(30+Math.random()*70)+"px;--r:"+((Math.random()-.5)*720)+"deg";d.addEventListener("animationend",()=>d.remove());AR.appendChild(d)}}
-$("#rs").onclick=()=>{score=0;$("#score").textContent=0;$("#gm").textContent="Fresh start. Tap a bubble!"};
-AR.addEventListener("click",e=>{const b=e.target.closest(".bub");if(!b)return;const r=b.getBoundingClientRect(),a=AR.getBoundingClientRect();sprinkle(r.left-a.left+r.width/2,r.top-a.top+r.height/2,36);b.remove();score++;$("#score").textContent=score;$("#gm").textContent=score%10==0?"Colour master! "+score+" bubbles popped.":"Keep popping!";if(score%10==0){[.25,.5,.75].forEach(f=>sprinkle(AR.clientWidth*f,AR.clientHeight*.55,40))}spawn()});
-new IntersectionObserver(en=>{clearInterval(bt);if(en[0].isIntersecting){for(let i=0;i<4;i++)setTimeout(spawn,i*450);bt=setInterval(spawn,900)}}).observe(AR);
+/* Multi-Bubble Color Carnival Engine (Tap & Drag to Pop, Multiple Colors, Splats, Combos) */
+(function initColorCarnival(){
+  const pal = ["#ff5a5f","#ffb800","#0fb5a2","#2d9cff","#6c4cf5","#ff4fa3","#8bd450","#ff7a18","#e0556a","#00c9a7"];
+  const shadeNames = ["Coral Bloom","Sun Gold","Lagoon Teal","Skyline Blue","Electric Violet","Rose Velvet","Lime Meadow","Sunset Orange","Crimson Spice","Pure Mint"];
+  
+  let score = 0;
+  let comboStreak = 0;
+  let lastPopTime = 0;
+  const comboPitches = [340, 420, 520, 640, 780, 960, 1180, 1400];
+
+  // Container layer
+  const layer = document.createElement("div");
+  layer.id = "roam-layer";
+  document.body.appendChild(layer);
+
+  // Floating Dashboard HUD
+  const hud = document.createElement("div");
+  hud.className = "roam-hud";
+  hud.innerHTML = '<span>🎨 Popped: <b id="roamScore">0</b></span><span class="combo" id="roamCombo" style="display:none">Combo x1!</span><button id="roamAdd" type="button" style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:12px;cursor:pointer;padding:2px 8px;font-size:11px;font-weight:700" title="Spawn more bubbles">+ Bubble</button><button id="roamReset" type="button" style="background:none;border:none;color:#aaa;cursor:pointer;padding:0 4px;font-size:12px;line-height:1" title="Reset score">↺</button>';
+  layer.appendChild(hud);
+
+  const scoreEl = hud.querySelector("#roamScore");
+  const comboEl = hud.querySelector("#roamCombo");
+
+  hud.querySelector("#roamReset").addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    score = 0;
+    comboStreak = 0;
+    scoreEl.textContent = "0";
+    comboEl.style.display = "none";
+  });
+
+  hud.querySelector("#roamAdd").addEventListener("pointerdown", (e) => {
+    e.stopPropagation();
+    if (bubbles.length < 16) {
+      spawnBubble();
+    }
+  });
+
+  // Melodic Pop Sound
+  function playPopSound(streak) {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const now = ctx.currentTime;
+      const freq = comboPitches[Math.min(streak, comboPitches.length - 1)];
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(freq, now);
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.8, now + 0.05);
+      osc.frequency.exponentialRampToValueAtTime(freq * 0.6, now + 0.11);
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.13);
+    } catch(err) {}
+  }
+
+  // Paint Splat Decal
+  function createPaintSplat(cx, cy, colorHex, size) {
+    const splat = document.createElement("div");
+    splat.className = "roam-splat";
+    const splatSize = size * (1.1 + Math.random() * 0.5);
+    splat.style.left = cx + "px";
+    splat.style.top = cy + "px";
+    splat.style.width = splatSize + "px";
+    splat.style.height = splatSize + "px";
+    splat.style.background = colorHex;
+    splat.style.transform = "translate(-50%,-50%) rotate(" + (Math.random() * 360) + "deg)";
+    layer.appendChild(splat);
+    setTimeout(() => splat.remove(), 1600);
+  }
+
+  // Sparkling shower explosion
+  function sprinkleBurst(cx, cy, colorHex, shadeName, streak, count = 48) {
+    const cols = pal.concat(["#ffffff", "#ffe066", "#fff0fa", "#c7f9cc"]);
+    
+    // Shockwave ring
+    const ring = document.createElement("div");
+    ring.className = "roam-ring";
+    ring.style.left = cx + "px";
+    ring.style.top = cy + "px";
+    ring.style.setProperty("--c", colorHex);
+    layer.appendChild(ring);
+    setTimeout(() => ring.remove(), 650);
+
+    // Score float indicator
+    const scFloat = document.createElement("div");
+    scFloat.className = "roam-float-score";
+    scFloat.style.left = cx + "px";
+    scFloat.style.top = cy + "px";
+    scFloat.style.setProperty("--c", colorHex);
+    scFloat.textContent = (streak > 1 ? "🔥 x" + streak + " " : "+1 ✨ ") + shadeName;
+    layer.appendChild(scFloat);
+    setTimeout(() => scFloat.remove(), 950);
+
+    // Burst sparkles
+    for (let i = 0; i < count; i++) {
+      const sp = document.createElement("div");
+      sp.className = "roam-sp";
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 35 + Math.random() * 110;
+      const dx = Math.cos(angle) * dist;
+      const dy = Math.sin(angle) * dist + (Math.random() * 50 + 20);
+      const up = Math.sin(angle) * dist * 0.7 - (20 + Math.random() * 40);
+      const size = 5 + Math.random() * 7;
+      const isStar = Math.random() < 0.3;
+      const isPill = Math.random() < 0.35;
+      const chosenCol = cols[Math.floor(Math.random() * cols.length)];
+
+      sp.style.left = cx + "px";
+      sp.style.top = cy + "px";
+      sp.style.setProperty("--dx", dx + "px");
+      sp.style.setProperty("--dy", dy + "px");
+      sp.style.setProperty("--up", up + "px");
+      sp.style.setProperty("--r", ((Math.random() - 0.5) * 800) + "deg");
+
+      if (isStar) {
+        sp.textContent = "✦";
+        sp.style.fontSize = (size * 2) + "px";
+        sp.style.color = chosenCol;
+        sp.style.textShadow = "0 0 8px " + chosenCol;
+      } else {
+        sp.style.width = (isPill ? size * 2.2 : size) + "px";
+        sp.style.height = size + "px";
+        sp.style.borderRadius = isPill ? "4px" : "50%";
+        sp.style.background = chosenCol;
+        sp.style.boxShadow = "0 0 10px " + chosenCol;
+      }
+
+      layer.appendChild(sp);
+      setTimeout(() => sp.remove(), 1100);
+    }
+
+    // Mega Fireworks when streak >= 5
+    if (streak >= 5 && streak % 5 === 0) {
+      for (let f = 0; f < 30; f++) {
+        const conf = document.createElement("div");
+        conf.className = "roam-sp";
+        const rx = Math.random() * window.innerWidth;
+        const col = pal[Math.floor(Math.random() * pal.length)];
+        conf.style.left = rx + "px";
+        conf.style.top = "10px";
+        conf.style.setProperty("--dx", ((Math.random() - 0.5) * 120) + "px");
+        conf.style.setProperty("--dy", (window.innerHeight * 0.7 + Math.random() * 100) + "px");
+        conf.style.setProperty("--up", "-10px");
+        conf.style.setProperty("--r", (Math.random() * 1200) + "deg");
+        conf.style.width = "10px";
+        conf.style.height = "16px";
+        conf.style.borderRadius = "2px";
+        conf.style.background = col;
+        conf.style.boxShadow = "0 0 12px " + col;
+        layer.appendChild(conf);
+        setTimeout(() => conf.remove(), 1400);
+      }
+    }
+  }
+
+  // Active Multi-Bubbles list
+  const bubbles = [];
+  let nextId = 0;
+
+  function spawnBubble(startX, startY) {
+    const id = nextId++;
+    const colorIdx = Math.floor(Math.random() * pal.length);
+    const colorHex = pal[colorIdx];
+    const shadeName = shadeNames[colorIdx];
+    const size = 56 + Math.floor(Math.random() * 24); // 56px to 80px
+
+    const el = document.createElement("button");
+    el.className = "drive-bub";
+    el.setAttribute("aria-label", "Pop " + shadeName + " bubble");
+    el.style.width = size + "px";
+    el.style.height = size + "px";
+    el.style.setProperty("--c", colorHex);
+    el.innerHTML = '<span class="tag">' + shadeName + '</span>';
+    layer.appendChild(el);
+
+    const pad = 30;
+    const x = startX !== undefined ? startX : (Math.random() * (window.innerWidth - size - pad * 2) + pad);
+    const y = startY !== undefined ? startY : (Math.random() * (window.innerHeight - size - pad * 2) + pad);
+    const vx = (Math.random() > 0.5 ? 1 : -1) * (1.1 + Math.random() * 1.1);
+    const vy = (Math.random() > 0.5 ? 1 : -1) * (0.9 + Math.random() * 1.1);
+
+    const b = {
+      id,
+      el,
+      colorHex,
+      shadeName,
+      size,
+      x,
+      y,
+      vx,
+      vy,
+      wobble: Math.random() * 10,
+      isPopping: false
+    };
+
+    // Instant pointerdown tap handler
+    el.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      popBubble(b);
+    });
+
+    bubbles.push(b);
+    return b;
+  }
+
+  function popBubble(b) {
+    if (b.isPopping) return;
+    b.isPopping = true;
+
+    const now = Date.now();
+    if (now - lastPopTime < 1800) {
+      comboStreak++;
+    } else {
+      comboStreak = 1;
+    }
+    lastPopTime = now;
+
+    score++;
+    scoreEl.textContent = score;
+
+    if (comboStreak > 1) {
+      comboEl.style.display = "inline-block";
+      comboEl.textContent = "Combo x" + comboStreak + "! 🔥";
+    } else {
+      comboEl.style.display = "none";
+    }
+
+    playPopSound(comboStreak);
+
+    const cx = b.x + b.size / 2;
+    const cy = b.y + b.size / 2;
+
+    createPaintSplat(cx, cy, b.colorHex, b.size);
+    sprinkleBurst(cx, cy, b.colorHex, b.shadeName, comboStreak, 48);
+
+    // Pop scale animation
+    b.el.style.scale = "0";
+    b.el.style.opacity = "0";
+
+    // Respawn in a new trajectory after 350ms
+    setTimeout(() => {
+      const idx = bubbles.indexOf(b);
+      if (idx !== -1) {
+        b.el.remove();
+        bubbles.splice(idx, 1);
+      }
+      // Re-spawn new bubble so count stays steady
+      const edge = Math.floor(Math.random() * 4);
+      let nx = 30, ny = 30;
+      if (edge === 0) { nx = 20; ny = Math.random() * (window.innerHeight - 140) + 40; }
+      else if (edge === 1) { nx = window.innerWidth - 90; ny = Math.random() * (window.innerHeight - 140) + 40; }
+      else if (edge === 2) { ny = 20; nx = Math.random() * (window.innerWidth - 140) + 40; }
+      else { ny = window.innerHeight - 90; nx = Math.random() * (window.innerWidth - 140) + 40; }
+      spawnBubble(nx, ny);
+    }, 380);
+  }
+
+  // Fruit-Ninja style drag / swipe slice across bubbles
+  let isPointerDown = false;
+  window.addEventListener("pointerdown", () => { isPointerDown = true; }, { passive: true });
+  window.addEventListener("pointerup", () => { isPointerDown = false; }, { passive: true });
+  window.addEventListener("pointercancel", () => { isPointerDown = false; }, { passive: true });
+
+  window.addEventListener("pointermove", (e) => {
+    if (!isPointerDown) return;
+    const px = e.clientX;
+    const py = e.clientY;
+    bubbles.forEach((b) => {
+      if (b.isPopping) return;
+      const cx = b.x + b.size / 2;
+      const cy = b.y + b.size / 2;
+      const dist = Math.hypot(px - cx, py - cy);
+      if (dist <= b.size / 2 + 18) {
+        popBubble(b);
+      }
+    });
+  }, { passive: true });
+
+  // Initial swarm: 7 active colorful bubbles driving around!
+  for (let i = 0; i < 7; i++) {
+    spawnBubble();
+  }
+
+  // Main Motion Loop
+  function animationLoop() {
+    const pad = 12;
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+
+    for (let i = 0; i < bubbles.length; i++) {
+      const b = bubbles[i];
+      if (b.isPopping) continue;
+
+      b.wobble += 0.035;
+      b.x += b.vx + Math.sin(b.wobble) * 0.45;
+      b.y += b.vy + Math.cos(b.wobble * 0.8) * 0.45;
+
+      const maxW = winW - b.size - pad;
+      const maxH = winH - b.size - pad;
+
+      // Soft edge bouncing
+      if (b.x <= pad) { b.x = pad; b.vx = Math.abs(b.vx); }
+      if (b.x >= maxW) { b.x = maxW; b.vx = -Math.abs(b.vx); }
+      if (b.y <= pad) { b.y = pad; b.vy = Math.abs(b.vy); }
+      if (b.y >= maxH) { b.y = maxH; b.vy = -Math.abs(b.vy); }
+
+      // Gentle random steering
+      if (Math.random() < 0.012) {
+        b.vx += (Math.random() - 0.5) * 0.5;
+        b.vy += (Math.random() - 0.5) * 0.5;
+        const spd = Math.hypot(b.vx, b.vy) || 1.8;
+        const targetSpd = 1.6;
+        b.vx = (b.vx / spd) * targetSpd;
+        b.vy = (b.vy / spd) * targetSpd;
+      }
+
+      b.el.style.transform = "translate3d(" + b.x + "px," + b.y + "px,0)";
+    }
+
+    requestAnimationFrame(animationLoop);
+  }
+
+  requestAnimationFrame(animationLoop);
+})();
 
 /* Room visualizer: home photo upload, wall painting, room scenes (SC), before/after and print. */
 /* own home photo */
