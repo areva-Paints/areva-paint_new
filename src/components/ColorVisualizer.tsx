@@ -140,8 +140,13 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     };
   }, [activePreset, isCustomPhoto]);
 
-  // When selectedColorHex changes (in preset or custom photo), re-render cleanly from pristine original
+  // When selectedColorHex changes: For room presets, recolor the default wall. For custom photos, keep user's canvas and let them tap freely!
   useEffect(() => {
+    if (isCustomPhoto) {
+      setStatusMessage(`Selected ${selectedColorName}. Tap any wall surface in your photo to paint.`);
+      return;
+    }
+
     const canvas = canvasRef.current;
     const origCanvas = originalCanvasRef.current;
     if (!canvas || !origCanvas) return;
@@ -152,9 +157,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const origData = origCtx.getImageData(0, 0, origCanvas.width, origCanvas.height);
     ctx.putImageData(origData, 0, 0);
 
-    const targetCoords = isCustomPhoto
-      ? lastTappedCoords
-      : activePreset.accentCoordinates
+    const targetCoords = activePreset.accentCoordinates
       ? {
           x: activePreset.accentCoordinates[0] * (canvas.width / 960),
           y: activePreset.accentCoordinates[1] * (canvas.height / 540),
@@ -167,7 +170,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       }, 60);
       return () => clearTimeout(timer);
     }
-  }, [selectedColorHex]);
+  }, [selectedColorHex, isCustomPhoto, activePreset]);
 
   // Handle Photo Upload
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -353,7 +356,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     });
   };
 
+  const lastInteractionTimeRef = useRef<number>(0);
   const handleCanvasInteraction = (clientX: number, clientY: number) => {
+    const now = Date.now();
+    if (now - lastInteractionTimeRef.current < 200) return;
+    lastInteractionTimeRef.current = now;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 

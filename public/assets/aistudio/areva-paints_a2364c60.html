@@ -640,7 +640,7 @@ function paint(hex,name){
   const cnEl=$("#cn"); if(cnEl) cnEl.textContent=cn;
   const cn2El=$("#cn2"); if(cn2El) cn2El.textContent=cn;
   drawSw();
-  try{if(window.autoWall)window.autoWall();}catch(e){}
+  if(typeof autoWall === "function" && typeof seeds !== "undefined" && seeds) autoWall();
   const gwEl=$("#gw");
   if(gwEl){
     gwEl.innerHTML=[30,180,330].map(d=>{
@@ -1290,49 +1290,53 @@ $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c
   }
 })();
 
-/* Flawless Room Visualizer: Layer-composite wall painting, real photographic architectural rooms, before/after slider and custom home photo upload */
+/* Room Visualizer & Interactive Paint Studio */
 const cv=$("#cv"), cx=cv.getContext("2d",{willReadFrequently:true});
-const cv0=$("#cv0"), cx0=cv0.getContext("2d",{willReadFrequently:true});
-const splitBar=$("#splitBar"), beforeTag=$("#beforeTag"), afterTag=$("#afterTag");
-let orig=null, hist=[], paintedRegions=[], snap=null, rm=0;
-let lastTapTime=0;
+const cv0=$("#cv0");
+let orig=null, hist=[], used=[], snap=null, rm=0, seeds=null;
 
-/* Real architectural room presets */
+/* Room Scenes Vector Generator */
+const RC=(x,y,w,h,f,s,q)=>`<rect x='${x}' y='${y}' width='${w}' height='${h}' fill='${f}'${s?` stroke='${s[0]}' stroke-width='${s[1]}'`:''}${q?` rx='${q}'`:''}/>`;
+const CI=(x,y,q,f)=>`<circle cx='${x}' cy='${y}' r='${q}' fill='${f}'/>`;
+const WR=b=>`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 520'><defs><linearGradient id='g' x2='1' y2='1'><stop offset='0' stop-color='#f3e6c8'/><stop offset='1' stop-color='#e8d9b4'/></linearGradient><linearGradient id='k' x2='0' y2='1'><stop offset='0' stop-color='#6ec1ff'/><stop offset='1' stop-color='#e8f6ff'/></linearGradient></defs>${b}</svg>`;
+const IN=RC(0,0,900,520,'url(#g)')+RC(0,0,900,34,'#fff')+RC(0,34,900,5,'#b5a98f')+RC(0,400,900,120,'#a9754a')+RC(0,392,900,10,'#fff');
+const WN=(x,y,w,h)=>RC(x,y,w,h,'#8ec8f0',['#fff',10])+RC(x+w/2-4,y,8,h,'#fff')+RC(x,y+h/2-4,w,8,'#fff');
+
 const SC=[
   {
     n:'Scandinavian Living',
     g:0,
-    seeds:[[480,180],[200,180],[720,180]],
-    img:'/assets/images/room_visualizer_living_1793203848949.jpg'
+    s:[[30,300]],
+    v:IN+WN(80,100,200,190)+RC(400,90,180,110,'#fff',['#444',6])+CI(490,145,30,'#ffb800')+RC(750,170,10,225,'#555')+`<path d='M720 170h70l-16-52h-38z' fill='#ffd27a'/>`+RC(280,440,440,52,'#e0556a',0,26)+RC(330,270,340,120,'#3b4a7a',0,26)+RC(310,310,50,90,'#2f3d68',0,18)+RC(640,310,50,90,'#2f3d68',0,18)+RC(360,248,110,70,'#ff6b5e',0,14)
   },
   {
     n:'Master Bedroom',
     g:0,
-    seeds:[[450,160],[220,160],[720,160]],
-    img:'/assets/images/room_visualizer_bedroom_1793203849707.jpg'
+    s:[[40,200]],
+    v:IN+WN(600,90,220,180)+RC(570,80,50,220,'#ff4fa3')+RC(800,80,50,220,'#ff4fa3')+RC(180,70,200,90,'#fff',['#444',6])+CI(280,115,26,'#0fb5a2')+RC(120,190,420,110,'#8a5a3c',0,14)+RC(100,290,460,110,'#fff',['#ddd',3],20)+RC(100,335,460,65,'#2d9cff',0,16)+RC(150,262,130,50,'#ffd2b3',0,14)+RC(300,262,130,50,'#ffd2b3',0,14)+RC(580,330,80,70,'#8a5a3c')+CI(620,310,22,'#ffb800')
   },
   {
     n:'Kitchen Studio',
     g:0,
-    seeds:[[200,180],[320,120],[760,220]],
-    img:'/assets/images/room_visualizer_kitchen.jpg'
+    s:[[460,150]],
+    v:IN+RC(0,230,900,110,'#bfe0e6')+WN(500,70,220,130)+RC(60,60,360,130,'#d98a4c',['#a65f2b',4])+RC(780,60,100,100,'#b9bfcc')+RC(0,330,900,14,'#6b5b4a')+RC(40,344,820,56,'#d98a4c',['#a65f2b',3])+CI(640,316,16,'#ff5a5f')+CI(680,318,14,'#8bd450')
   },
   {
     n:'Villa Exterior',
     g:1,
-    seeds:[[340,240],[560,240],[450,160]],
-    img:'/assets/images/room_visualizer_exterior_1793203850484.jpg'
+    s:[[300,370]],
+    v:RC(0,0,900,400,'url(#k)')+RC(0,380,900,140,'#6cc04a')+RC(400,400,100,120,'#d9d1c3')+RC(200,200,500,210,'url(#g)')+`<path d='M170 205L450 70L730 205z' fill='#8a3b2e'/>`+RC(410,290,80,120,'#8a5a3c',0,6)+WN(240,260,100,80)+WN(560,260,100,80)+CI(780,90,44,'#ffb800')+RC(80,300,16,100,'#6b4a2f')+CI(88,270,60,'#2f9e44')
   },
   {
     n:'Office & Studio',
     g:0,
-    seeds:[[450,180],[220,180],[720,180]],
-    img:'/assets/images/hero_architectural_living_1793203849445.jpg'
+    s:[[450,60]],
+    v:RC(0,0,900,520,'url(#k)')+RC(0,480,900,40,'#8d8d8d')+RC(250,40,400,450,'url(#g)')+[0,1,2].map(i=>[0,1,2].map(j=>WN(285+j*120,80+i*100,80,70)+RC(270+j*120,158+i*100,110,10,'#9aa0ad')).join('')).join('')+RC(420,410,60,80,'#8a5a3c',0,4)
   }
 ];
 
 function rooms(){
-  let g=-1,h='';
+  let g=-1, h='';
   SC.forEach((s,i)=>{
     if(s.g!==g){
       g=s.g;
@@ -1340,144 +1344,58 @@ function rooms(){
     }
     h+='<button class="chip" type="button" data-rm="'+i+'" aria-pressed="'+(i===rm)+'">'+s.n+'</button>';
   });
-  h+='<button class="chip" type="button" id="mine" aria-pressed="'+(rm===-1)+'">Upload Photo</button>';
+  h+='<button class="chip" type="button" id="mine" aria-pressed="'+(rm<0)+'">Upload Photo</button>';
   h+='<button class="chip live" type="button" id="camb" aria-pressed="'+(rm===-2)+'">📷 Live Camera AR</button>';
   const roomsEl = $("#rooms");
   if(roomsEl) roomsEl.innerHTML = h;
 }
 
-/* High-fidelity adaptive wall recoloring for real photographs */
-function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
-  const w=targetImg.width, h=targetImg.height;
-  const d=origImg.data, o=targetImg.data;
-  const tc=parseInt(hex.replace("#",""),16);
-  const tr=(tc>>16)&255, tg=(tc>>8)&255, tb=tc&255;
-
-  const clampX = Math.max(2, Math.min(w - 3, Math.floor(startX)));
-  const clampY = Math.max(2, Math.min(h - 3, Math.floor(startY)));
-
-  // Sample a 5x5 neighborhood to compute robust reference seed values (eliminates sensor noise/JPEG compression artifacts)
-  let sumR=0, sumG=0, sumB=0, validSamples=0;
-  for(let dy=-2; dy<=2; dy++){
-    for(let dx=-2; dx<=2; dx++){
-      const sIdx = ((clampY + dy) * w + (clampX + dx)) * 4;
-      sumR += d[sIdx];
-      sumG += d[sIdx+1];
-      sumB += d[sIdx+2];
-      validSamples++;
-    }
-  }
-  const seedR = sumR / validSamples;
-  const seedG = sumG / validSamples;
-  const seedB = sumB / validSamples;
-  const seedSum = seedR + seedG + seedB + 0.001;
-  const seedNormR = seedR / seedSum;
-  const seedNormG = seedG / seedSum;
-  const seedLum = Math.max(0.08, (0.299*seedR + 0.587*seedG + 0.114*seedB) / 255);
-
-  const effectiveTol = Math.max(16, tol || 28);
-  const tolSq = effectiveTol * effectiveTol * 3.6;
-  const chromaTol = 0.12 + (effectiveTol / 140);
-  const stepTolSq = 44 * 44 * 3; // Edge barrier prevents spilling onto doors, windows, trim
-
+function flood(cur, x, y, t){
+  const w=cur.width, h=cur.height, d=orig.data, o=cur.data;
+  const clampX = Math.max(0, Math.min(w-1, Math.floor(x)));
+  const clampY = Math.max(0, Math.min(h-1, Math.floor(y)));
+  const T = t * t * 3;
   const vis = new Uint8Array(w * h);
-  const queue = new Int32Array(w * h);
-  let qStart = 0, qEnd = 0;
-
-  const seedPos = clampY * w + clampX;
-  queue[qEnd++] = seedPos;
-  vis[seedPos] = 1;
-
-  let count = 0;
-
-  while(qStart < qEnd){
-    const p = queue[qStart++];
-    const px = p % w;
-    const py = Math.floor(p / w);
+  const st = [clampY * w + clampX];
+  const i0 = st[0] * 4;
+  const sr = d[i0], sg = d[i0+1], sb = d[i0+2];
+  const Ls = Math.max(0.15, (0.299*sr + 0.587*sg + 0.114*sb) / 255);
+  const tc = parseInt(curHex.slice(1), 16), tr = tc >> 16, tg = (tc >> 8) & 255, tb = tc & 255;
+  let n = 0;
+  while(st.length){
+    const p = st.pop();
+    if(vis[p]) continue;
+    vis[p] = 1;
     const i = p * 4;
-
-    const pr = d[i], pg = d[i+1], pb = d[i+2];
-    const pixLum = (0.299*pr + 0.587*pg + 0.114*pb) / 255;
-
-    // Realistic architectural lighting & texture preservation
-    const lumRatio = pixLum / seedLum;
-    const factor = Math.min(1.45, Math.max(0.3, 0.4 + 0.6 * lumRatio));
-
-    o[i] = Math.min(255, Math.max(0, Math.round(tr * factor)));
-    o[i+1] = Math.min(255, Math.max(0, Math.round(tg * factor)));
-    o[i+2] = Math.min(255, Math.max(0, Math.round(tb * factor)));
-    count++;
-
-    const neighbors = [
-      px > 0 ? p - 1 : -1,
-      px < w - 1 ? p + 1 : -1,
-      py > 0 ? p - w : -1,
-      py < h - 1 ? p + w : -1
-    ];
-
-    for(let n = 0; n < 4; n++){
-      const np = neighbors[n];
-      if(np === -1 || vis[np]) continue;
-
-      const ni = np * 4;
-      const nr = d[ni], ng = d[ni+1], nb = d[ni+2];
-
-      // Step difference threshold to stop at crisp wall edges & architectural moldings
-      const sdr = nr - pr, sdg = ng - pg, sdb = nb - pb;
-      if(sdr*sdr + sdg*sdg + sdb*sdb > stepTolSq) continue;
-
-      // Color distance & chromaticity check for natural wall gradients
-      const dr = nr - seedR, dg = ng - seedG, db = nb - seedB;
-      const distSq = dr*dr + dg*dg + db*db;
-
-      const nSum = nr + ng + nb + 0.001;
-      const nNormR = nr / nSum;
-      const nNormG = ng / nSum;
-      const cDist = Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
-
-      if(distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.8)){
-        vis[np] = 1;
-        queue[qEnd++] = np;
-      }
-    }
+    const dr = d[i] - sr, dg = d[i+1] - sg, db = d[i+2] - sb;
+    if(dr*dr + dg*dg + db*db > T) continue;
+    const f = Math.min(1.5, Math.max(0.45, (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255 / Ls));
+    o[i] = Math.min(255, Math.round(tr * f));
+    o[i+1] = Math.min(255, Math.round(tg * f));
+    o[i+2] = Math.min(255, Math.round(tb * f));
+    n++;
+    const px = p % w;
+    if(px > 0) st.push(p - 1);
+    if(px < w - 1) st.push(p + 1);
+    if(p >= w) st.push(p - w);
+    if(p < w * (h - 1)) st.push(p + w);
   }
-
-  return count;
+  return n;
 }
 
-/* Re-composite painted layers fresh onto orig */
 window.autoWall = function(){
-  if(!orig) return;
-  const w = cv.width, h = cv.height;
-  const cur = new ImageData(new Uint8ClampedArray(orig.data), w, h);
-  const t = +($("#tol") ? $("#tol").value : 28) || 28;
-
-  if(rm >= 0 && SC[rm]){
-    // Paint predefined room wall seeds with active color
-    SC[rm].seeds.forEach(pt => {
-      floodFillWall(cur, orig, pt[0] * (w / 900), pt[1] * (h / 506), curHex, t);
-    });
-  }
-
-  // Also apply all user manual wall taps using currently active color
-  paintedRegions.forEach(reg => {
-    floodFillWall(cur, orig, reg.x, reg.y, curHex, t);
-  });
-
+  if(!orig || !seeds) return;
+  const cur=cx.getImageData(0, 0, cv.width, cv.height);
+  seeds.forEach(s => flood(cur, s[0], s[1], +$("#tol").value || 25));
   cx.putImageData(cur, 0, 0);
-  const hmEl = $("#hm");
-  if(hmEl){
-    if(paintedRegions.length > 0 || (rm >= 0 && SC[rm])){
-      hmEl.textContent = "Walls painted in " + cn + ". Pick any shade or tap another wall.";
-    } else {
-      hmEl.textContent = "Tap on any wall or surface to paint it in " + cn + ".";
-    }
-  }
+  used=used.filter(u => !u.auto);
+  used.unshift({n: cn || curHex, h: curHex, auto: 1});
 };
 
 function ov(v){
   const val = +v;
   if(cv0) cv0.style.clipPath = "inset(0 0 0 " + val + "%)";
+  const splitBar = $("#splitBar"), beforeTag = $("#beforeTag"), afterTag = $("#afterTag");
   if(splitBar) splitBar.style.left = val + "%";
   if(val >= 99){
     if(splitBar) splitBar.classList.remove("active");
@@ -1494,207 +1412,271 @@ function ov(v){
   }
 }
 
-function afterLoad(sceneObj){
+function afterLoad(sc){
   if(live) stopCam();
   hist = [];
-  paintedRegions = [];
-  rm = sceneObj ? SC.indexOf(sceneObj) : -1;
+  used = [];
+  seeds = sc ? sc.s : null;
+  if(!sc) rm = -1;
   const tolEl = $("#tol");
-  if(tolEl) tolEl.value = sceneObj ? 28 : 32;
+  if(tolEl) tolEl.value = sc ? 20 : 30;
 
-  cv0.width = cv.width;
-  cv0.height = cv.height;
-  cx0.putImageData(orig, 0, 0);
+  if(cv0){
+    cv0.width = cv.width;
+    cv0.height = cv.height;
+    cv0.getContext("2d").putImageData(orig, 0, 0);
+  }
 
   const cmpEl = $("#cmp");
   if(cmpEl) cmpEl.value = 100;
   ov(100);
   rooms();
 
-  if(sceneObj){
-    window.autoWall();
-    const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "Wall painted in " + cn + "! Tap on any other wall or surface to paint.";
-  } else {
-    // Custom photo loaded cleanly without unwanted center auto-paint!
-    cx.putImageData(orig, 0, 0);
-    const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "Your photo is ready! Tap on any wall to paint it in " + cn + ".";
+  const hmEl = $("#hm");
+  if(hmEl){
+    hmEl.textContent = sc
+      ? "Pick a shade to repaint the wall. Tap the sofa, roof, door or any other part to colour it too."
+      : "Photo loaded! Pick a shade from the palette, then tap any wall to paint it. Your photo stays on your device.";
+  }
+
+  if(sc) window.autoWall();
+}
+
+function drawSceneToCanvas(c, idx){
+  const w=900, h=520;
+  const fRect=(x,y,rw,rh,fill)=>{c.fillStyle=fill;c.fillRect(x,y,rw,rh);};
+  const sRect=(x,y,rw,rh,strk,sw)=>{c.strokeStyle=strk;c.lineWidth=sw;c.strokeRect(x,y,rw,rh);};
+  const rRect=(x,y,rw,rh,fill,rad)=>{
+    c.fillStyle=fill;c.beginPath();
+    if(c.roundRect){c.roundRect(x,y,rw,rh,rad);}else{c.rect(x,y,rw,rh);}
+    c.fill();
+  };
+  const circ=(cx,cy,r,fill)=>{c.fillStyle=fill;c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fill();};
+  const win=(x,y,ww,wh)=>{
+    fRect(x,y,ww,wh,'#8ec8f0');
+    sRect(x+5,y+5,ww-10,wh-10,'#ffffff',10);
+    fRect(x+ww/2-4,y,8,wh,'#ffffff');
+    fRect(x,y+wh/2-4,ww,8,'#ffffff');
+  };
+
+  const wallG=c.createLinearGradient(0,0,w,h);
+  wallG.addColorStop(0,'#f3e6c8');
+  wallG.addColorStop(1,'#e8d9b4');
+
+  const skyG=c.createLinearGradient(0,0,0,h);
+  skyG.addColorStop(0,'#6ec1ff');
+  skyG.addColorStop(1,'#e8f6ff');
+
+  const baseInt=()=>{
+    c.fillStyle=wallG;c.fillRect(0,0,w,h);
+    fRect(0,0,w,34,'#ffffff');
+    fRect(0,34,w,5,'#b5a98f');
+    fRect(0,400,w,120,'#a9754a');
+    fRect(0,392,w,10,'#ffffff');
+  };
+
+  if(idx===0){
+    baseInt();
+    win(80,100,200,190);
+    fRect(400,90,180,110,'#ffffff');
+    sRect(400,90,180,110,'#444444',6);
+    circ(490,145,30,'#ffb800');
+    fRect(750,170,10,225,'#555555');
+    c.fillStyle='#ffd27a';c.beginPath();c.moveTo(720,170);c.lineTo(790,170);c.lineTo(774,118);c.lineTo(736,118);c.closePath();c.fill();
+    rRect(280,440,440,52,'#e0556a',26);
+    rRect(330,270,340,120,'#3b4a7a',26);
+    rRect(310,310,50,90,'#2f3d68',18);
+    rRect(640,310,50,90,'#2f3d68',18);
+    rRect(360,248,110,70,'#ff6b5e',14);
+  } else if(idx===1){
+    baseInt();
+    win(600,90,220,180);
+    fRect(570,80,50,220,'#ff4fa3');
+    fRect(800,80,50,220,'#ff4fa3');
+    fRect(180,70,200,90,'#ffffff');
+    sRect(180,70,200,90,'#444444',6);
+    circ(280,115,26,'#0fb5a2');
+    rRect(120,190,420,110,'#8a5a3c',14);
+    rRect(100,290,460,110,'#ffffff',20);
+    sRect(100,290,460,110,'#dddddd',3);
+    rRect(100,335,460,65,'#2d9cff',16);
+    rRect(150,262,130,50,'#ffd2b3',14);
+    rRect(300,262,130,50,'#ffd2b3',14);
+    fRect(580,330,80,70,'#8a5a3c');
+    circ(620,310,22,'#ffb800');
+  } else if(idx===2){
+    baseInt();
+    fRect(0,230,900,110,'#bfe0e6');
+    win(500,70,220,130);
+    fRect(60,60,360,130,'#d98a4c');
+    sRect(60,60,360,130,'#a65f2b',4);
+    fRect(780,60,100,100,'#b9bfcc');
+    fRect(0,330,900,14,'#6b5b4a');
+    fRect(40,344,820,56,'#d98a4c');
+    sRect(40,344,820,56,'#a65f2b',3);
+    circ(640,316,16,'#ff5a5f');
+    circ(680,318,14,'#8bd450');
+  } else if(idx===3){
+    c.fillStyle=skyG;c.fillRect(0,0,900,400);
+    fRect(0,380,900,140,'#6cc04a');
+    fRect(400,400,100,120,'#d9d1c3');
+    c.fillStyle=wallG;c.fillRect(200,200,500,210);
+    c.fillStyle='#8a3b2e';c.beginPath();c.moveTo(170,205);c.lineTo(450,70);c.lineTo(730,205);c.closePath();c.fill();
+    rRect(410,290,80,120,'#8a5a3c',6);
+    win(240,260,100,80);
+    win(560,260,100,80);
+    circ(780,90,44,'#ffb800');
+    fRect(80,300,16,100,'#6b4a2f');
+    circ(88,270,60,'#2f9e44');
+  } else if(idx===4){
+    c.fillStyle=skyG;c.fillRect(0,0,900,520);
+    fRect(0,480,900,40,'#8d8d8d');
+    c.fillStyle=wallG;c.fillRect(250,40,400,450);
+    for(let r=0;r<3;r++){
+      for(let col=0;col<3;col++){
+        win(285+col*120,80+r*100,80,70);
+        fRect(270+col*120,158+r*100,110,10,'#9aa0ad');
+      }
+    }
+    rRect(420,410,60,80,'#8a5a3c',4);
   }
 }
 
 function loadScene(i){
   if(live) stopCam();
-  rm = i;
   const item = SC[i];
   if(!item) return;
 
-  const hmEl = $("#hm");
-  if(hmEl) hmEl.textContent = "Loading " + item.n + "...";
-  rooms();
-
-  const setupFromImage = (img) => {
-    try {
-      const targetW = 900;
-      const targetH = Math.round(900 * ((img.height || 506) / (img.width || 900))) || 506;
-      cv.width = targetW;
-      cv.height = targetH;
-      cx.drawImage(img, 0, 0, targetW, targetH);
-      orig = cx.getImageData(0, 0, targetW, targetH);
-      cv0.width = targetW;
-      cv0.height = targetH;
-      cx0.putImageData(orig, 0, 0);
-      afterLoad(item);
-    } catch(err) {
-      console.warn("Direct image read blocked:", err);
-      if(hmEl) hmEl.textContent = "Protected preview loaded. You can paint walls or upload your own photo.";
-    }
-  };
-
-  // 1. First attempt: fetch as Blob (guarantees non-tainted canvas in all iframe environments)
-  fetch(item.img)
-    .then(res => {
-      if(!res.ok) throw new Error("HTTP " + res.status);
-      return res.blob();
-    })
-    .then(blob => {
-      const blobUrl = URL.createObjectURL(blob);
-      const im = new Image();
-      im.onload = () => {
-        URL.revokeObjectURL(blobUrl);
-        setupFromImage(im);
-      };
-      im.onerror = () => tryFallback(item.img);
-      im.src = blobUrl;
-    })
-    .catch(() => tryFallback(item.img));
-
-  function tryFallback(src){
-    const im = new Image();
-    im.crossOrigin = "anonymous";
-    im.onload = () => setupFromImage(im);
-    im.onerror = () => {
-      const relSrc = src.startsWith('/') ? '.' + src : '/' + src;
-      const im2 = new Image();
-      im2.crossOrigin = "anonymous";
-      im2.onload = () => setupFromImage(im2);
-      im2.onerror = () => {
-        if(hmEl) hmEl.textContent = "Could not load room photo. Please select another room or upload your own photo.";
-      };
-      im2.src = relSrc;
-    };
-    im.src = src;
-  }
+  cv.width = 900;
+  cv.height = 520;
+  drawSceneToCanvas(cx, i);
+  orig = cx.getImageData(0, 0, 900, 520);
+  rm = i;
+  afterLoad(item);
 }
 
-/* User taps on canvas to paint specific surface */
-function handleCanvasTap(e){
-  if(live){ liveTap(e); return; }
-  const hmEl = $("#hm");
-  if(!orig){
-    if(hmEl) hmEl.textContent = "Please select a room or upload a photo first.";
-    return;
-  }
-
-  // Prevent double triggers from pointerdown + synthetic click on mobile/touch
+/* User taps canvas to paint specific wall or surface */
+let lastCanvasTapTime = 0;
+function handleCanvasPaint(clientX, clientY){
   const now = Date.now();
-  if(now - lastTapTime < 220) return;
-  lastTapTime = now;
+  if(now - lastCanvasTapTime < 180) return;
+  lastCanvasTapTime = now;
 
-  const r = cv.getBoundingClientRect();
-  const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : null);
-  const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : null);
-  if(clientX == null || clientY == null) return;
-
-  const x = Math.floor((clientX - r.left) * (cv.width / r.width));
-  const y = Math.floor((clientY - r.top) * (cv.height / r.height));
-
-  if(x < 0 || x >= cv.width || y < 0 || y >= cv.height) return;
-
-  // Save current frame in hist for undo
-  hist.push(cx.getImageData(0, 0, cv.width, cv.height));
-  if(hist.length > 10) hist.shift();
-
-  // Add user tap to painted regions
-  paintedRegions.push({x, y});
-
-  const cur = cx.getImageData(0, 0, cv.width, cv.height);
-  const tolVal = +($("#tol") ? $("#tol").value : 28) || 28;
-  let n = floodFillWall(cur, orig, x, y, curHex, tolVal);
-
-  // If initial pixel tapped was on an edge or micro-defect, search small neighborhood for best wall seed
-  if(n < 25){
-    const offsets = [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, -4], [0, 4], [-4, 0], [4, 0]];
-    for(let o = 0; o < offsets.length; o++){
-      const testX = x + offsets[o][0];
-      const testY = y + offsets[o][1];
-      if(testX >= 0 && testX < cv.width && testY >= 0 && testY < cv.height){
-        const retryN = floodFillWall(cur, orig, testX, testY, curHex, tolVal);
-        if(retryN >= 25){
-          n = retryN;
-          paintedRegions[paintedRegions.length - 1] = { x: testX, y: testY };
-          break;
-        }
-      }
-    }
+  if(!orig){
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "Upload a photo or select a room first.";
+    return;
   }
+  const r = cv.getBoundingClientRect(), w = cv.width, h = cv.height;
+  const x = Math.floor((clientX - r.left) * w / r.width);
+  const y = Math.floor((clientY - r.top) * h / r.height);
+  if(x < 0 || x >= w || y < 0 || y >= h) return;
 
-  if(n < 18){
-    if(hmEl) hmEl.textContent = "That tapped area is very small. Tap directly on an open wall surface or raise the range slider.";
-    hist.pop();
-    paintedRegions.pop();
+  const cur = cx.getImageData(0, 0, w, h);
+  const prev = new ImageData(new Uint8ClampedArray(cur.data), w, h);
+  const t = +($("#tol") ? $("#tol").value : 25) || 25;
+  const n = flood(cur, x, y, t);
+
+  if(n < 20){
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "That spot is too small. Tap a larger wall area, or raise the wall selection range.";
     return;
   }
 
+  hist.push(prev);
+  if(hist.length > 10) hist.shift();
+  used.push({n: cn || curHex, h: curHex});
   cx.putImageData(cur, 0, 0);
-  if(hmEl) hmEl.textContent = "Painted wall with " + cn + "! Pick any shade from the palette or tap another wall.";
+  const hmEl = $("#hm");
+  if(hmEl) hmEl.textContent = "Painted with " + (cn || curHex) + ". Tap another wall, or change the colour.";
 }
 
-cv.addEventListener("click", handleCanvasTap);
-cv.addEventListener("pointerdown", (e)=>{
+cv.addEventListener("click", e => handleCanvasPaint(e.clientX, e.clientY));
+cv.addEventListener("pointerdown", e => {
   if(e.pointerType === "touch" || e.pointerType === "pen"){
-    handleCanvasTap(e);
+    handleCanvasPaint(e.clientX, e.clientY);
   }
 });
 
-/* Undo */
+/* Upload custom photo */
+const upInput = $("#up");
+if(upInput){
+  upInput.onchange = e => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "Loading your photo...";
+    const fr = new FileReader();
+    fr.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const s = Math.min(1, 900 / Math.max(im.width, im.height));
+        cv.width = Math.round(im.width * s);
+        cv.height = Math.round(im.height * s);
+        cx.drawImage(im, 0, 0, cv.width, cv.height);
+        orig = cx.getImageData(0, 0, cv.width, cv.height);
+        afterLoad(null);
+      };
+      im.onerror = () => {
+        if(hmEl) hmEl.textContent = "That file could not be read. Please try a JPG or PNG photo.";
+      };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(f);
+  };
+}
+
+/* Room chips click handler */
+const roomsContainer = $("#rooms");
+if(roomsContainer){
+  roomsContainer.addEventListener("click", e => {
+    const b = e.target.closest("[data-rm]");
+    if(b){
+      loadScene(+b.dataset.rm);
+    } else if(e.target.closest("#mine")){
+      if(upInput) upInput.click();
+    } else if(e.target.closest("#camb")){
+      startCam();
+    }
+  });
+}
+
+/* Controls */
 const unBtn = $("#un");
 if(unBtn){
   unBtn.onclick = () => {
-    if(hist.length > 0){
+    if(hist.length){
       cx.putImageData(hist.pop(), 0, 0);
-      paintedRegions.pop();
+      used.pop();
       const hmEl = $("#hm");
-      if(hmEl) hmEl.textContent = "Undone last paint action.";
-    } else {
-      window.autoWall();
+      if(hmEl) hmEl.textContent = "Undone last paint stroke.";
     }
   };
 }
 
-/* Reset to Pristine Original */
 const urBtn = $("#ur");
 if(urBtn){
   urBtn.onclick = () => {
-    if(!orig) return;
-    cx.putImageData(orig, 0, 0);
-    hist = [];
-    paintedRegions = [];
-    const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "Reset room to original unpainted state. Pick any shade to repaint.";
+    if(orig){
+      cx.putImageData(orig, 0, 0);
+      hist = [];
+      used = [];
+      const hmEl = $("#hm");
+      if(hmEl) hmEl.textContent = "Reset to original image.";
+    }
   };
 }
 
-/* Hold to See Original */
 const ubBtn = $("#ub");
 if(ubBtn){
-  ubBtn.addEventListener("pointerdown", () => {
-    if(!orig) return;
-    snap = cx.getImageData(0, 0, cv.width, cv.height);
-    cx.putImageData(orig, 0, 0);
-  });
-  ["pointerup", "pointerleave", "pointercancel"].forEach(evt => {
-    ubBtn.addEventListener(evt, () => {
+  ubBtn.onpointerdown = () => {
+    if(orig){
+      snap = cx.getImageData(0, 0, cv.width, cv.height);
+      cx.putImageData(orig, 0, 0);
+    }
+  };
+  ["pointerup", "pointerleave", "pointercancel"].forEach(v => {
+    ubBtn.addEventListener(v, () => {
       if(snap){
         cx.putImageData(snap, 0, 0);
         snap = null;
@@ -1703,26 +1685,25 @@ if(ubBtn){
   });
 }
 
-/* Print Before & After */
 const pr2Btn = $("#pr2");
 if(pr2Btn){
   pr2Btn.onclick = () => {
     if(!orig){
       const hmEl = $("#hm");
-      if(hmEl) hmEl.textContent = "Please load a room or photo first.";
+      if(hmEl) hmEl.textContent = "Upload a photo or select a room first.";
       return;
     }
     const t = document.createElement("canvas");
     t.width = cv.width;
     t.height = cv.height;
     t.getContext("2d").putImageData(orig, 0, 0);
-    const sbEl = $("#sb");
-    const siEl = $("#si");
-    const slEl = $("#sl");
-    const sdEl = $("#sd");
-    if(sbEl) sbEl.src = t.toDataURL("image/jpeg", 0.9);
+    const sbEl = $("#sb"), siEl = $("#si"), slEl = $("#sl"), sdEl = $("#sd");
+    if(sbEl) sbEl.src = t.toDataURL("image/jpeg", 0.88);
     if(siEl) siEl.src = cv.toDataURL("image/jpeg", 0.9);
-    if(slEl) slEl.innerHTML = '<span><i style="background:'+curHex+'"></i><b>'+cn+'</b> ('+curHex+')</span>';
+    const seen = {};
+    if(slEl){
+      slEl.innerHTML = used.filter(u => !seen[u.h] && (seen[u.h] = 1)).map(u => '<span><i style="background:'+u.h+'"></i>'+u.n+' '+u.h+'</span>').join("") || "No colours applied yet";
+    }
     if(sdEl) sdEl.textContent = new Date().toLocaleDateString();
     setTimeout(() => {
       try {
@@ -1735,68 +1716,11 @@ if(pr2Btn){
   };
 }
 
-/* Upload Custom Photo */
-const upInput = $("#up");
-if(upInput){
-  upInput.onchange = e => {
-    const f = e.target.files && e.target.files[0];
-    if(!f) return;
-    const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "Loading your photo...";
-    const fr = new FileReader();
-    fr.onload = () => {
-      const im = new Image();
-      im.onload = () => {
-        const maxDim = 920;
-        const scale = Math.min(1, maxDim / Math.max(im.width, im.height));
-        cv.width = Math.round(im.width * scale);
-        cv.height = Math.round(im.height * scale);
-        cx.drawImage(im, 0, 0, cv.width, cv.height);
-        orig = cx.getImageData(0, 0, cv.width, cv.height);
-        cv0.width = cv.width;
-        cv0.height = cv.height;
-        cx0.putImageData(orig, 0, 0);
-        afterLoad(null);
-      };
-      im.onerror = () => {
-        if(hmEl) hmEl.textContent = "Could not load image file. Please use a JPG, PNG, or WebP photo.";
-      };
-      im.src = fr.result;
-    };
-    fr.readAsDataURL(f);
-  };
-}
-
-/* Room Select & Controls */
-const roomsContainer = $("#rooms");
-if(roomsContainer){
-  roomsContainer.addEventListener("click", e => {
-    const b = e.target.closest("[data-rm]");
-    if(b){
-      loadScene(+b.dataset.rm);
-    } else if(e.target.closest("#mine")){
-      const upEl = $("#up");
-      if(upEl) upEl.click();
-    } else if(e.target.closest("#camb")){
-      startCam();
-    }
-  });
-}
-
 const cmpInput = $("#cmp");
 if(cmpInput) cmpInput.oninput = e => ov(e.target.value);
 
 const cc2Input = $("#cc2");
-if(cc2Input) cc2Input.oninput = e => paint(e.target.value, "Custom (" + e.target.value + ")");
-
-const tolInput = $("#tol");
-if(tolInput){
-  tolInput.oninput = () => {
-    if(paintedRegions.length > 0 || rm >= 0){
-      window.autoWall();
-    }
-  };
-}
+if(cc2Input) cc2Input.oninput = e => paint(e.target.value, "Custom " + e.target.value);
 
 rooms();
 loadScene(0);
