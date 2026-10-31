@@ -482,8 +482,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
           <div className="lg:col-span-7 space-y-4">
             
             {/* Room Selector Chips */}
-            <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 pb-2">
+              <div className="flex flex-wrap items-center gap-2 w-full">
                 {ROOM_PRESETS.map((preset) => {
                   const isCurrent = !isCustomPhoto && activePreset.id === preset.id;
                   return (
@@ -512,7 +512,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                     title="Open live camera feed with real-time 3D wall recoloring"
                   >
                     <Camera className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                    <span>Live Camera AR (Mobile & Webcam)</span>
+                    <span>Live Camera AR</span>
                   </button>
                 )}
 
@@ -525,7 +525,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span>Upload My Photo</span>
+                  <span>Upload Photo</span>
                 </button>
                 <input
                   ref={fileInputRef}
