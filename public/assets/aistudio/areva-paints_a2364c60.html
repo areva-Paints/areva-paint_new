@@ -281,30 +281,34 @@ h2::after{content:"";display:block;height:8px;width:96px;border-radius:99px;marg
 .arr{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#a01c43;font-size:1.8rem;line-height:1;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.25)}.prev{left:12px}.nxt{right:12px}
 .ctrl button{background:rgba(255,255,255,.5)}.ctrl button[aria-current="true"]{background:#ffc233}
 @media(max-width:768px){
-  .hero{padding:.4rem 0 .8rem!important}
-  .slider{height:clamp(220px,58vw,360px);border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.18);position:relative;overflow:hidden}
-  .track{height:100%;display:flex}
-  .slide{height:100%;min-height:100%;padding:1rem 1rem 2.6rem;box-sizing:border-box}
-  .slide.pic{height:100%;min-height:100%;padding:0;background:transparent;overflow:hidden}
-  .slide.pic img{width:100%;height:100%;object-fit:cover;object-position:center;border-radius:18px;display:block}
-  .slide.bright{height:100%;min-height:100%;padding:1.2rem 1rem 2.6rem;overflow-y:auto}
-  .slide.bright h1{font-size:clamp(1.4rem,4.6vw,2rem);margin:0 0 .3rem}
-  .slide.bright .sub{margin:.2rem 0 .4rem;font-size:.9rem}
-  .stage{grid-template-columns:1fr 1fr;margin:.4rem 0}
+  header{position:sticky;top:0;z-index:20;background:var(--maroon,#a01c43);box-shadow:none}
+  .topbar{padding:2px 0;font-size:.78rem}
+  .nav{height:54px!important}
+  .logo img{height:42px!important;padding:2px 6px}
+  .hero{padding:4px 0 10px!important;margin:0 auto!important}
+  .slider{height:auto!important;max-height:clamp(200px,56.25vw,340px)!important;aspect-ratio:16/9;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.18);position:relative;overflow:hidden}
+  .track{height:100%!important;display:flex;align-items:stretch}
+  .slide, .slide.pic, .slide.bright{height:100%!important;min-height:0!important;max-height:100%!important;box-sizing:border-box!important}
+  .slide.pic{padding:0!important;background:transparent!important;display:flex!important;align-items:flex-start!important;justify-content:flex-start!important;overflow:hidden}
+  .slide.pic img{width:100%!important;height:100%!important;object-fit:cover!important;object-position:center top!important;border-radius:14px;display:block!important}
+  .slide.bright{padding:.8rem .9rem 2.2rem!important;overflow-y:auto!important;justify-content:center!important}
+  .slide.bright h1{font-size:clamp(1.2rem,4.2vw,1.8rem);margin:0 0 .2rem}
+  .slide.bright .sub{margin:.1rem 0 .3rem;font-size:.85rem}
+  .stage{grid-template-columns:1fr 1fr;margin:.3rem 0;gap:.4rem}
   .spot{grid-column:1/-1;order:-1}
-  .bds{grid-auto-flow:column;justify-content:center;gap:.4rem}
-  .bd{width:min(18vw,75px);font-size:.7rem;padding:.2rem}
-  .bd i{font-size:1.2rem}
-  .arr{width:32px;height:32px;top:44%;font-size:1.3rem}
+  .bds{grid-auto-flow:column;justify-content:center;gap:.35rem}
+  .bd{width:min(16vw,68px);font-size:.65rem;padding:.2rem}
+  .bd i{font-size:1.1rem}
+  .arr{width:32px;height:32px;top:50%;font-size:1.2rem;box-shadow:0 3px 10px rgba(0,0,0,0.25)}
   .stats{grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.8rem}
   .stat{padding:.8rem 1rem;border-radius:16px}
   .stat b{font-size:1.5rem}
   .wrap{width:94%}
-  section{padding:2rem 0}
+  section{padding:1.6rem 0}
   #products,#calculator,#gallery,#services,#certs{border-radius:24px;margin:0}
-  .cpanel,.cres{border-radius:20px;padding:1.2rem}
-  .two{grid-template-columns:1fr;gap:1.6rem}
-  .two2 b{font-size:2rem}
+  .cpanel,.cres{border-radius:20px;padding:1.1rem}
+  .two{grid-template-columns:1fr;gap:1.4rem}
+  .two2 b{font-size:1.8rem}
 }
 
 /* Areva maroon landing */
@@ -315,7 +319,7 @@ header .btn-main,.slide.bright .btn-main{background:#ffc233;color:#5b0f27;box-sh
 header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
 .topbar{background:rgba(0,0,0,.22);font-size:.85rem}.topbar .wrap{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}
 .hero{padding:1.2rem 0 2rem;background:var(--maroon);box-shadow:0 0 0 100vmax var(--maroon);clip-path:inset(0 -100vmax)}
-@media(max-width:768px){.hero{padding:.4rem 0 .8rem!important}}
+@media(max-width:768px){.hero{padding:4px 0 10px!important}}
 
 /* calculator, camera chip, hidden fix */
 [hidden]{display:none!important}
