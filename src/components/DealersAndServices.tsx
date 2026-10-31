@@ -68,14 +68,39 @@ export const DealersAndServices: React.FC = () => {
           {/* Dealer Network (7 Cols) */}
           <div className="lg:col-span-7 bg-white p-6 sm:p-8 rounded-3xl border border-stone-200 shadow-sm space-y-6">
             
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="font-display text-lg font-bold text-stone-950">Authorised Dealer Locator</h3>
-                <p className="text-xs text-stone-500">Enter your 6-digit Pincode or select state to view certified depots.</p>
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-display text-xl sm:text-2xl font-bold text-stone-950">
+                    Find an Authorised Dealer Depot
+                  </h3>
+                  <p className="text-xs sm:text-sm text-stone-600 mt-1">
+                    Type your 6-digit Pincode to view stockists with tinting machines, putty, and waterproofing solutions.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap shrink-0">
+                  <a
+                    href="tel:+919876543210"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-900 font-bold text-xs shadow-xs transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-amber-600" />
+                    <span>Head Office: +91 98765 43210</span>
+                  </a>
+                  <a
+                    href="https://wa.me/919876543210?text=Hello%20Areva%20Paints%20Head%20Office,%20please%20connect%20me%20with%20the%20nearest%20dealer."
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>WhatsApp Support</span>
+                  </a>
+                </div>
               </div>
 
               {/* State Filter Buttons */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
                 {['All', 'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Andhra Pradesh'].map((state) => (
                   <button
                     key={state}

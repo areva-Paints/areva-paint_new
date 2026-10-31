@@ -52,6 +52,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     { name: selectedColorName, hex: selectedColorHex }
   ]);
 
+  const [lastTappedCoords, setLastTappedCoords] = useState<{ x: number; y: number } | null>(null);
   const [isHoldingOriginal, setIsHoldingOriginal] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>('Tap any wall to apply current shade.');
 
@@ -68,6 +69,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
   // Load preset room or custom photo into canvas
   useEffect(() => {
+    if (isCustomPhoto) return;
     const canvas = canvasRef.current;
     const origCanvas = originalCanvasRef.current;
     if (!canvas || !origCanvas) return;
@@ -103,11 +105,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     };
 
     img.src = activePreset.imageUrl;
-  }, [activePreset]);
+  }, [activePreset, isCustomPhoto]);
 
-  // When selectedColorHex changes in a preset room, re-render cleanly from pristine original
+  // When selectedColorHex changes (in preset or custom photo), re-render cleanly from pristine original
   useEffect(() => {
-    if (isCustomPhoto || !activePreset.accentCoordinates) return;
     const canvas = canvasRef.current;
     const origCanvas = originalCanvasRef.current;
     if (!canvas || !origCanvas) return;
@@ -118,14 +119,21 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const origData = origCtx.getImageData(0, 0, origCanvas.width, origCanvas.height);
     ctx.putImageData(origData, 0, 0);
 
-    const timer = setTimeout(() => {
-      applyPaintAt(
-        activePreset.accentCoordinates![0] * (canvas.width / 960),
-        activePreset.accentCoordinates![1] * (canvas.height / 540)
-      );
-    }, 60);
+    const targetCoords = isCustomPhoto
+      ? lastTappedCoords || { x: canvas.width * 0.5, y: canvas.height * 0.35 }
+      : activePreset.accentCoordinates
+      ? {
+          x: activePreset.accentCoordinates[0] * (canvas.width / 960),
+          y: activePreset.accentCoordinates[1] * (canvas.height / 540),
+        }
+      : null;
 
-    return () => clearTimeout(timer);
+    if (targetCoords) {
+      const timer = setTimeout(() => {
+        applyPaintAt(targetCoords.x, targetCoords.y);
+      }, 60);
+      return () => clearTimeout(timer);
+    }
   }, [selectedColorHex]);
 
   // Handle Photo Upload
@@ -155,9 +163,16 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         origCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
         setIsCustomPhoto(true);
+        const defX = Math.round(canvas.width * 0.5);
+        const defY = Math.round(canvas.height * 0.35);
+        setLastTappedCoords({ x: defX, y: defY });
         setHistory([]);
-        setAppliedColors([]);
-        setStatusMessage('Your photo is ready! Tap on any wall surface to paint.');
+        setAppliedColors([{ name: selectedColorName, hex: selectedColorHex }]);
+        setStatusMessage('Your photo is loaded and painted! Tap on any wall surface to paint.');
+
+        setTimeout(() => {
+          applyPaintAt(defX, defY);
+        }, 100);
       };
       img.src = event.target?.result as string;
     };
@@ -255,6 +270,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
     const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
 
+    setLastTappedCoords({ x, y });
     applyPaintAt(x, y);
   };
 
@@ -283,6 +299,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     ctx.putImageData(origData, 0, 0);
     setHistory([]);
     setAppliedColors([]);
+    setLastTappedCoords(null);
     setStatusMessage('Reset to original photo.');
   };
 

@@ -2,13 +2,9 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { PRODUCTS, CATEGORIES, COLOR_SHADES } from './src/data/paintsData';
-
-const require = createRequire(import.meta.url);
-const { ZipArchive } = require('archiver');
 
 dotenv.config();
 

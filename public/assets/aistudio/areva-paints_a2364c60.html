@@ -263,9 +263,9 @@ h2::after{content:"";display:block;height:8px;width:96px;border-radius:99px;marg
 @media(prefers-reduced-motion:reduce){.bub{animation:none}.track,.tile,.btn{transition:none}html{scroll-behavior:auto}}
 
 /* bright landing slider */
-.slide.pic{padding:0;min-height:0;display:block;background:#a01c43}.slide.pic::after{display:none}
-.slide.pic img{display:block;width:100%;height:100%;object-fit:contain}
-@media(min-width:760px){.slide.pic img{object-fit:cover}}
+.slide.pic{padding:0;min-height:0;display:flex;align-items:center;justify-content:center;background:#a01c43;overflow:hidden}.slide.pic::after{display:none}
+.slide.pic img{display:block;width:100%;height:auto;object-fit:cover}
+@media(min-width:760px){.slide.pic img{object-fit:cover;height:100%}}
 .slide.bright{color:#fff;align-items:center;text-align:center;justify-content:center;min-height:clamp(460px,50vw,640px);padding:clamp(1.2rem,3vw,2.4rem) clamp(1rem,3vw,3rem) 3.4rem}.slide.bright::after{display:none}
 .sky{background:radial-gradient(circle at 50% 48%,rgba(255,194,51,.38),transparent 36%),linear-gradient(160deg,#b8284f,#a01c43 50%,#6e1030)}
 .pastel{background:linear-gradient(135deg,#b8284f,#a01c43 55%,#68102e)}.warm{background:radial-gradient(circle at 80% 20%,rgba(255,194,51,.3),transparent 40%),linear-gradient(135deg,#a81f47,#8a1738 55%,#5c0d28)}
@@ -280,7 +280,29 @@ h2::after{content:"";display:block;height:8px;width:96px;border-radius:99px;marg
 .cd{display:flex;gap:.6rem;justify-content:center}.cd i{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,.2)}
 .arr{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#a01c43;font-size:1.8rem;line-height:1;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.25)}.prev{left:12px}.nxt{right:12px}
 .ctrl button{background:rgba(255,255,255,.5)}.ctrl button[aria-current="true"]{background:#ffc233}
-@media(max-width:700px){.stage{grid-template-columns:1fr 1fr}.spot{grid-column:1/-1;order:-1}.bds{grid-auto-flow:column;justify-content:center;gap:.5rem}.bd{width:min(21vw,96px)}.arr{width:38px;height:38px;top:42%}}
+@media(max-width:768px){
+  .hero{padding:.4rem 0 1rem}
+  .slider{border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.18)}
+  .slide{min-height:auto;padding:1.2rem 1rem 2.6rem}
+  .slide.pic{min-height:auto;padding:0}
+  .slide.pic img{width:100%;height:auto;max-height:45vh;object-fit:cover;border-radius:18px}
+  .slide.bright{min-height:auto;padding:1.4rem 1rem 3rem}
+  .slide.bright h1{font-size:clamp(1.5rem,4.8vw,2.2rem)}
+  .stage{grid-template-columns:1fr 1fr;margin:.6rem 0}
+  .spot{grid-column:1/-1;order:-1}
+  .bds{grid-auto-flow:column;justify-content:center;gap:.5rem}
+  .bd{width:min(21vw,90px)}
+  .arr{width:34px;height:34px;top:44%;font-size:1.4rem}
+  .stats{grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.8rem}
+  .stat{padding:.8rem 1rem;border-radius:16px}
+  .stat b{font-size:1.5rem}
+  .wrap{width:94%}
+  section{padding:2rem 0}
+  #products,#calculator,#gallery,#services,#certs{border-radius:24px;margin:0}
+  .cpanel,.cres{border-radius:20px;padding:1.2rem}
+  .two{grid-template-columns:1fr;gap:1.6rem}
+  .two2 b{font-size:2rem}
+}
 
 /* Areva maroon landing */
 :root{--maroon:#a01c43}
@@ -591,35 +613,90 @@ $("#today").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",da
 /* platform features */
 const store={sv:[],hist:[],leads:[],books:[]};
 try{store.sv=JSON.parse(localStorage.getItem("av_sv")||"[]")}catch(e){}
-const C=[["Sunset Coral","AR101","#ff6b5e"],["Mango Zest","AR102","#ffb800"],["Lime Pop","AR103","#8bd450"],["Lagoon","AR104","#0fb5a2"],["Sky Splash","AR105","#2d9cff"],["Royal Violet","AR106","#6c4cf5"],["Orchid","AR107","#ff4fa3"],["Terracotta","AR108","#c8623f"],["Sand Dune","AR109","#e3cfa8"],["Mist Grey","AR110","#b9bfcc"],["Midnight","AR111","#26305a"],["Pearl White","AR112","#f4efe6"],["Olive Grove","AR113","#8a8f3a"],["Peach Cream","AR114","#ffd2b3"],["Ocean Teal","AR115","#1e7f8c"],["Berry Wine","AR116","#8e2a54"]];
+const C=[
+  ["Sunset Coral","AR101","#ff6b5e"],["Mango Zest","AR102","#ffb800"],["Lime Pop","AR103","#8bd450"],["Lagoon","AR104","#0fb5a2"],
+  ["Sky Splash","AR105","#2d9cff"],["Royal Violet","AR106","#6c4cf5"],["Orchid Bloom","AR107","#ff4fa3"],["Terracotta Hearth","AR108","#c8623f"],
+  ["Sand Dune","AR109","#e3cfa8"],["Mist Grey","AR110","#b9bfcc"],["Midnight Indigo","AR111","#26305a"],["Pearl White","AR112","#f4efe6"],
+  ["Olive Grove","AR113","#8a8f3a"],["Peach Cream","AR114","#ffd2b3"],["Ocean Teal","AR115","#1e7f8c"],["Berry Wine","AR116","#8e2a54"],
+  ["Calm Linen","AR117","#e9e3d7"],["Cardamom Clay","AR118","#b87c56"],["Monsoon Rain","AR119","#728896"],["Mysore Sandal","AR120","#edd6b5"],
+  ["Coorg Eucalyptus","AR121","#587b68"],["Arabian Sea","AR122","#16526d"],["Charcoal Basalt","AR123","#373a40"],["Spiced Amber","AR124","#df8931"]
+];
 const save=()=>{try{localStorage.setItem("av_sv",JSON.stringify(store.sv))}catch(e){}};
 function lead(t,m){store.leads.push({t,m,s:"New",d:new Date().toLocaleDateString()});window.open(wa(m),"_blank","noopener")}
 function rot(hex,d){let[r,g,b]=[1,3,5].map(i=>parseInt(hex.substr(i,2),16)/255),M=Math.max(r,g,b),m=Math.min(r,g,b),l=(M+m)/2,s=M==m?0:(M-m)/(1-Math.abs(2*l-1)),h=M==m?0:M==r?((g-b)/(M-m)+6)%6:M==g?(b-r)/(M-m)+2:(r-g)/(M-m)+4;h=(h*60+d)%360;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,"0")};return"#"+f(0)+f(8)+f(4)}
-let cn="";
-let cn="Royal Violet (AR106)";
-let curHex="#6c4cf5";
+let cn="Terracotta Hearth (AR108)";
+let curHex="#c8623f";
 function paint(hex,name){
   curHex=hex;
   cn=name||hex;
-  $("#cn").textContent=cn;
-  $("#cn2").textContent=cn;
+  const cnEl=$("#cn"); if(cnEl) cnEl.textContent=cn;
+  const cn2El=$("#cn2"); if(cn2El) cn2El.textContent=cn;
   drawSw();
   try{if(window.autoWall)window.autoWall();}catch(e){}
-  $("#gw").innerHTML=[30,180,330].map(d=>{
-    const x=rot(hex,d);
-    return '<button class="dot" data-x="'+x+'" style="background:'+x+'" aria-label="Try '+x+'"></button>';
-  }).join(" ");
+  const gwEl=$("#gw");
+  if(gwEl){
+    gwEl.innerHTML=[30,180,330].map(d=>{
+      const x=rot(hex,d);
+      return '<button class="dot" data-x="'+x+'" style="background:'+x+'" aria-label="Try '+x+'"></button>';
+    }).join(" ");
+  }
 }
 function drawSw(){
   const q=($("#q")?$("#q").value.toLowerCase():"");
-  $("#sw").innerHTML=C.map((c,i)=>(c[0]+c[1]).toLowerCase().includes(q)?'<div><button class="c'+(c[2].toLowerCase()===curHex.toLowerCase()?' active':'')+'" data-c="'+i+'" style="background:'+c[2]+'" aria-label="Apply '+c[0]+'"></button><button class="h" data-h="'+i+'" aria-label="Save '+c[0]+'">'+(store.sv.includes(c[1])?"♥":"♡")+'</button><small>'+c[0]+'<br><b>'+c[1]+'</b></small></div>':"").join("");
+  const swEl=$("#sw");
+  if(!swEl) return;
+  swEl.innerHTML=C.map((c,i)=>(c[0]+c[1]).toLowerCase().includes(q)?'<div><button class="c'+(c[2].toLowerCase()===curHex.toLowerCase()?' active':'')+'" data-c="'+i+'" style="background:'+c[2]+'" aria-label="Apply '+c[0]+'"></button><button class="h" data-h="'+i+'" aria-label="Save '+c[0]+'">'+(store.sv.includes(c[1])?"♥":"♡")+'</button><small>'+c[0]+'<br><b>'+c[1]+'</b></small></div>':"").join("");
 }
-$("#q").oninput=drawSw;
-$("#shr").onclick=()=>{const t="My Areva Paints palette: "+(store.sv.map(k=>C.find(c=>c[0]&&c[1]===k)[0]).join(", ")||cn);navigator.share?navigator.share({text:t}).catch(()=>{}):navigator.clipboard&&navigator.clipboard.writeText(t)};
-const PR=[["Sheen Pro","Interior",120,420,"Soft sheen"],["Dazzle Glow","Interior",110,520,"Luxury sheen"],["White Delight","Interior",130,340,"Matt white"],["Lumina LusterFinish","Exterior",100,520,"Lustre finish"],["Gilt Edged","Exterior",90,640,"Premium exterior"],["AquaSafe","Waterproofing",60,650,"Waterproofing coat"],["ROF-LEXA","Waterproofing",40,700,"Roof protection"],["Dry Lock","Waterproofing",50,600,"Moisture protection"],["Pritex Shield","Waterproofing",55,620,"Protective coat"],["7XT Universal Primer","Primer & putty",140,300,"Primer"],["Renova Acrylic Putty","Primer & putty",15,40,"Wall putty","kg"],["RedTape","Tile",12,35,"Tile adhesive","kg","floor"]];
+if($("#q")) $("#q").oninput=drawSw;
+if($("#shr")){
+  $("#shr").onclick=()=>{const t="My Areva Paints palette: "+(store.sv.map(k=>C.find(c=>c[0]&&c[1]===k)?.[0]).filter(Boolean).join(", ")||cn);navigator.share?navigator.share({text:t}).catch(()=>{}):navigator.clipboard&&navigator.clipboard.writeText(t)};
+}
+const PR=[
+  ["Areva Sheen Pro","Interior",120,420,"Soft sheen"],
+  ["Areva Dazzle Glow","Interior",110,520,"Luxury sheen"],
+  ["Areva White Delight","Interior",130,340,"Matt white"],
+  ["Areva Lumina LusterFinish","Exterior",100,520,"Lustre finish"],
+  ["Areva Gilt Edged","Exterior",90,640,"Premium exterior"],
+  ["Areva AquaSafe Elastomeric","Waterproofing",60,650,"Waterproofing coat"],
+  ["Areva ROF-LEXA","Waterproofing",40,700,"Roof protection"],
+  ["Areva Dry Lock Barrier","Waterproofing",50,600,"Moisture protection"],
+  ["Areva Pritex Shield","Waterproofing",55,620,"Protective coat"],
+  ["Areva 7XT Universal Primer","Primer & putty",140,300,"Primer"],
+  ["Areva Renova Acrylic Putty","Primer & putty",90,40,"Wall putty","kg"],
+  ["Areva RedTape Polymer Adhesive","Tile",45,35,"Tile adhesive","kg","floor"]
+];
 let cfl="All";
-function info(){const p=PR[+$("#cp").value];$("#cinfo").innerHTML='<span><i></i><b>'+p[0]+'</b> · '+p[4]+'</span><small>Coverage: '+p[2]+' sq ft/'+(p[5]||"L")+' · '+(p[6]=="floor"?"Floor area":"Standard: 2 coats")+'</small>'}
-function drawCF(){const keep=$("#cp").value;$("#cfl").innerHTML=["All","Interior","Exterior","Waterproofing","Primer & putty","Tile"].map(c=>'<button class="chip" type="button" data-cf="'+c+'" aria-pressed="'+(c==cfl)+'">'+c+'</button>').join("");$("#cp").innerHTML=PR.map((p,i)=>[p,i]).filter(([p])=>cfl=="All"||p[1]==cfl).map(([p,i])=>'<option value="'+i+'"'+(i==keep?" selected":"")+'>'+p[0]+" — "+p[1]+" ("+p[2]+" sq ft/"+(p[5]||"L")+" · "+p[4]+")</option>").join("");$("#cnt").textContent="1. Select product ("+PR.length+" available)";info();rc()}
+function info(){
+  const cpEl=$("#cp");
+  if(!cpEl) return;
+  const val = +cpEl.value;
+  const p = PR[val] || PR[0];
+  const infoEl=$("#cinfo");
+  if(infoEl && p){
+    infoEl.innerHTML='<span><i></i><b>'+p[0]+'</b> · '+p[4]+'</span><small>Coverage: '+p[2]+' sq ft/'+(p[5]||"L")+' · '+(p[6]=="floor"?"Floor area":"Standard: 2 coats")+'</small>';
+  }
+}
+function drawCF(){
+  const cpEl=$("#cp");
+  const keep = cpEl ? cpEl.value : "0";
+  const cflEl=$("#cfl");
+  if(cflEl){
+    cflEl.innerHTML=["All","Interior","Exterior","Waterproofing","Primer & putty","Tile"].map(c=>'<button class="chip" type="button" data-cf="'+c+'" aria-pressed="'+(c==cfl)+'">'+c+'</button>').join("");
+  }
+  const available = PR.map((p,i)=>[p,i]).filter(([p])=>cfl=="All"||p[1]==cfl);
+  if(cpEl){
+    cpEl.innerHTML=available.map(([p,i])=>'<option value="'+i+'">'+p[0]+" — "+p[1]+" ("+p[2]+" sq ft/"+(p[5]||"L")+" · "+p[4]+")</option>").join("");
+    if(available.some(([_, idx])=>String(idx)===String(keep))){
+      cpEl.value=keep;
+    } else if(available.length > 0){
+      cpEl.value=available[0][1];
+    }
+  }
+  const cntEl=$("#cnt");
+  if(cntEl) cntEl.textContent="1. Select product ("+available.length+" available)";
+  info();
+  rc();
+}
 function calc(){const v=s=>+$(s).value||0,p=PR[v("#cp")],u=p[5]||"L",fl=p[6]=="floor",co=fl?1:v("#cco"),a=Math.max(0,fl?v("#cl")*v("#cw"):2*(v("#cl")+v("#cw"))*v("#ch")-v("#cd")*21-v("#cwn")*15),q=Math.ceil(a*co/p[2]*1.1),pk=[];let rest=q;(u=="kg"?[20,5,1]:[20,10,4,1]).forEach(s=>{const n=Math.floor(rest/s);if(n){pk.push(n+" × "+s+" "+(u=="kg"?"kg bag":"Litre "+(s>=10?"bucket":"can"))+(n>1?"s":""));rest-=n*s}});return{p,u,fl,co,a,q,pk,cost:q*p[3]}}
 function rc(){const d=calc(),U=d.u=="kg"?"kg":"Litres";$("#cres").innerHTML='<div class="eyebrow">Calculated material volume</div><h3>'+d.p[0]+'</h3><p>'+(d.fl?'Calculated on floor area with ':'Calculated for '+d.co+(d.co>1?' coats':' coat')+' with ')+d.p[2]+' sq ft/'+(d.u=="kg"?"kg":"L")+' coverage + 10% safety buffer.</p><div class="two2"><div><span>'+(d.fl?'Floor area':'Net paintable area')+'</span><b>'+Math.round(d.a)+'</b> sq ft</div><div><span>Required '+(d.u=="kg"?'material':'paint')+'</span><b>'+d.q+'</b> '+U+'</div></div><p>Optimal pack size configuration:</p><div class="packs">'+(d.pk.length?d.pk.map(x=>"<span>"+x+"</span>").join(""):"<span>Enter your room size</span>")+'</div><p>Estimated cost: <b>₹'+d.cost.toLocaleString("en-IN")+'</b> <small>(sample rate)</small></p><button class="btn cq" id="cq" type="button">Request quotation for '+d.q+' '+U.toLowerCase()+'</button><p class="note">Final quantity and price are confirmed at quotation.</p>'}
 $("#cf").addEventListener("input",e=>{if(e.target.id=="cp")info();rc()});
@@ -1467,24 +1544,29 @@ function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
 window.autoWall=function(){
   if(!orig)return;
   const w=cv.width, h=cv.height;
-  // Always begin with fresh copy of pristine original
   const cur=new ImageData(new Uint8ClampedArray(orig.data), w, h);
   const t=+$("#tol").value || 22;
 
   if(rm>=0 && SC[rm]){
-    // Paint predefined room wall seeds
+    // Paint predefined room wall seeds with active color
     SC[rm].seeds.forEach(pt=>{
       floodFillWall(cur, orig, pt[0], pt[1], curHex, t);
     });
+  } else if(rm===-1 && paintedRegions.length===0){
+    // Custom photo: default paint center-upper wall area
+    const sx=Math.round(w*0.5), sy=Math.round(h*0.35);
+    floodFillWall(cur, orig, sx, sy, curHex, t);
+    paintedRegions.push({x:sx, y:sy});
   }
 
-  // Also apply any user manual taps recorded in paintedRegions
+  // Also apply any user manual taps using currently active color
   paintedRegions.forEach(reg=>{
-    floodFillWall(cur, orig, reg.x, reg.y, reg.hex, t);
+    floodFillWall(cur, orig, reg.x, reg.y, curHex, t);
   });
 
   cx.putImageData(cur, 0, 0);
-  $("#hm").textContent="Wall painted in "+cn+". Drag slider below to compare before and after.";
+  const hmEl=$("#hm");
+  if(hmEl) hmEl.textContent="Walls painted in "+cn+". Pick any shade or tap another wall.";
 };
 
 function ov(v){
@@ -1525,7 +1607,9 @@ function afterLoad(sceneObj){
     window.autoWall();
     $("#hm").textContent="Repainted with "+cn+". Tap on the wall, accent panel or sofa to change surfaces.";
   } else {
-    $("#hm").textContent="Photo loaded! Tap on any wall or surface to paint.";
+    // For uploaded home photo, auto-paint immediately
+    window.autoWall();
+    $("#hm").textContent="Photo loaded and painted with "+cn+"! Tap any other wall or surface to paint.";
   }
 }
 
@@ -1544,25 +1628,29 @@ function loadScene(i){
 }
 
 /* User taps on canvas to paint specific surface */
-cv.addEventListener("click", e=>{
+function handleCanvasTap(e){
   if(live){ liveTap(e); return; }
   if(!orig){ $("#hm").textContent="Please select a room or upload a photo first."; return; }
 
   const r=cv.getBoundingClientRect();
-  const x=Math.floor((e.clientX - r.left) * (cv.width / r.width));
-  const y=Math.floor((e.clientY - r.top) * (cv.height / r.height));
+  const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+  const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+  if(clientX == null || clientY == null) return;
+
+  const x=Math.floor((clientX - r.left) * (cv.width / r.width));
+  const y=Math.floor((clientY - r.top) * (cv.height / r.height));
 
   // Save current frame in hist for undo
   hist.push(cx.getImageData(0, 0, cv.width, cv.height));
   if(hist.length>10) hist.shift();
 
-  // If in preset room, add user tap to painted regions
-  paintedRegions.push({x, y, hex:curHex, name:cn});
+  // Add user tap to painted regions
+  paintedRegions.push({x, y});
 
   const cur=cx.getImageData(0, 0, cv.width, cv.height);
   const n=floodFillWall(cur, orig, x, y, curHex, +$("#tol").value || 22);
 
-  if(n < 40){
+  if(n < 30){
     $("#hm").textContent="That target area is very small. Tap a larger wall section or raise the range slider.";
     hist.pop();
     paintedRegions.pop();
@@ -1570,8 +1658,10 @@ cv.addEventListener("click", e=>{
   }
 
   cx.putImageData(cur, 0, 0);
-  $("#hm").textContent="Painted with "+cn+"! Tap another wall, or pick a new shade.";
-});
+  $("#hm").textContent="Painted area with "+cn+"! Pick any shade from the palette or tap another wall.";
+}
+
+cv.addEventListener("click", handleCanvasTap);
 
 /* Undo */
 $("#un").onclick=()=>{

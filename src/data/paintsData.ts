@@ -75,7 +75,7 @@ export const PRODUCTS: Product[] = [
     recommendedCoats: 2,
     tintable: true,
     featured: true,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '30 - 45 minutes to touch',
       recoatTime: '3 - 4 hours between coats',
@@ -100,7 +100,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Class 1 (Scrubbable)',
     recommendedCoats: 2,
     tintable: true,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '30 minutes to touch',
       recoatTime: '4 hours',
@@ -125,7 +125,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Wipeable',
     recommendedCoats: 2,
     tintable: false,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '20 minutes to touch',
       recoatTime: '3 hours',
@@ -151,7 +151,7 @@ export const PRODUCTS: Product[] = [
     recommendedCoats: 2,
     tintable: true,
     featured: true,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '45 minutes',
       recoatTime: '4 - 6 hours',
@@ -177,7 +177,7 @@ export const PRODUCTS: Product[] = [
     recommendedCoats: 3,
     tintable: false,
     featured: true,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '1 - 2 hours',
       recoatTime: '6 - 8 hours',
@@ -202,7 +202,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Specialist',
     recommendedCoats: 2,
     tintable: false,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '1 hour',
       recoatTime: '4 - 6 hours',
@@ -227,7 +227,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Specialist',
     recommendedCoats: 2,
     tintable: false,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '2 hours',
       recoatTime: '6 hours',
@@ -252,7 +252,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Specialist',
     recommendedCoats: 1,
     tintable: false,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: 'Initial set: 4 hours',
       recoatTime: 'Grouting after 24 hours',
@@ -277,7 +277,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Specialist',
     recommendedCoats: 1,
     tintable: false,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: 'Skin formation in 45 mins',
       recoatTime: 'Full cure 2mm per 24 hours',
@@ -303,7 +303,7 @@ export const PRODUCTS: Product[] = [
     recommendedCoats: 2,
     tintable: false,
     featured: true,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '1 - 2 hours',
       recoatTime: '4 - 6 hours before sanding',
@@ -328,7 +328,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Wipeable',
     recommendedCoats: 1,
     tintable: false,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '20 minutes',
       recoatTime: '2 - 3 hours',
@@ -354,7 +354,7 @@ export const PRODUCTS: Product[] = [
     recommendedCoats: 1,
     tintable: true,
     featured: true,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: '4 - 6 hours to handle',
       recoatTime: '24 hours before top glaze',
@@ -379,7 +379,7 @@ export const PRODUCTS: Product[] = [
     washability: 'Specialist',
     recommendedCoats: 1,
     tintable: false,
-    image: '/src/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
+    image: '/assets/images/product_sheen_pro_bucket_1793203850336.jpg',
     specs: {
       dryingTime: 'Initial set in 20 minutes',
       recoatTime: 'Traffic ready in 4 hours',
@@ -424,7 +424,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     id: 'nordic-living',
     name: 'Scandinavian Living Room',
     category: 'Interior',
-    imageUrl: '/src/assets/images/room_visualizer_living_1793203848949.jpg',
+    imageUrl: '/assets/images/room_visualizer_living_1793203848949.jpg',
     defaultWallHex: '#e9e3d7',
     defaultWallName: 'Calm Linen',
     accentCoordinates: [480, 220],
@@ -433,7 +433,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     id: 'master-bedroom',
     name: 'Peaceful Master Bedroom',
     category: 'Interior',
-    imageUrl: '/src/assets/images/room_visualizer_bedroom_1793203849707.jpg',
+    imageUrl: '/assets/images/room_visualizer_bedroom_1793203849707.jpg',
     defaultWallHex: '#587b68',
     defaultWallName: 'Coorg Eucalyptus',
     accentCoordinates: [450, 180],
@@ -442,7 +442,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     id: 'modern-villa',
     name: 'Contemporary Villa Facade',
     category: 'Exterior',
-    imageUrl: '/src/assets/images/room_visualizer_exterior_1793203850484.jpg',
+    imageUrl: '/assets/images/room_visualizer_exterior_1793203850484.jpg',
     defaultWallHex: '#b9bfcc',
     defaultWallName: 'Mist Grey',
     accentCoordinates: [360, 280],

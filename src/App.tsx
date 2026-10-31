@@ -18,6 +18,7 @@ import { PainterLoyaltyPortal } from './components/PainterLoyaltyPortal';
 import { ProjectDownloadModal } from './components/ProjectDownloadModal';
 import { AttachedPageViewer } from './components/AttachedPageViewer';
 import { ColorSplashArcade } from './components/ColorSplashArcade';
+import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { MessageSquare, ArrowUp } from 'lucide-react';
 
@@ -155,6 +156,19 @@ export default function App() {
         </div>
       ) : (
         <>
+          <Navbar
+            onOpenVisualizer={() => scrollToSection('visualizer')}
+            onOpenCalculator={() => scrollToSection('calculator')}
+            onOpenImprovements={() => setIsImprovementsOpen(true)}
+            onOpenEnquiry={() => handleOpenEnquiry()}
+            onOpenLiveAR={() => setIsLiveArOpen(true)}
+            onOpenSwatches={() => setIsSwatchOpen(true)}
+            onOpenLoyalty={() => setIsLoyaltyOpen(true)}
+            onOpenDownload={() => setIsDownloadOpen(true)}
+            onToggleAttachedView={() => setViewMode('attached')}
+            isAttachedViewActive={false}
+            activeSection="hero"
+          />
           <main className="flex-1">
             {/* Grand Multi-Slide Hero Carousel with Sliding Images & Color Swatches */}
             <HeroSlider

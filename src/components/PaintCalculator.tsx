@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calculator, MessageSquare, Check, Layers, Sparkles, ChevronDown } from 'lucide-react';
 import { PRODUCTS, CATEGORIES } from '../data/paintsData';
 
@@ -27,12 +27,19 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
   const [selectedProductId, setSelectedProductId] = useState<string>('sheen-pro');
   const [filterCategory, setFilterCategory] = useState<string>('all');
 
-  const selectedProduct = PRODUCTS.find((p) => p.id === selectedProductId) || PRODUCTS[0];
-
   // Filter products for dropdown
   const filteredProducts = PRODUCTS.filter(
     (p) => filterCategory === 'all' || p.categoryId === filterCategory
   );
+
+  // Automatically select first valid product when category changes
+  useEffect(() => {
+    if (filteredProducts.length > 0 && !filteredProducts.some((p) => p.id === selectedProductId)) {
+      setSelectedProductId(filteredProducts[0].id);
+    }
+  }, [filterCategory, filteredProducts, selectedProductId]);
+
+  const selectedProduct = PRODUCTS.find((p) => p.id === selectedProductId) || filteredProducts[0] || PRODUCTS[0];
 
   // Calculation Math
   const grossWallArea = 2 * (length + width) * height;
