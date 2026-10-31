@@ -107,6 +107,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   // Initialize Camera Stream
   const startCamera = useCallback(async (mode: 'environment' | 'user') => {
     stopCamera();
+    sampledWallRgb.current = null;
     setErrorMessage(null);
 
     // If mediaDevices is not supported or iframe permissions block it
