@@ -1657,10 +1657,16 @@ function handleCanvasPaint(clientX, clientY){
   if(hmEl) hmEl.textContent = "Painted with " + (cn || curHex) + ". Tap another wall, or change the colour.";
 }
 
-cv.addEventListener("click", e => handleCanvasPaint(e.clientX, e.clientY));
+cv.addEventListener("click", e => {
+  // In live mode, taps must sample the raw camera frame; the normal wall painter
+  // cannot run because there is no still-image baseline while the camera is active.
+  if(live) liveTap(e);
+  else handleCanvasPaint(e.clientX, e.clientY);
+});
 cv.addEventListener("pointerdown", e => {
   if(e.pointerType === "touch" || e.pointerType === "pen"){
-    handleCanvasPaint(e.clientX, e.clientY);
+    if(live) liveTap(e);
+    else handleCanvasPaint(e.clientX, e.clientY);
   }
 });
 
@@ -1673,6 +1679,10 @@ if(upInput){
     const hmEl = $("#hm");
     if(hmEl) hmEl.textContent = "Loading your photo...";
     const fr = new FileReader();
+    fr.onerror = () => {
+      if(hmEl) hmEl.textContent = "That file could not be read. Please choose a JPG, PNG, or WebP photo.";
+      upInput.value = "";
+    };
     fr.onload = () => {
       const im = new Image();
       im.onload = () => {
@@ -1690,6 +1700,8 @@ if(upInput){
       im.src = fr.result;
     };
     fr.readAsDataURL(f);
+    // Reset so the same photo can be selected again after painting or an error.
+    upInput.value = "";
   };
 }
 
