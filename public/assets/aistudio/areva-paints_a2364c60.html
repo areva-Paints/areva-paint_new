@@ -648,6 +648,10 @@ function paint(hex,name){
       return '<button class="dot" data-x="'+x+'" style="background:'+x+'" aria-label="Try '+x+'"></button>';
     }).join(" ");
   }
+  const hmEl=$("#hm");
+  if(hmEl){
+    hmEl.textContent = "Selected " + (cn || hex) + ". Tap any wall on the room photo to paint it.";
+  }
 }
 function drawSw(){
   const q=($("#q")?$("#q").value.toLowerCase():"");
@@ -1306,32 +1310,27 @@ const SC=[
   {
     n:'Scandinavian Living',
     g:0,
-    s:[[30,300]],
-    v:IN+WN(80,100,200,190)+RC(400,90,180,110,'#fff',['#444',6])+CI(490,145,30,'#ffb800')+RC(750,170,10,225,'#555')+`<path d='M720 170h70l-16-52h-38z' fill='#ffd27a'/>`+RC(280,440,440,52,'#e0556a',0,26)+RC(330,270,340,120,'#3b4a7a',0,26)+RC(310,310,50,90,'#2f3d68',0,18)+RC(640,310,50,90,'#2f3d68',0,18)+RC(360,248,110,70,'#ff6b5e',0,14)
+    src:'/assets/images/room_visualizer_living_1793203848949.jpg'
   },
   {
     n:'Master Bedroom',
     g:0,
-    s:[[40,200]],
-    v:IN+WN(600,90,220,180)+RC(570,80,50,220,'#ff4fa3')+RC(800,80,50,220,'#ff4fa3')+RC(180,70,200,90,'#fff',['#444',6])+CI(280,115,26,'#0fb5a2')+RC(120,190,420,110,'#8a5a3c',0,14)+RC(100,290,460,110,'#fff',['#ddd',3],20)+RC(100,335,460,65,'#2d9cff',0,16)+RC(150,262,130,50,'#ffd2b3',0,14)+RC(300,262,130,50,'#ffd2b3',0,14)+RC(580,330,80,70,'#8a5a3c')+CI(620,310,22,'#ffb800')
+    src:'/assets/images/room_visualizer_bedroom_1793203849707.jpg'
   },
   {
     n:'Kitchen Studio',
     g:0,
-    s:[[460,150]],
-    v:IN+RC(0,230,900,110,'#bfe0e6')+WN(500,70,220,130)+RC(60,60,360,130,'#d98a4c',['#a65f2b',4])+RC(780,60,100,100,'#b9bfcc')+RC(0,330,900,14,'#6b5b4a')+RC(40,344,820,56,'#d98a4c',['#a65f2b',3])+CI(640,316,16,'#ff5a5f')+CI(680,318,14,'#8bd450')
+    src:'/assets/images/room_visualizer_kitchen.jpg'
   },
   {
     n:'Villa Exterior',
     g:1,
-    s:[[300,370]],
-    v:RC(0,0,900,400,'url(#k)')+RC(0,380,900,140,'#6cc04a')+RC(400,400,100,120,'#d9d1c3')+RC(200,200,500,210,'url(#g)')+`<path d='M170 205L450 70L730 205z' fill='#8a3b2e'/>`+RC(410,290,80,120,'#8a5a3c',0,6)+WN(240,260,100,80)+WN(560,260,100,80)+CI(780,90,44,'#ffb800')+RC(80,300,16,100,'#6b4a2f')+CI(88,270,60,'#2f9e44')
+    src:'/assets/images/room_visualizer_exterior_1793203850484.jpg'
   },
   {
     n:'Office & Studio',
     g:0,
-    s:[[450,60]],
-    v:RC(0,0,900,520,'url(#k)')+RC(0,480,900,40,'#8d8d8d')+RC(250,40,400,450,'url(#g)')+[0,1,2].map(i=>[0,1,2].map(j=>WN(285+j*120,80+i*100,80,70)+RC(270+j*120,158+i*100,110,10,'#9aa0ad')).join('')).join('')+RC(420,410,60,80,'#8a5a3c',0,4)
+    src:'/assets/images/hero_architectural_living_1793203849445.jpg'
   }
 ];
 
@@ -1354,12 +1353,25 @@ function flood(cur, x, y, t){
   const w=cur.width, h=cur.height, d=orig.data, o=cur.data;
   const clampX = Math.max(0, Math.min(w-1, Math.floor(x)));
   const clampY = Math.max(0, Math.min(h-1, Math.floor(y)));
-  const T = t * t * 3;
+  const T = t * t * 3.2;
   const vis = new Uint8Array(w * h);
   const st = [clampY * w + clampX];
-  const i0 = st[0] * 4;
-  const sr = d[i0], sg = d[i0+1], sb = d[i0+2];
-  const Ls = Math.max(0.15, (0.299*sr + 0.587*sg + 0.114*sb) / 255);
+
+  // 3x3 sample average for robust seed color against sensor noise / JPEG compression
+  let sumR=0, sumG=0, sumB=0, cnt=0;
+  for(let dy=-1; dy<=1; dy++){
+    for(let dx=-1; dx<=1; dx++){
+      const nx = Math.max(0, Math.min(w-1, clampX + dx));
+      const ny = Math.max(0, Math.min(h-1, clampY + dy));
+      const idx = (ny * w + nx) * 4;
+      sumR += d[idx];
+      sumG += d[idx+1];
+      sumB += d[idx+2];
+      cnt++;
+    }
+  }
+  const sr = sumR / cnt, sg = sumG / cnt, sb = sumB / cnt;
+  const Ls = Math.max(0.12, (0.299*sr + 0.587*sg + 0.114*sb) / 255);
   const tc = parseInt(curHex.slice(1), 16), tr = tc >> 16, tg = (tc >> 8) & 255, tb = tc & 255;
   let n = 0;
   while(st.length){
@@ -1369,7 +1381,7 @@ function flood(cur, x, y, t){
     const i = p * 4;
     const dr = d[i] - sr, dg = d[i+1] - sg, db = d[i+2] - sb;
     if(dr*dr + dg*dg + db*db > T) continue;
-    const f = Math.min(1.5, Math.max(0.45, (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255 / Ls));
+    const f = Math.min(1.5, Math.max(0.4, (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255 / Ls));
     o[i] = Math.min(255, Math.round(tr * f));
     o[i+1] = Math.min(255, Math.round(tg * f));
     o[i+2] = Math.min(255, Math.round(tb * f));
@@ -1412,14 +1424,13 @@ function ov(v){
   }
 }
 
-function afterLoad(sc){
+function afterLoad(roomName){
   if(live) stopCam();
   hist = [];
   used = [];
-  seeds = sc ? sc.s : null;
-  if(!sc) rm = -1;
+  seeds = null;
   const tolEl = $("#tol");
-  if(tolEl) tolEl.value = sc ? 20 : 30;
+  if(tolEl) tolEl.value = 24;
 
   if(cv0){
     cv0.width = cv.width;
@@ -1434,12 +1445,9 @@ function afterLoad(sc){
 
   const hmEl = $("#hm");
   if(hmEl){
-    hmEl.textContent = sc
-      ? "Pick a shade to repaint the wall. Tap the sofa, roof, door or any other part to colour it too."
-      : "Photo loaded! Pick a shade from the palette, then tap any wall to paint it. Your photo stays on your device.";
+    const title = roomName || (rm >= 0 && SC[rm] ? SC[rm].n : "Photo");
+    hmEl.textContent = title + " loaded! Pick a shade from the palette, then tap any wall to paint it.";
   }
-
-  if(sc) window.autoWall();
 }
 
 function drawSceneToCanvas(c, idx){
@@ -1547,12 +1555,70 @@ function loadScene(i){
   const item = SC[i];
   if(!item) return;
 
-  cv.width = 900;
-  cv.height = 520;
-  drawSceneToCanvas(cx, i);
-  orig = cx.getImageData(0, 0, 900, 520);
   rm = i;
-  afterLoad(item);
+  rooms();
+
+  const hmEl = $("#hm");
+  if(hmEl) hmEl.textContent = "Loading " + item.n + " photo...";
+
+  const candidateUrls = [
+    item.src,
+    ".." + item.src.replace("/assets", ""),
+    item.src.replace("/assets", "")
+  ];
+
+  let tried = 0;
+  function tryFetch(url) {
+    fetch(url)
+      .then(res => {
+        if(!res.ok) throw new Error("HTTP " + res.status);
+        return res.blob();
+      })
+      .then(blob => {
+        const blobUrl = URL.createObjectURL(blob);
+        const im = new Image();
+        im.onload = () => {
+          URL.revokeObjectURL(blobUrl);
+          const s = Math.min(1, 900 / Math.max(im.width, im.height));
+          cv.width = Math.round(im.width * s);
+          cv.height = Math.round(im.height * s);
+          cx.drawImage(im, 0, 0, cv.width, cv.height);
+          orig = cx.getImageData(0, 0, cv.width, cv.height);
+          afterLoad(item.n);
+        };
+        im.onerror = () => nextUrl();
+        im.src = blobUrl;
+      })
+      .catch(() => nextUrl());
+  }
+
+  function nextUrl() {
+    tried++;
+    if(tried < candidateUrls.length) {
+      tryFetch(candidateUrls[tried]);
+    } else {
+      const im = new Image();
+      im.crossOrigin = "anonymous";
+      im.onload = () => {
+        const s = Math.min(1, 900 / Math.max(im.width, im.height));
+        cv.width = Math.round(im.width * s);
+        cv.height = Math.round(im.height * s);
+        cx.drawImage(im, 0, 0, cv.width, cv.height);
+        orig = cx.getImageData(0, 0, cv.width, cv.height);
+        afterLoad(item.n);
+      };
+      im.onerror = () => {
+        cv.width = 900;
+        cv.height = 520;
+        drawSceneToCanvas(cx, i);
+        orig = cx.getImageData(0, 0, 900, 520);
+        afterLoad(item.n);
+      };
+      im.src = item.src;
+    }
+  }
+
+  tryFetch(candidateUrls[0]);
 }
 
 /* User taps canvas to paint specific wall or surface */
@@ -1615,7 +1681,8 @@ if(upInput){
         cv.height = Math.round(im.height * s);
         cx.drawImage(im, 0, 0, cv.width, cv.height);
         orig = cx.getImageData(0, 0, cv.width, cv.height);
-        afterLoad(null);
+        rm = -1;
+        afterLoad("Your uploaded photo");
       };
       im.onerror = () => {
         if(hmEl) hmEl.textContent = "That file could not be read. Please try a JPG or PNG photo.";

@@ -93,17 +93,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       origCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       setHistory([]);
-      setStatusMessage(`Loaded ${activePreset.name}. Tap any wall area to paint.`);
-
-      if (activePreset.accentCoordinates) {
-        setTimeout(() => {
-          if (!isSubscribed) return;
-          applyPaintAt(
-            activePreset.accentCoordinates![0] * (canvas.width / 960),
-            activePreset.accentCoordinates![1] * (canvas.height / 540)
-          );
-        }, 100);
-      }
+      setStatusMessage(`Loaded ${activePreset.name}. Pick a shade from the palette, then tap any wall to paint.`);
     };
 
     // Safe fetch blob first to ensure clean non-tainted canvas, fallback to Image
@@ -140,37 +130,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     };
   }, [activePreset, isCustomPhoto]);
 
-  // When selectedColorHex changes: For room presets, recolor the default wall. For custom photos, keep user's canvas and let them tap freely!
+  // When selectedColorHex changes: Inform user to tap any wall surface with newly selected shade
   useEffect(() => {
-    if (isCustomPhoto) {
-      setStatusMessage(`Selected ${selectedColorName}. Tap any wall surface in your photo to paint.`);
-      return;
-    }
-
-    const canvas = canvasRef.current;
-    const origCanvas = originalCanvasRef.current;
-    if (!canvas || !origCanvas) return;
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const origCtx = origCanvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx || !origCtx) return;
-
-    const origData = origCtx.getImageData(0, 0, origCanvas.width, origCanvas.height);
-    ctx.putImageData(origData, 0, 0);
-
-    const targetCoords = activePreset.accentCoordinates
-      ? {
-          x: activePreset.accentCoordinates[0] * (canvas.width / 960),
-          y: activePreset.accentCoordinates[1] * (canvas.height / 540),
-        }
-      : null;
-
-    if (targetCoords) {
-      const timer = setTimeout(() => {
-        applyPaintAt(targetCoords.x, targetCoords.y);
-      }, 60);
-      return () => clearTimeout(timer);
-    }
-  }, [selectedColorHex, isCustomPhoto, activePreset]);
+    setStatusMessage(`Selected ${selectedColorName} (${selectedColorHex}). Tap any wall area to paint.`);
+  }, [selectedColorHex, selectedColorName]);
 
   // Handle Photo Upload
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
