@@ -24,7 +24,7 @@ import { MessageSquare, ArrowUp } from 'lucide-react';
 
 export default function App() {
   // View mode switcher: 'attached' (shows the user's attached HTML file), 'react' (modern React platform), 'split' (side-by-side)
-  const [viewMode, setViewMode] = useState<'attached' | 'react' | 'split'>('react');
+  const [viewMode, setViewMode] = useState<'attached' | 'react' | 'split'>('attached');
 
   // Global Color State (synced across Visualizer, Catalog, Calculator, and Inspiration)
   const [selectedColorHex, setSelectedColorHex] = useState<string>(COLOR_SHADES[7].hex); // Terracotta Hearth
