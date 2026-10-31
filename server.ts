@@ -15,6 +15,14 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const isProd = process.env.NODE_ENV === 'production';
 
+// CORS headers for canvas manipulation and cross-origin embedding
+app.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  next();
+});
+
 // Body Parser Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -407,8 +415,14 @@ app.get(['/attached-page', '/areva-html', '/attached-version'], (_req: Request, 
 
 // ==========================================
 // VITE DEV SERVER / PRODUCTION STATIC SERVER
-// Serve public assets directory directly
-app.use(express.static(path.resolve(__dirname, 'public')));
+// Serve public assets directory directly with CORS enabled for canvas
+app.use(express.static(path.resolve(__dirname, 'public'), {
+  setHeaders: (res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+  },
+}));
 
 async function startServer() {
   if (!isProd) {

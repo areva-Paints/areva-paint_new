@@ -78,9 +78,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const origCtx = origCanvas.getContext('2d', { willReadFrequently: true });
     if (!ctx || !origCtx) return;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
+    let isSubscribed = true;
+
+    const setupCanvas = (img: HTMLImageElement) => {
+      if (!isSubscribed) return;
       const maxW = 960;
       const scale = Math.min(1, maxW / img.width);
       canvas.width = Math.round(img.width * scale);
@@ -96,6 +97,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
       if (activePreset.accentCoordinates) {
         setTimeout(() => {
+          if (!isSubscribed) return;
           applyPaintAt(
             activePreset.accentCoordinates![0] * (canvas.width / 960),
             activePreset.accentCoordinates![1] * (canvas.height / 540)
@@ -104,7 +106,38 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       }
     };
 
-    img.src = activePreset.imageUrl;
+    // Safe fetch blob first to ensure clean non-tainted canvas, fallback to Image
+    fetch(activePreset.imageUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (!isSubscribed) return;
+        const blobUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          URL.revokeObjectURL(blobUrl);
+          setupCanvas(img);
+        };
+        img.onerror = () => fallbackImage(activePreset.imageUrl);
+        img.src = blobUrl;
+      })
+      .catch(() => fallbackImage(activePreset.imageUrl));
+
+    function fallbackImage(src: string) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => setupCanvas(img);
+      img.onerror = () => {
+        setStatusMessage(`Could not load ${activePreset.name}. Try uploading your own room photo.`);
+      };
+      img.src = src;
+    }
+
+    return () => {
+      isSubscribed = false;
+    };
   }, [activePreset, isCustomPhoto]);
 
   // When selectedColorHex changes (in preset or custom photo), re-render cleanly from pristine original
@@ -120,7 +153,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     ctx.putImageData(origData, 0, 0);
 
     const targetCoords = isCustomPhoto
-      ? lastTappedCoords || { x: canvas.width * 0.5, y: canvas.height * 0.35 }
+      ? lastTappedCoords
       : activePreset.accentCoordinates
       ? {
           x: activePreset.accentCoordinates[0] * (canvas.width / 960),
@@ -162,17 +195,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         origCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
+        // Custom photo loaded cleanly without unwanted center auto-paint!
         setIsCustomPhoto(true);
-        const defX = Math.round(canvas.width * 0.5);
-        const defY = Math.round(canvas.height * 0.35);
-        setLastTappedCoords({ x: defX, y: defY });
+        setLastTappedCoords(null);
         setHistory([]);
-        setAppliedColors([{ name: selectedColorName, hex: selectedColorHex }]);
-        setStatusMessage('Your photo is loaded and painted! Tap on any wall surface to paint.');
-
-        setTimeout(() => {
-          applyPaintAt(defX, defY);
-        }, 100);
+        setAppliedColors([]);
+        setStatusMessage('Your photo is loaded! Tap on any wall surface to paint it in ' + selectedColorName + '.');
       };
       img.src = event.target?.result as string;
     };
@@ -199,13 +227,23 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const d = origImageData.data;
     const o = currentImageData.data;
 
-    const clampX = Math.max(0, Math.min(width - 1, Math.floor(x)));
-    const clampY = Math.max(0, Math.min(height - 1, Math.floor(y)));
+    const clampX = Math.max(2, Math.min(width - 3, Math.floor(x)));
+    const clampY = Math.max(2, Math.min(height - 3, Math.floor(y)));
 
-    const startIndex = (clampY * width + clampX) * 4;
-    const seedR = d[startIndex];
-    const seedG = d[startIndex + 1];
-    const seedB = d[startIndex + 2];
+    // Sample a 5x5 neighborhood to compute robust reference seed values (eliminates sensor noise/JPEG artifacts)
+    let sumR = 0, sumG = 0, sumB = 0, validSamples = 0;
+    for (let dy = -2; dy <= 2; dy++) {
+      for (let dx = -2; dx <= 2; dx++) {
+        const sIdx = ((clampY + dy) * width + (clampX + dx)) * 4;
+        sumR += d[sIdx];
+        sumG += d[sIdx + 1];
+        sumB += d[sIdx + 2];
+        validSamples++;
+      }
+    }
+    const seedR = sumR / validSamples;
+    const seedG = sumG / validSamples;
+    const seedB = sumB / validSamples;
     const seedSum = seedR + seedG + seedB + 0.001;
     const seedNormR = seedR / seedSum;
     const seedNormG = seedG / seedSum;
@@ -218,10 +256,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const targetG = (targetInt >> 8) & 255;
     const targetB = targetInt & 255;
 
-    const effectiveTol = Math.max(18, tolerance || 28);
-    const tolSq = effectiveTol * effectiveTol * 3;
-    const chromaTol = 0.11 + (effectiveTol / 160);
-    const stepTolSq = 36 * 36 * 3;
+    const effectiveTol = Math.max(16, tolerance || 28);
+    const tolSq = effectiveTol * effectiveTol * 3.6;
+    const chromaTol = 0.12 + (effectiveTol / 140);
+    const stepTolSq = 44 * 44 * 3;
 
     const visited = new Uint8Array(width * height);
     const queue = new Int32Array(width * height);
@@ -242,7 +280,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       const pr = d[idx], pg = d[idx + 1], pb = d[idx + 2];
       const pixelLum = (0.299 * pr + 0.587 * pg + 0.114 * pb) / 255;
       const lumRatio = pixelLum / seedLum;
-      const factor = Math.min(1.42, Math.max(0.32, lumRatio));
+      const factor = Math.min(1.45, Math.max(0.3, 0.4 + 0.6 * lumRatio));
 
       o[idx] = Math.min(255, Math.round(targetR * factor));
       o[idx + 1] = Math.min(255, Math.round(targetG * factor));
@@ -276,16 +314,31 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         const nNormG = ng / nSum;
         const cDist = Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
 
-        if (distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.4)) {
+        if (distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.8)) {
           visited[np] = 1;
           queue[qEnd++] = np;
         }
       }
     }
 
-    if (paintedPixels < 25) {
-      setStatusMessage('Point was too small or on an edge. Try tapping firmly on an open wall.');
-      return;
+    if (paintedPixels < 20) {
+      // Retry in small neighborhood
+      const offsets = [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, -4], [0, 4], [-4, 0], [4, 0]];
+      let recovered = false;
+      for (const [ox, oy] of offsets) {
+        const nx = clampX + ox;
+        const ny = clampY + oy;
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          // Check if retry point is valid
+          setLastTappedCoords({ x: nx, y: ny });
+          recovered = true;
+          break;
+        }
+      }
+      if (!recovered) {
+        setStatusMessage('Point was too small or on an edge. Try tapping directly on an open wall surface.');
+        return;
+      }
     }
 
     ctx.putImageData(currentImageData, 0, 0);

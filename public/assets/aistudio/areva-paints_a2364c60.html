@@ -1291,10 +1291,11 @@ $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c
 })();
 
 /* Flawless Room Visualizer: Layer-composite wall painting, real photographic architectural rooms, before/after slider and custom home photo upload */
-const cv=$("#cv"),cx=cv.getContext("2d",{willReadFrequently:true});
-const cv0=$("#cv0"),cx0=cv0.getContext("2d",{willReadFrequently:true});
-const splitBar=$("#splitBar"),beforeTag=$("#beforeTag"),afterTag=$("#afterTag");
-let orig=null,hist=[],paintedRegions=[],snap=null,rm=0;
+const cv=$("#cv"), cx=cv.getContext("2d",{willReadFrequently:true});
+const cv0=$("#cv0"), cx0=cv0.getContext("2d",{willReadFrequently:true});
+const splitBar=$("#splitBar"), beforeTag=$("#beforeTag"), afterTag=$("#afterTag");
+let orig=null, hist=[], paintedRegions=[], snap=null, rm=0;
+let lastTapTime=0;
 
 /* Real architectural room presets */
 const SC=[
@@ -1339,7 +1340,10 @@ function rooms(){
     }
     h+='<button class="chip" type="button" data-rm="'+i+'" aria-pressed="'+(i===rm)+'">'+s.n+'</button>';
   });
-  $("#rooms").innerHTML=h+'<button class="chip" type="button" id="mine" aria-pressed="'+(rm===-1)+'">Upload Photo</button><button class="chip live" type="button" id="camb" aria-pressed="'+(rm===-2)+'">📷 Live Camera AR</button>';
+  h+='<button class="chip" type="button" id="mine" aria-pressed="'+(rm===-1)+'">Upload Photo</button>';
+  h+='<button class="chip live" type="button" id="camb" aria-pressed="'+(rm===-2)+'">📷 Live Camera AR</button>';
+  const roomsEl = $("#rooms");
+  if(roomsEl) roomsEl.innerHTML = h;
 }
 
 /* High-fidelity adaptive wall recoloring for real photographs */
@@ -1349,20 +1353,32 @@ function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
   const tc=parseInt(hex.replace("#",""),16);
   const tr=(tc>>16)&255, tg=(tc>>8)&255, tb=tc&255;
 
-  const clampX = Math.max(0, Math.min(w - 1, Math.floor(startX)));
-  const clampY = Math.max(0, Math.min(h - 1, Math.floor(startY)));
+  const clampX = Math.max(2, Math.min(w - 3, Math.floor(startX)));
+  const clampY = Math.max(2, Math.min(h - 3, Math.floor(startY)));
 
-  const startIndex = (clampY * w + clampX) * 4;
-  const seedR = d[startIndex], seedG = d[startIndex+1], seedB = d[startIndex+2];
+  // Sample a 5x5 neighborhood to compute robust reference seed values (eliminates sensor noise/JPEG compression artifacts)
+  let sumR=0, sumG=0, sumB=0, validSamples=0;
+  for(let dy=-2; dy<=2; dy++){
+    for(let dx=-2; dx<=2; dx++){
+      const sIdx = ((clampY + dy) * w + (clampX + dx)) * 4;
+      sumR += d[sIdx];
+      sumG += d[sIdx+1];
+      sumB += d[sIdx+2];
+      validSamples++;
+    }
+  }
+  const seedR = sumR / validSamples;
+  const seedG = sumG / validSamples;
+  const seedB = sumB / validSamples;
   const seedSum = seedR + seedG + seedB + 0.001;
   const seedNormR = seedR / seedSum;
   const seedNormG = seedG / seedSum;
   const seedLum = Math.max(0.08, (0.299*seedR + 0.587*seedG + 0.114*seedB) / 255);
 
-  const effectiveTol = Math.max(18, tol || 28);
-  const tolSq = effectiveTol * effectiveTol * 3;
-  const chromaTol = 0.11 + (effectiveTol / 160);
-  const stepTolSq = 36 * 36 * 3;
+  const effectiveTol = Math.max(16, tol || 28);
+  const tolSq = effectiveTol * effectiveTol * 3.6;
+  const chromaTol = 0.12 + (effectiveTol / 140);
+  const stepTolSq = 44 * 44 * 3; // Edge barrier prevents spilling onto doors, windows, trim
 
   const vis = new Uint8Array(w * h);
   const queue = new Int32Array(w * h);
@@ -1383,9 +1399,9 @@ function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
     const pr = d[i], pg = d[i+1], pb = d[i+2];
     const pixLum = (0.299*pr + 0.587*pg + 0.114*pb) / 255;
 
-    // Natural architectural modulation preserving textures & ambient light
+    // Realistic architectural lighting & texture preservation
     const lumRatio = pixLum / seedLum;
-    const factor = Math.min(1.42, Math.max(0.32, lumRatio));
+    const factor = Math.min(1.45, Math.max(0.3, 0.4 + 0.6 * lumRatio));
 
     o[i] = Math.min(255, Math.max(0, Math.round(tr * factor)));
     o[i+1] = Math.min(255, Math.max(0, Math.round(tg * factor)));
@@ -1406,11 +1422,11 @@ function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
       const ni = np * 4;
       const nr = d[ni], ng = d[ni+1], nb = d[ni+2];
 
-      // Edge barrier step threshold
+      // Step difference threshold to stop at crisp wall edges & architectural moldings
       const sdr = nr - pr, sdg = ng - pg, sdb = nb - pb;
       if(sdr*sdr + sdg*sdg + sdb*sdb > stepTolSq) continue;
 
-      // Global color & chromaticity checks
+      // Color distance & chromaticity check for natural wall gradients
       const dr = nr - seedR, dg = ng - seedG, db = nb - seedB;
       const distSq = dr*dr + dg*dg + db*db;
 
@@ -1419,7 +1435,7 @@ function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
       const nNormG = ng / nSum;
       const cDist = Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
 
-      if(distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.4)){
+      if(distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.8)){
         vis[np] = 1;
         queue[qEnd++] = np;
       }
@@ -1430,126 +1446,208 @@ function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
 }
 
 /* Re-composite painted layers fresh onto orig */
-window.autoWall=function(){
-  if(!orig)return;
-  const w=cv.width, h=cv.height;
-  const cur=new ImageData(new Uint8ClampedArray(orig.data), w, h);
-  const t=+$("#tol").value || 28;
+window.autoWall = function(){
+  if(!orig) return;
+  const w = cv.width, h = cv.height;
+  const cur = new ImageData(new Uint8ClampedArray(orig.data), w, h);
+  const t = +($("#tol") ? $("#tol").value : 28) || 28;
 
-  if(rm>=0 && SC[rm]){
+  if(rm >= 0 && SC[rm]){
     // Paint predefined room wall seeds with active color
-    SC[rm].seeds.forEach(pt=>{
-      floodFillWall(cur, orig, pt[0], pt[1], curHex, t);
+    SC[rm].seeds.forEach(pt => {
+      floodFillWall(cur, orig, pt[0] * (w / 900), pt[1] * (h / 506), curHex, t);
     });
-  } else if(rm===-1 && paintedRegions.length===0){
-    // Custom photo: default paint center-upper wall area
-    const sx=Math.round(w*0.5), sy=Math.round(h*0.35);
-    floodFillWall(cur, orig, sx, sy, curHex, t);
-    paintedRegions.push({x:sx, y:sy});
   }
 
-  // Also apply any user manual taps using currently active color
-  paintedRegions.forEach(reg=>{
+  // Also apply all user manual wall taps using currently active color
+  paintedRegions.forEach(reg => {
     floodFillWall(cur, orig, reg.x, reg.y, curHex, t);
   });
 
   cx.putImageData(cur, 0, 0);
-  const hmEl=$("#hm");
-  if(hmEl) hmEl.textContent="Walls painted in "+cn+". Pick any shade or tap another wall.";
+  const hmEl = $("#hm");
+  if(hmEl){
+    if(paintedRegions.length > 0 || (rm >= 0 && SC[rm])){
+      hmEl.textContent = "Walls painted in " + cn + ". Pick any shade or tap another wall.";
+    } else {
+      hmEl.textContent = "Tap on any wall or surface to paint it in " + cn + ".";
+    }
+  }
 };
 
 function ov(v){
-  const val=+v;
-  cv0.style.clipPath="inset(0 0 0 "+val+"%)";
-  splitBar.style.left=val+"%";
-  if(val>=99){
-    splitBar.classList.remove("active");
-    beforeTag.classList.remove("active");
-    afterTag.classList.remove("active");
-  } else if(val<=1){
-    splitBar.classList.remove("active");
-    beforeTag.classList.add("active");
-    afterTag.classList.remove("active");
+  const val = +v;
+  if(cv0) cv0.style.clipPath = "inset(0 0 0 " + val + "%)";
+  if(splitBar) splitBar.style.left = val + "%";
+  if(val >= 99){
+    if(splitBar) splitBar.classList.remove("active");
+    if(beforeTag) beforeTag.classList.remove("active");
+    if(afterTag) afterTag.classList.remove("active");
+  } else if(val <= 1){
+    if(splitBar) splitBar.classList.remove("active");
+    if(beforeTag) beforeTag.classList.add("active");
+    if(afterTag) afterTag.classList.remove("active");
   } else {
-    splitBar.classList.add("active");
-    beforeTag.classList.add("active");
-    afterTag.classList.add("active");
+    if(splitBar) splitBar.classList.add("active");
+    if(beforeTag) beforeTag.classList.add("active");
+    if(afterTag) afterTag.classList.add("active");
   }
 }
 
 function afterLoad(sceneObj){
-  if(live)stopCam();
-  hist=[];
-  paintedRegions=[];
-  if(!sceneObj) rm=-1;
-  $("#tol").value=sceneObj?28:34;
+  if(live) stopCam();
+  hist = [];
+  paintedRegions = [];
+  rm = sceneObj ? SC.indexOf(sceneObj) : -1;
+  const tolEl = $("#tol");
+  if(tolEl) tolEl.value = sceneObj ? 28 : 32;
 
-  cv0.width=cv.width;
-  cv0.height=cv.height;
+  cv0.width = cv.width;
+  cv0.height = cv.height;
   cx0.putImageData(orig, 0, 0);
 
-  $("#cmp").value=100;
+  const cmpEl = $("#cmp");
+  if(cmpEl) cmpEl.value = 100;
   ov(100);
   rooms();
 
-  window.autoWall();
-  $("#hm").textContent="Wall painted in "+cn+"! Tap on any wall or surface to paint.";
+  if(sceneObj){
+    window.autoWall();
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "Wall painted in " + cn + "! Tap on any other wall or surface to paint.";
+  } else {
+    // Custom photo loaded cleanly without unwanted center auto-paint!
+    cx.putImageData(orig, 0, 0);
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "Your photo is ready! Tap on any wall to paint it in " + cn + ".";
+  }
 }
 
 function loadScene(i){
-  if(live)stopCam();
-  rm=i;
-  const item=SC[i];
-  const im=new Image();
-  im.crossOrigin="anonymous";
-  im.onload=()=>{
-    cv.width=900;
-    cv.height=Math.round(900 * (im.height || 506) / (im.width || 900)) || 506;
-    cx.drawImage(im, 0, 0, cv.width, cv.height);
-    orig=cx.getImageData(0, 0, cv.width, cv.height);
-    cv0.width=cv.width;
-    cv0.height=cv.height;
-    cx0.putImageData(orig, 0, 0);
-    afterLoad(item);
+  if(live) stopCam();
+  rm = i;
+  const item = SC[i];
+  if(!item) return;
+
+  const hmEl = $("#hm");
+  if(hmEl) hmEl.textContent = "Loading " + item.n + "...";
+  rooms();
+
+  const setupFromImage = (img) => {
+    try {
+      const targetW = 900;
+      const targetH = Math.round(900 * ((img.height || 506) / (img.width || 900))) || 506;
+      cv.width = targetW;
+      cv.height = targetH;
+      cx.drawImage(img, 0, 0, targetW, targetH);
+      orig = cx.getImageData(0, 0, targetW, targetH);
+      cv0.width = targetW;
+      cv0.height = targetH;
+      cx0.putImageData(orig, 0, 0);
+      afterLoad(item);
+    } catch(err) {
+      console.warn("Direct image read blocked:", err);
+      if(hmEl) hmEl.textContent = "Protected preview loaded. You can paint walls or upload your own photo.";
+    }
   };
-  im.onerror=()=>{
-    $("#hm").textContent="Could not load room photo.";
-  };
-  im.src=item.img;
+
+  // 1. First attempt: fetch as Blob (guarantees non-tainted canvas in all iframe environments)
+  fetch(item.img)
+    .then(res => {
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      return res.blob();
+    })
+    .then(blob => {
+      const blobUrl = URL.createObjectURL(blob);
+      const im = new Image();
+      im.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        setupFromImage(im);
+      };
+      im.onerror = () => tryFallback(item.img);
+      im.src = blobUrl;
+    })
+    .catch(() => tryFallback(item.img));
+
+  function tryFallback(src){
+    const im = new Image();
+    im.crossOrigin = "anonymous";
+    im.onload = () => setupFromImage(im);
+    im.onerror = () => {
+      const relSrc = src.startsWith('/') ? '.' + src : '/' + src;
+      const im2 = new Image();
+      im2.crossOrigin = "anonymous";
+      im2.onload = () => setupFromImage(im2);
+      im2.onerror = () => {
+        if(hmEl) hmEl.textContent = "Could not load room photo. Please select another room or upload your own photo.";
+      };
+      im2.src = relSrc;
+    };
+    im.src = src;
+  }
 }
 
 /* User taps on canvas to paint specific surface */
 function handleCanvasTap(e){
   if(live){ liveTap(e); return; }
-  if(!orig){ $("#hm").textContent="Please select a room or upload a photo first."; return; }
+  const hmEl = $("#hm");
+  if(!orig){
+    if(hmEl) hmEl.textContent = "Please select a room or upload a photo first.";
+    return;
+  }
 
-  const r=cv.getBoundingClientRect();
-  const clientX = e.clientX || (e.touches && e.touches[0] ? e.touches[0].clientX : null);
-  const clientY = e.clientY || (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+  // Prevent double triggers from pointerdown + synthetic click on mobile/touch
+  const now = Date.now();
+  if(now - lastTapTime < 220) return;
+  lastTapTime = now;
+
+  const r = cv.getBoundingClientRect();
+  const clientX = e.clientX ?? (e.touches && e.touches[0] ? e.touches[0].clientX : null);
+  const clientY = e.clientY ?? (e.touches && e.touches[0] ? e.touches[0].clientY : null);
   if(clientX == null || clientY == null) return;
 
-  const x=Math.floor((clientX - r.left) * (cv.width / r.width));
-  const y=Math.floor((clientY - r.top) * (cv.height / r.height));
+  const x = Math.floor((clientX - r.left) * (cv.width / r.width));
+  const y = Math.floor((clientY - r.top) * (cv.height / r.height));
+
+  if(x < 0 || x >= cv.width || y < 0 || y >= cv.height) return;
 
   // Save current frame in hist for undo
   hist.push(cx.getImageData(0, 0, cv.width, cv.height));
-  if(hist.length>10) hist.shift();
+  if(hist.length > 10) hist.shift();
 
   // Add user tap to painted regions
   paintedRegions.push({x, y});
 
-  const cur=cx.getImageData(0, 0, cv.width, cv.height);
-  const n=floodFillWall(cur, orig, x, y, curHex, +$("#tol").value || 28);
+  const cur = cx.getImageData(0, 0, cv.width, cv.height);
+  const tolVal = +($("#tol") ? $("#tol").value : 28) || 28;
+  let n = floodFillWall(cur, orig, x, y, curHex, tolVal);
 
-  if(n < 20){
-    $("#hm").textContent="That target area is very small. Tap a larger wall section or raise the range slider.";
+  // If initial pixel tapped was on an edge or micro-defect, search small neighborhood for best wall seed
+  if(n < 25){
+    const offsets = [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, -4], [0, 4], [-4, 0], [4, 0]];
+    for(let o = 0; o < offsets.length; o++){
+      const testX = x + offsets[o][0];
+      const testY = y + offsets[o][1];
+      if(testX >= 0 && testX < cv.width && testY >= 0 && testY < cv.height){
+        const retryN = floodFillWall(cur, orig, testX, testY, curHex, tolVal);
+        if(retryN >= 25){
+          n = retryN;
+          paintedRegions[paintedRegions.length - 1] = { x: testX, y: testY };
+          break;
+        }
+      }
+    }
+  }
+
+  if(n < 18){
+    if(hmEl) hmEl.textContent = "That tapped area is very small. Tap directly on an open wall surface or raise the range slider.";
     hist.pop();
     paintedRegions.pop();
     return;
   }
 
   cx.putImageData(cur, 0, 0);
-  $("#hm").textContent="Painted area with "+cn+"! Pick any shade from the palette or tap another wall.";
+  if(hmEl) hmEl.textContent = "Painted wall with " + cn + "! Pick any shade from the palette or tap another wall.";
 }
 
 cv.addEventListener("click", handleCanvasTap);
@@ -1560,189 +1658,284 @@ cv.addEventListener("pointerdown", (e)=>{
 });
 
 /* Undo */
-$("#un").onclick=()=>{
-  if(hist.length>0){
-    cx.putImageData(hist.pop(), 0, 0);
-    paintedRegions.pop();
-    $("#hm").textContent="Undone last paint action.";
-  } else {
-    window.autoWall();
-  }
-};
+const unBtn = $("#un");
+if(unBtn){
+  unBtn.onclick = () => {
+    if(hist.length > 0){
+      cx.putImageData(hist.pop(), 0, 0);
+      paintedRegions.pop();
+      const hmEl = $("#hm");
+      if(hmEl) hmEl.textContent = "Undone last paint action.";
+    } else {
+      window.autoWall();
+    }
+  };
+}
 
 /* Reset to Pristine Original */
-$("#ur").onclick=()=>{
-  if(!orig)return;
-  cx.putImageData(orig, 0, 0);
-  hist=[];
-  paintedRegions=[];
-  $("#hm").textContent="Reset room to original unpainted state. Pick any shade to repaint.";
-};
+const urBtn = $("#ur");
+if(urBtn){
+  urBtn.onclick = () => {
+    if(!orig) return;
+    cx.putImageData(orig, 0, 0);
+    hist = [];
+    paintedRegions = [];
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "Reset room to original unpainted state. Pick any shade to repaint.";
+  };
+}
 
 /* Hold to See Original */
-$("#ub").addEventListener("pointerdown", ()=>{
-  if(!orig)return;
-  snap=cx.getImageData(0, 0, cv.width, cv.height);
-  cx.putImageData(orig, 0, 0);
-});
-["pointerup","pointerleave","pointercancel"].forEach(evt=>{
-  $("#ub").addEventListener(evt, ()=>{
-    if(snap){
-      cx.putImageData(snap, 0, 0);
-      snap=null;
-    }
+const ubBtn = $("#ub");
+if(ubBtn){
+  ubBtn.addEventListener("pointerdown", () => {
+    if(!orig) return;
+    snap = cx.getImageData(0, 0, cv.width, cv.height);
+    cx.putImageData(orig, 0, 0);
   });
-});
+  ["pointerup", "pointerleave", "pointercancel"].forEach(evt => {
+    ubBtn.addEventListener(evt, () => {
+      if(snap){
+        cx.putImageData(snap, 0, 0);
+        snap = null;
+      }
+    });
+  });
+}
 
 /* Print Before & After */
-$("#pr2").onclick=()=>{
-  if(!orig){ $("#hm").textContent="Please load a room or photo first."; return; }
-  const t=document.createElement("canvas");
-  t.width=cv.width; t.height=cv.height;
-  t.getContext("2d").putImageData(orig, 0, 0);
-  $("#sb").src=t.toDataURL("image/jpeg", 0.9);
-  $("#si").src=cv.toDataURL("image/jpeg", 0.9);
-  $("#sl").innerHTML='<span><i style="background:'+curHex+'"></i><b>'+cn+'</b> ('+curHex+')</span>';
-  $("#sd").textContent=new Date().toLocaleDateString();
-  setTimeout(()=>{
-    try{ window.print(); }catch(e){
-      $("#hm").textContent="Print dialog opened. Save as PDF or print.";
+const pr2Btn = $("#pr2");
+if(pr2Btn){
+  pr2Btn.onclick = () => {
+    if(!orig){
+      const hmEl = $("#hm");
+      if(hmEl) hmEl.textContent = "Please load a room or photo first.";
+      return;
     }
-  }, 150);
-};
+    const t = document.createElement("canvas");
+    t.width = cv.width;
+    t.height = cv.height;
+    t.getContext("2d").putImageData(orig, 0, 0);
+    const sbEl = $("#sb");
+    const siEl = $("#si");
+    const slEl = $("#sl");
+    const sdEl = $("#sd");
+    if(sbEl) sbEl.src = t.toDataURL("image/jpeg", 0.9);
+    if(siEl) siEl.src = cv.toDataURL("image/jpeg", 0.9);
+    if(slEl) slEl.innerHTML = '<span><i style="background:'+curHex+'"></i><b>'+cn+'</b> ('+curHex+')</span>';
+    if(sdEl) sdEl.textContent = new Date().toLocaleDateString();
+    setTimeout(() => {
+      try {
+        window.print();
+      } catch(e) {
+        const hmEl = $("#hm");
+        if(hmEl) hmEl.textContent = "Print dialog opened. Save as PDF or print.";
+      }
+    }, 150);
+  };
+}
 
 /* Upload Custom Photo */
-$("#up").onchange=e=>{
-  const f=e.target.files[0];
-  if(!f)return;
-  const fr=new FileReader();
-  fr.onload=()=>{
-    const im=new Image();
-    im.onload=()=>{
-      const scale=Math.min(1, 900 / Math.max(im.width, im.height));
-      cv.width=Math.round(im.width * scale);
-      cv.height=Math.round(im.height * scale);
-      cx.drawImage(im, 0, 0, cv.width, cv.height);
-      orig=cx.getImageData(0, 0, cv.width, cv.height);
-      afterLoad(null);
+const upInput = $("#up");
+if(upInput){
+  upInput.onchange = e => {
+    const f = e.target.files && e.target.files[0];
+    if(!f) return;
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "Loading your photo...";
+    const fr = new FileReader();
+    fr.onload = () => {
+      const im = new Image();
+      im.onload = () => {
+        const maxDim = 920;
+        const scale = Math.min(1, maxDim / Math.max(im.width, im.height));
+        cv.width = Math.round(im.width * scale);
+        cv.height = Math.round(im.height * scale);
+        cx.drawImage(im, 0, 0, cv.width, cv.height);
+        orig = cx.getImageData(0, 0, cv.width, cv.height);
+        cv0.width = cv.width;
+        cv0.height = cv.height;
+        cx0.putImageData(orig, 0, 0);
+        afterLoad(null);
+      };
+      im.onerror = () => {
+        if(hmEl) hmEl.textContent = "Could not load image file. Please use a JPG, PNG, or WebP photo.";
+      };
+      im.src = fr.result;
     };
-    im.onerror=()=>$("#hm").textContent="Could not load image file. Please use JPG or PNG.";
-    im.src=fr.result;
+    fr.readAsDataURL(f);
   };
-  fr.readAsDataURL(f);
-};
+}
 
 /* Room Select & Controls */
-$("#rooms").addEventListener("click", e=>{
-  const b=e.target.closest("[data-rm]");
-  if(b) loadScene(+b.dataset.rm);
-  else if(e.target.closest("#mine")) $("#up").click();
-  else if(e.target.closest("#camb")) startCam();
-});
-$("#cmp").oninput=e=>ov(e.target.value);
-$("#cc2").oninput=e=>paint(e.target.value, "Custom ("+e.target.value+")");
+const roomsContainer = $("#rooms");
+if(roomsContainer){
+  roomsContainer.addEventListener("click", e => {
+    const b = e.target.closest("[data-rm]");
+    if(b){
+      loadScene(+b.dataset.rm);
+    } else if(e.target.closest("#mine")){
+      const upEl = $("#up");
+      if(upEl) upEl.click();
+    } else if(e.target.closest("#camb")){
+      startCam();
+    }
+  });
+}
+
+const cmpInput = $("#cmp");
+if(cmpInput) cmpInput.oninput = e => ov(e.target.value);
+
+const cc2Input = $("#cc2");
+if(cc2Input) cc2Input.oninput = e => paint(e.target.value, "Custom (" + e.target.value + ")");
+
+const tolInput = $("#tol");
+if(tolInput){
+  tolInput.oninput = () => {
+    if(paintedRegions.length > 0 || rm >= 0){
+      window.autoWall();
+    }
+  };
+}
 
 rooms();
 loadScene(0);
 
 /* Live camera AR: wall color-tracking */
-let live=false,stream=null,vid=null,seedRGB=null,lastPt=null,raf=0,rawCv=null;
-$("#camf").onchange=$("#up").onchange;
+let live=false, stream=null, vid=null, seedRGB=null, lastPt=null, raf=0, rawCv=null;
+const camfInput = $("#camf");
+if(camfInput && upInput) camfInput.onchange = upInput.onchange;
+
 function startCam(){
-  if(live)return;
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ camFail(); return; }
+  if(live) return;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ camFail(); return; }
   navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false})
-    .then(s=>{
-      stream=s;
-      vid=document.createElement("video");
-      vid.muted=true;
-      vid.playsInline=true;
-      vid.srcObject=s;
+    .then(s => {
+      stream = s;
+      vid = document.createElement("video");
+      vid.muted = true;
+      vid.playsInline = true;
+      vid.srcObject = s;
       return vid.play();
     })
-    .then(()=>{
-      live=true;
-      orig=null;
-      rm=-2;
-      $("#tol").value=26;
-      $("#cmp").value=100;
+    .then(() => {
+      live = true;
+      orig = null;
+      rm = -2;
+      const tolEl = $("#tol");
+      if(tolEl) tolEl.value = 26;
+      const cmpEl = $("#cmp");
+      if(cmpEl){
+        cmpEl.value = 100;
+        cmpEl.disabled = true;
+      }
       ov(100);
-      $("#cmp").disabled=true;
-      $("#live").hidden=false;
+      const liveChips = $("#live");
+      if(liveChips) liveChips.hidden = false;
       rooms();
-      $("#hm").textContent="Live Camera AR on! Point at your wall and tap once to lock the surface.";
+      const hmEl = $("#hm");
+      if(hmEl) hmEl.textContent = "Live Camera AR on! Point at your wall and tap once to lock the surface.";
       loop();
     })
     .catch(camFail);
 }
+
 function camFail(){
   stopCam();
-  $("#hm").textContent="Live camera could not start. Please grant camera permission or use 'Upload my home photo'.";
+  const hmEl = $("#hm");
+  if(hmEl) hmEl.textContent = "Live camera could not start. Please grant camera permission or use 'Upload my home photo'.";
 }
+
 function stopCam(){
-  live=false;
+  live = false;
   cancelAnimationFrame(raf);
-  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
-  $("#live").hidden=true;
-  $("#cmp").disabled=false;
+  if(stream){
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  const liveChips = $("#live");
+  if(liveChips) liveChips.hidden = true;
+  const cmpEl = $("#cmp");
+  if(cmpEl) cmpEl.disabled = false;
 }
+
 function loop(){
-  if(!live)return;
-  const vw=vid.videoWidth;
+  if(!live) return;
+  const vw = vid ? vid.videoWidth : 0;
   if(vw){
-    const s=Math.min(1, 640/vw), w=Math.round(vw*s), h=Math.round(vid.videoHeight*s);
-    if(cv.width!==w||cv.height!==h){ cv.width=w; cv.height=h; }
+    const s = Math.min(1, 640 / vw), w = Math.round(vw * s), h = Math.round(vid.videoHeight * s);
+    if(cv.width !== w || cv.height !== h){ cv.width = w; cv.height = h; }
     cx.drawImage(vid, 0, 0, w, h);
     if(seedRGB){
-      const f=cx.getImageData(0, 0, w, h), o=f.data, t=+$("#tol").value, T=t*t*3;
-      const [sr,sg,sb]=seedRGB;
-      const Ls=Math.max(.15,(.299*sr+.587*sg+.114*sb)/255);
-      const tc=parseInt(curHex.slice(1),16), tr=tc>>16, tg=tc>>8&255, tb=tc&255;
-      for(let i=0;i<o.length;i+=4){
-        const dr=o[i]-sr, dg=o[i+1]-sg, db=o[i+2]-sb, d2=dr*dr+dg*dg+db*db;
-        if(d2<T){
-          const a=d2<T*.55?1:(T-d2)/(T*.45);
-          const k=Math.min(1.5,Math.max(.45,(.299*o[i]+.587*o[i+1]+.114*o[i+2])/255/Ls));
-          o[i]+=(Math.min(255,tr*k)-o[i])*a;
-          o[i+1]+=(Math.min(255,tg*k)-o[i+1])*a;
-          o[i+2]+=(Math.min(255,tb*k)-o[i+2])*a;
+      const f = cx.getImageData(0, 0, w, h), o = f.data;
+      const t = +($("#tol") ? $("#tol").value : 26) || 26;
+      const T = t * t * 3;
+      const [sr, sg, sb] = seedRGB;
+      const Ls = Math.max(0.15, (0.299*sr + 0.587*sg + 0.114*sb) / 255);
+      const tc = parseInt(curHex.slice(1), 16), tr = tc >> 16, tg = (tc >> 8) & 255, tb = tc & 255;
+      for(let i = 0; i < o.length; i += 4){
+        const dr = o[i] - sr, dg = o[i+1] - sg, db = o[i+2] - sb;
+        const d2 = dr*dr + dg*dg + db*db;
+        if(d2 < T){
+          const a = d2 < T * 0.55 ? 1 : (T - d2) / (T * 0.45);
+          const k = Math.min(1.5, Math.max(0.45, (0.299*o[i] + 0.587*o[i+1] + 0.114*o[i+2]) / 255 / Ls));
+          o[i] += (Math.min(255, tr * k) - o[i]) * a;
+          o[i+1] += (Math.min(255, tg * k) - o[i+1]) * a;
+          o[i+2] += (Math.min(255, tb * k) - o[i+2]) * a;
         }
       }
       cx.putImageData(f, 0, 0);
     }
   }
-  raf=requestAnimationFrame(loop);
+  raf = requestAnimationFrame(loop);
 }
+
 function liveTap(e){
-  if(!vid)return;
-  const r=cv.getBoundingClientRect();
-  const x=Math.floor((e.clientX-r.left)*cv.width/r.width);
-  const y=Math.floor((e.clientY-r.top)*cv.height/r.height);
-  const t=rawCv||(rawCv=document.createElement("canvas"));
-  t.width=cv.width; t.height=cv.height;
-  const c=t.getContext("2d");
+  if(!vid) return;
+  const r = cv.getBoundingClientRect();
+  const x = Math.floor((e.clientX - r.left) * cv.width / r.width);
+  const y = Math.floor((e.clientY - r.top) * cv.height / r.height);
+  const t = rawCv || (rawCv = document.createElement("canvas"));
+  t.width = cv.width;
+  t.height = cv.height;
+  const c = t.getContext("2d");
   c.drawImage(vid, 0, 0, t.width, t.height);
-  const d=c.getImageData(Math.max(0,x-4),Math.max(0,y-4),9,9).data;
-  let R=0,G2=0,B=0;
-  for(let i=0;i<d.length;i+=4){ R+=d[i]; G2+=d[i+1]; B+=d[i+2]; }
-  const n=d.length/4;
-  seedRGB=[R/n, G2/n, B/n];
-  lastPt=[x, y];
-  $("#hm").textContent="Wall locked! Pick any shade, or tap 'Capture frame' to freeze and print.";
+  const d = c.getImageData(Math.max(0, x - 4), Math.max(0, y - 4), 9, 9).data;
+  let R = 0, G2 = 0, B = 0;
+  for(let i = 0; i < d.length; i += 4){ R += d[i]; G2 += d[i+1]; B += d[i+2]; }
+  const n = d.length / 4;
+  seedRGB = [R / n, G2 / n, B / n];
+  lastPt = [x, y];
+  const hmEl = $("#hm");
+  if(hmEl) hmEl.textContent = "Wall locked! Pick any shade, or tap 'Capture frame' to freeze and print.";
 }
-$("#snap").onclick=()=>{
-  if(!live)return;
-  const t=document.createElement("canvas");
-  t.width=cv.width; t.height=cv.height;
-  t.getContext("2d").drawImage(vid, 0, 0, t.width, t.height);
-  stopCam();
-  cv.width=t.width; cv.height=t.height;
-  cx.drawImage(t, 0, 0);
-  orig=cx.getImageData(0, 0, cv.width, cv.height);
-  afterLoad(null);
-  $("#hm").textContent="Frame captured. Tap walls to paint, then print.";
-};
-$("#stopcam").onclick=()=>{ stopCam(); loadScene(0); };
+
+const snapBtn = $("#snap");
+if(snapBtn){
+  snapBtn.onclick = () => {
+    if(!live || !vid) return;
+    const t = document.createElement("canvas");
+    t.width = cv.width;
+    t.height = cv.height;
+    t.getContext("2d").drawImage(vid, 0, 0, t.width, t.height);
+    stopCam();
+    cv.width = t.width;
+    cv.height = t.height;
+    cx.drawImage(t, 0, 0);
+    orig = cx.getImageData(0, 0, cv.width, cv.height);
+    afterLoad(null);
+    const hmEl = $("#hm");
+    if(hmEl) hmEl.textContent = "Frame captured. Tap walls to paint, then print.";
+  };
+}
+
+const stopCamBtn = $("#stopcam");
+if(stopCamBtn){
+  stopCamBtn.onclick = () => {
+    stopCam();
+    loadScene(0);
+  };
+}
 </script>
 </body>
 </html>
