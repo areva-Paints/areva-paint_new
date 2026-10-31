@@ -1894,19 +1894,27 @@ function loop(){
 }
 
 function liveTap(e){
-  if(!vid) return;
+  if(!vid || !live || !cv.width || !cv.height) return;
   const r = cv.getBoundingClientRect();
-  const x = Math.floor((e.clientX - r.left) * cv.width / r.width);
-  const y = Math.floor((e.clientY - r.top) * cv.height / r.height);
+  if(!r.width || !r.height) return;
+  const x = Math.max(0, Math.min(cv.width - 1, Math.floor((e.clientX - r.left) * cv.width / r.width)));
+  const y = Math.max(0, Math.min(cv.height - 1, Math.floor((e.clientY - r.top) * cv.height / r.height)));
   const t = rawCv || (rawCv = document.createElement("canvas"));
   t.width = cv.width;
   t.height = cv.height;
-  const c = t.getContext("2d");
+  const c = t.getContext("2d", {willReadFrequently:true});
+  if(!c) return;
   c.drawImage(vid, 0, 0, t.width, t.height);
-  const d = c.getImageData(Math.max(0, x - 4), Math.max(0, y - 4), 9, 9).data;
+  // Clamp the sample rectangle so taps at the edges cannot read outside the frame.
+  const sx = Math.max(0, Math.min(t.width - 1, x - 4));
+  const sy = Math.max(0, Math.min(t.height - 1, y - 4));
+  const sw = Math.min(9, t.width - sx);
+  const sh = Math.min(9, t.height - sy);
+  const d = c.getImageData(sx, sy, sw, sh).data;
   let R = 0, G2 = 0, B = 0;
   for(let i = 0; i < d.length; i += 4){ R += d[i]; G2 += d[i+1]; B += d[i+2]; }
   const n = d.length / 4;
+  if(!n) return;
   seedRGB = [R / n, G2 / n, B / n];
   lastPt = [x, y];
   const hmEl = $("#hm");
