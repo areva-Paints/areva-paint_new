@@ -267,10 +267,13 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         const np = neighbors[n];
         if (np === -1 || visited[np]) continue;
 
+        // Mark every examined pixel before testing it. Otherwise rejected edge pixels
+        // are reconsidered by many neighboring pixels, making the flood fill extremely slow.
+        visited[np] = 1;
         const ni = np * 4;
         const nr = d[ni], ng = d[ni + 1], nb = d[ni + 2];
 
-        // Edge step tolerance
+        // Edge step tolerance: do not cross strong wall/object boundaries.
         const sdr = nr - pr, sdg = ng - pg, sdb = nb - pb;
         if (sdr * sdr + sdg * sdg + sdb * sdb > stepTolSq) continue;
 
@@ -284,7 +287,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         const cDist = Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
 
         if (distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.8)) {
-          visited[np] = 1;
           queue[qEnd++] = np;
         }
       }
