@@ -201,24 +201,47 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
-    const xRatio = (clientX - rect.left) / rect.width;
-    const yRatio = (clientY - rect.top) / rect.height;
-
-    const pixelX = Math.floor(xRatio * canvas.width);
-    const pixelY = Math.floor(yRatio * canvas.height);
+    // Ignore taps outside the displayed canvas and map the tap to its backing pixels.
+    const xRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const yRatio = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    const pixelX = Math.min(canvas.width - 1, Math.floor(xRatio * canvas.width));
+    const pixelY = Math.min(canvas.height - 1, Math.floor(yRatio * canvas.height));
 
     setTargetPoint({ x: pixelX, y: pixelY });
 
-    // Sample RGB at tap point
-    const ctx = canvas.getContext('2d');
-    if (ctx && pixelX >= 0 && pixelX < canvas.width && pixelY >= 0 && pixelY < canvas.height) {
+    // Sample the unpainted video frame, not the already recolored canvas.
+    // Sampling the canvas caused subsequent taps to use the previous paint color as the wall color.
+    const video = videoRef.current;
+    if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth > 0 && video.videoHeight > 0) {
       try {
-        const sample = ctx.getImageData(pixelX, pixelY, 1, 1).data;
+        const sampleCanvas = document.createElement('canvas');
+        sampleCanvas.width = 1;
+        sampleCanvas.height = 1;
+        const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+        if (!sampleCtx) throw new Error('Canvas context unavailable');
+        sampleCtx.drawImage(
+          video,
+          Math.min(video.videoWidth - 1, Math.floor(xRatio * video.videoWidth)),
+          Math.min(video.videoHeight - 1, Math.floor(yRatio * video.videoHeight)),
+          1, 1, 0, 0, 1, 1
+        );
+        const sample = sampleCtx.getImageData(0, 0, 1, 1).data;
         sampledWallRgb.current = { r: sample[0], g: sample[1], b: sample[2] };
         setTrackingStatus(`Wall calibrated at (${Math.round(xRatio * 100)}%, ${Math.round(yRatio * 100)}%). Recoloring live.`);
-      } catch (err) {
-        // Fallback default sample
-        sampledWallRgb.current = { r: 215, g: 215, b: 215 };
+      } catch {
+        setTrackingStatus('Could not sample that point. Tap a visible wall area again.');
+      }
+    } else {
+      // Simulator mode has no physical video element; sample the current canvas frame.
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        try {
+          const sample = ctx.getImageData(pixelX, pixelY, 1, 1).data;
+          sampledWallRgb.current = { r: sample[0], g: sample[1], b: sample[2] };
+          setTrackingStatus('Wall calibrated. Recoloring live.');
+        } catch {
+          setTrackingStatus('Could not sample that point. Tap a visible wall area again.');
+        }
       }
     }
   };
