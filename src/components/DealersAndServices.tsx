@@ -2,37 +2,41 @@ import React, { useState } from 'react';
 import { MapPin, Phone, MessageSquare, Check, Calendar, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const DealersAndServices: React.FC = () => {
-  const [selectedState, setSelectedState] = useState<string>('Karnataka');
+  const [pincodeQuery, setPincodeQuery] = useState<string>('560038');
+  const [selectedState, setSelectedState] = useState<string>('All');
   const [serviceBooked, setServiceBooked] = useState<boolean>(false);
   const [serviceName, setServiceName] = useState<string>('Free Site Moisture & Waterproofing Inspection');
   const [clientPhone, setClientPhone] = useState<string>('');
   const [clientCity, setClientCity] = useState<string>('Bengaluru');
 
-  const DEALERS_BY_STATE: Record<string, Array<{ city: string; name: string; phone: string; address: string }>> = {
-    Karnataka: [
-      { city: 'Bengaluru Central', name: 'Sri Balaji Paint & Hardware Depot', phone: '+91 98451 22334', address: 'Old Madras Road, Indiranagar' },
-      { city: 'Bengaluru South', name: 'Chamundi Color World', phone: '+91 98801 44556', address: 'Kanakapura Main Road, JP Nagar' },
-      { city: 'Mysuru', name: 'Cauvery Building Coatings', phone: '+91 94480 33221', address: 'Sayyaji Rao Road' },
-      { city: 'Hubli - Dharwad', name: 'North Karnataka Paint Distributors', phone: '+91 98440 77889', address: 'Station Road, Hubli' },
-    ],
-    Maharashtra: [
-      { city: 'Pune East', name: 'Shree Ganesh Paint Center', phone: '+91 98220 11223', address: 'Kharadi Bypass Road, Hadapsar' },
-      { city: 'Mumbai Suburban', name: 'Maruti Waterproofing & Coatings', phone: '+91 98200 44332', address: 'SV Road, Andheri West' },
-      { city: 'Nashik', name: 'Godavari Color Plaza', phone: '+91 94222 55667', address: 'College Road, Nashik' },
-    ],
-    'Tamil Nadu': [
-      { city: 'Chennai Central', name: 'Meenakshi Paints & Chemicals', phone: '+91 98400 99887', address: 'Poonamallee High Road, Kilpauk' },
-      { city: 'Coimbatore', name: 'Kongu Surface Solutions', phone: '+91 94430 11445', address: 'Avinashi Road, Peelamedu' },
-      { city: 'Madurai', name: 'Pandian Paint House', phone: '+91 98421 66778', address: 'West Veli Street' },
-    ],
-    'Andhra Pradesh': [
-      { city: 'Hyderabad / Secunderabad', name: 'Deccan Coating Systems', phone: '+91 98480 22119', address: 'Kukatpally Main Road' },
-      { city: 'Visakhapatnam', name: 'Coastal Wall Protection Hub', phone: '+91 98491 55662', address: 'Daba Gardens' },
-      { city: 'Vijayawada', name: 'Krishna Paints & Adhesives', phone: '+91 98481 88990', address: 'MG Road, Governorpet' },
-    ],
-  };
+  const ALL_DEALERS: Array<{ pin: string; city: string; state: string; name: string; phone: string; address: string; badges: string[] }> = [
+    { pin: '560038', city: 'Bengaluru Central', state: 'Karnataka', name: 'Sri Balaji Paint & Hardware Depot', phone: '+91 98451 22334', address: 'Plot 42, 100 Feet Road, HAL 2nd Stage, Indiranagar', badges: ['Automated Tinting', 'Putty & Waterproofing', 'Site Delivery'] },
+    { pin: '560078', city: 'Bengaluru South', state: 'Karnataka', name: 'Chamundi Color World', phone: '+91 98801 44556', address: 'Kanakapura Main Road, Near Metro, JP Nagar 6th Phase', badges: ['Computerized Tinting', 'Moisture Survey', 'Express Delivery'] },
+    { pin: '570001', city: 'Mysuru', state: 'Karnataka', name: 'Cauvery Building Coatings', phone: '+91 94480 33221', address: 'Shop 18, Sayyaji Rao Road, Near City Bus Stand', badges: ['Full Architectural Range', 'Contractor Rates'] },
+    { pin: '580020', city: 'Hubli - Dharwad', state: 'Karnataka', name: 'North Karnataka Paint Distributors', phone: '+91 98440 77889', address: '88 Station Road, Opposite Railway Office, Hubli', badges: ['Industrial Putty', 'Regional Master Depot'] },
+    { pin: '400058', city: 'Mumbai Suburban', state: 'Maharashtra', name: 'Maruti Waterproofing & Surface Coatings', phone: '+91 98200 44332', address: 'Shop 4, SV Road, Near Andheri Station, Andheri West', badges: ['Waterproofing Specialist', 'Color Dispenser'] },
+    { pin: '411028', city: 'Pune East', state: 'Maharashtra', name: 'Shree Ganesh Paint Center', phone: '+91 98220 11223', address: 'Bypass Road, Near Magarpatta City, Hadapsar', badges: ['Texture Coatings', 'Same-Day Dispatch'] },
+    { pin: '422005', city: 'Nashik', state: 'Maharashtra', name: 'Godavari Color Plaza', phone: '+91 94222 55667', address: '22 College Road, Near Canada Corner, Nashik', badges: ['Builder Supply', 'Direct Warranty'] },
+    { pin: '600010', city: 'Chennai Central', state: 'Tamil Nadu', name: 'Meenakshi Paints & Chemicals', phone: '+91 98400 99887', address: 'Poonamallee High Road, Near Ega Theatre, Kilpauk', badges: ['Certified Depot', 'Computer Tinting', 'Bulk Stock'] },
+    { pin: '641004', city: 'Coimbatore', state: 'Tamil Nadu', name: 'Kongu Surface Solutions', phone: '+91 94430 11445', address: '450 Avinashi Road, Peelamedu, Coimbatore', badges: ['Exterior Range', 'Site Technical Team'] },
+    { pin: '625001', city: 'Madurai', state: 'Tamil Nadu', name: 'Pandian Paint House', phone: '+91 98421 66778', address: '76 West Veli Street, Near Town Hall, Madurai', badges: ['Primer & Putty', 'Free Shade Card'] },
+    { pin: '500072', city: 'Hyderabad', state: 'Andhra Pradesh', name: 'Deccan Coating Systems', phone: '+91 98480 22119', address: 'Plot 104, Kukatpally Main Road, Near Metro Station', badges: ['Regional Master Hub', 'Same-Day Dispatch'] },
+    { pin: '530020', city: 'Visakhapatnam', state: 'Andhra Pradesh', name: 'Coastal Wall Protection Hub', phone: '+91 98491 55662', address: 'Main Road, Daba Gardens, Near Jagadamba Center', badges: ['Coastal Grade', 'Waterproofing'] },
+    { pin: '520002', city: 'Vijayawada', state: 'Andhra Pradesh', name: 'Krishna Paints & Adhesives', phone: '+91 98481 88990', address: 'MG Road, Governorpet, Opposite Swarna Palace', badges: ['Tile Adhesive', 'Wall Putty'] },
+  ];
 
-  const currentDealers = DEALERS_BY_STATE[selectedState] || [];
+  const POPULAR_PINS = ['560038', '560078', '400058', '411028', '600010', '641004', '500072', '530020'];
+
+  const filteredDealers = ALL_DEALERS.filter((d) => {
+    const matchState = selectedState === 'All' || d.state === selectedState;
+    if (!matchState) return false;
+    const q = pincodeQuery.trim().toLowerCase();
+    if (!q) return true;
+    if (/^\d{1,6}$/.test(q)) {
+      return d.pin === q || d.pin.startsWith(q);
+    }
+    return d.city.toLowerCase().includes(q) || d.name.toLowerCase().includes(q) || d.address.toLowerCase().includes(q);
+  });
 
   const handleBookService = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,12 +71,12 @@ export const DealersAndServices: React.FC = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="font-display text-lg font-bold text-stone-950">Authorised Dealer Locator</h3>
-                <p className="text-xs text-stone-500">Select your state to view verified depot stockists.</p>
+                <p className="text-xs text-stone-500">Enter your 6-digit Pincode or select state to view certified depots.</p>
               </div>
 
               {/* State Filter Buttons */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-                {Object.keys(DEALERS_BY_STATE).map((state) => (
+                {['All', 'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Andhra Pradesh'].map((state) => (
                   <button
                     key={state}
                     onClick={() => setSelectedState(state)}
@@ -88,50 +92,145 @@ export const DealersAndServices: React.FC = () => {
               </div>
             </div>
 
-            {/* Dealers List */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              {currentDealers.map((dealer, i) => (
-                <div
-                  key={i}
-                  className="p-4 rounded-2xl border border-stone-200 bg-stone-50 hover:border-stone-400 hover:bg-white transition-all space-y-2 group"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
-                        {dealer.city}
-                      </span>
-                      <h4 className="text-xs font-bold text-stone-900 group-hover:text-amber-800 transition-colors">
-                        {dealer.name}
-                      </h4>
+            {/* Pincode Input & Quick Chips */}
+            <div className="space-y-3 bg-stone-50 p-4 rounded-2xl border border-stone-200">
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-stone-300 focus-within:ring-2 focus-within:ring-amber-500">
+                <MapPin className="w-4 h-4 text-amber-600 shrink-0" />
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={pincodeQuery}
+                  onChange={(e) => setPincodeQuery(e.target.value)}
+                  placeholder="Type 6-digit Pincode (e.g. 560038, 400058)..."
+                  className="w-full text-xs font-semibold text-stone-900 bg-transparent outline-none placeholder:text-stone-400"
+                />
+                {pincodeQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setPincodeQuery('')}
+                    className="text-stone-400 hover:text-stone-600 text-xs px-1"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Popular Pincode Suggestions */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-stone-500">Popular:</span>
+                {POPULAR_PINS.map((pin) => (
+                  <button
+                    key={pin}
+                    type="button"
+                    onClick={() => setPincodeQuery(pin)}
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border transition-all ${
+                      pincodeQuery === pin
+                        ? 'bg-amber-600 text-white border-amber-600'
+                        : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
+                    }`}
+                  >
+                    {pin}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Results Output */}
+            {filteredDealers.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                {filteredDealers.map((dealer, i) => (
+                  <div
+                    key={i}
+                    className="p-4 rounded-2xl border border-stone-200 bg-stone-50 hover:border-stone-400 hover:bg-white transition-all space-y-2 group"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                            {dealer.city}
+                          </span>
+                          <span className="text-[9px] bg-amber-100 text-amber-800 font-extrabold px-1.5 py-0.5 rounded">
+                            PIN {dealer.pin}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-stone-900 group-hover:text-amber-800 transition-colors mt-0.5">
+                          {dealer.name}
+                        </h4>
+                      </div>
+                      <MapPin className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
                     </div>
-                    <MapPin className="w-4 h-4 text-stone-400 group-hover:text-amber-600 transition-colors shrink-0" />
+
+                    <p className="text-[11px] text-stone-500 leading-snug">
+                      {dealer.address}
+                    </p>
+
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {dealer.badges.map((b, bi) => (
+                        <span key={bi} className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {b}
+                        </span>
+                      ))}
+                    </div>
+
+                    <div className="pt-2 border-t border-stone-200/80 flex items-center justify-between">
+                      <a
+                        href={`tel:${dealer.phone}`}
+                        className="text-xs font-semibold text-stone-800 hover:text-amber-700 flex items-center gap-1"
+                      >
+                        <Phone className="w-3 h-3 text-amber-600" />
+                        <span>{dealer.phone}</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/${dealer.phone.replace(/[^0-9]/g, '')}?text=Hello ${dealer.name}, I need Areva Paints stock in PIN ${dealer.pin}.`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-semibold text-emerald-700 hover:underline flex items-center gap-1"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </div>
                   </div>
-
-                  <p className="text-[11px] text-stone-500 leading-snug">
-                    {dealer.address}
-                  </p>
-
-                  <div className="pt-2 border-t border-stone-200/80 flex items-center justify-between">
-                    <a
-                      href={`tel:${dealer.phone}`}
-                      className="text-xs font-semibold text-stone-800 hover:text-amber-700 flex items-center gap-1"
-                    >
-                      <Phone className="w-3 h-3 text-amber-600" />
-                      <span>{dealer.phone}</span>
-                    </a>
-                    <a
-                      href={`https://wa.me/${dealer.phone.replace(/[^0-9]/g, '')}?text=Hello, I need Areva Paints stock availability.`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-semibold text-emerald-700 hover:underline flex items-center gap-1"
-                    >
-                      <MessageSquare className="w-3 h-3" />
-                      <span>WhatsApp</span>
-                    </a>
+                ))}
+              </div>
+            ) : (
+              /* Unserved Pincode Card with Head Office Mobile Fallback */
+              <div className="p-5 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50/60 space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0">
+                    📍
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900">
+                      No Authorised Retail Depot in Pincode "{pincodeQuery}" Yet
+                    </h4>
+                    <p className="text-xs text-stone-600 mt-1 leading-relaxed">
+                      We do not have a retail store in this pincode yet, but <b>Areva Paints ships factory-direct with door delivery across India</b>! You can contact our Head Office directly for immediate dispatch:
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  <a
+                    href="tel:+919876543210"
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-stone-950 text-white font-bold text-xs hover:bg-stone-800 transition-colors shadow-sm"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Call Head Office: +91 98765 43210</span>
+                  </a>
+
+                  <a
+                    href={`https://wa.me/919876543210?text=Hello Areva Paints Head Office, I am looking for paints in pincode ${pincodeQuery}. Please guide on direct factory delivery.`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 p-3 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-sm"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>WhatsApp Head Office</span>
+                  </a>
+                </div>
+              </div>
+            )}
 
           </div>
 

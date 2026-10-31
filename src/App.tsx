@@ -17,7 +17,7 @@ import { SwatchSampleOrderModal } from './components/SwatchSampleOrderModal';
 import { PainterLoyaltyPortal } from './components/PainterLoyaltyPortal';
 import { ProjectDownloadModal } from './components/ProjectDownloadModal';
 import { AttachedPageViewer } from './components/AttachedPageViewer';
-import { DrivingBubble } from './components/DrivingBubble';
+import { ColorSplashArcade } from './components/ColorSplashArcade';
 import { Footer } from './components/Footer';
 import { MessageSquare, ArrowUp } from 'lucide-react';
 
@@ -337,8 +337,15 @@ export default function App() {
         </button>
       )}
 
-      {/* Driving Bubble in React Mode */}
-      {viewMode !== 'attached' && <DrivingBubble />}
+      {/* Dedicated Color Splash Arcade Mini-Game (Non-disturbing Launcher & Modal) */}
+      {viewMode !== 'attached' && (
+        <ColorSplashArcade
+          onApplyPaletteToVisualizer={(shadeHex) => {
+            scrollToSection('visualizer');
+            setSelectedColorHex(shadeHex);
+          }}
+        />
+      )}
 
     </div>
   );

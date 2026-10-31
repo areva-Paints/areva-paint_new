@@ -105,6 +105,29 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     img.src = activePreset.imageUrl;
   }, [activePreset]);
 
+  // When selectedColorHex changes in a preset room, re-render cleanly from pristine original
+  useEffect(() => {
+    if (isCustomPhoto || !activePreset.accentCoordinates) return;
+    const canvas = canvasRef.current;
+    const origCanvas = originalCanvasRef.current;
+    if (!canvas || !origCanvas) return;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const origCtx = origCanvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx || !origCtx) return;
+
+    const origData = origCtx.getImageData(0, 0, origCanvas.width, origCanvas.height);
+    ctx.putImageData(origData, 0, 0);
+
+    const timer = setTimeout(() => {
+      applyPaintAt(
+        activePreset.accentCoordinates![0] * (canvas.width / 960),
+        activePreset.accentCoordinates![1] * (canvas.height / 540)
+      );
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [selectedColorHex]);
+
   // Handle Photo Upload
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
