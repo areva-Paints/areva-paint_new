@@ -427,7 +427,7 @@ export const ROOM_PRESETS: RoomPreset[] = [
     imageUrl: '/assets/images/room_visualizer_living_1793203848949.jpg',
     defaultWallHex: '#e9e3d7',
     defaultWallName: 'Calm Linen',
-    accentCoordinates: [480, 220],
+    accentCoordinates: [480, 200],
   },
   {
     id: 'master-bedroom',
@@ -436,7 +436,16 @@ export const ROOM_PRESETS: RoomPreset[] = [
     imageUrl: '/assets/images/room_visualizer_bedroom_1793203849707.jpg',
     defaultWallHex: '#587b68',
     defaultWallName: 'Coorg Eucalyptus',
-    accentCoordinates: [450, 180],
+    accentCoordinates: [450, 160],
+  },
+  {
+    id: 'kitchen-studio',
+    name: 'Kitchen Studio',
+    category: 'Interior',
+    imageUrl: '/assets/images/room_visualizer_kitchen.jpg',
+    defaultWallHex: '#f4efe6',
+    defaultWallName: 'Pearl White',
+    accentCoordinates: [220, 160],
   },
   {
     id: 'modern-villa',
@@ -445,6 +454,15 @@ export const ROOM_PRESETS: RoomPreset[] = [
     imageUrl: '/assets/images/room_visualizer_exterior_1793203850484.jpg',
     defaultWallHex: '#b9bfcc',
     defaultWallName: 'Mist Grey',
-    accentCoordinates: [360, 280],
+    accentCoordinates: [340, 240],
+  },
+  {
+    id: 'office-studio',
+    name: 'Architectural Studio & Office',
+    category: 'Interior',
+    imageUrl: '/assets/images/hero_architectural_living_1793203849445.jpg',
+    defaultWallHex: '#e3cfa8',
+    defaultWallName: 'Sand Dune',
+    accentCoordinates: [450, 180],
   },
 ];

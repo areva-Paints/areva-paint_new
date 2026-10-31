@@ -407,7 +407,9 @@ app.get(['/attached-page', '/areva-html', '/attached-version'], (_req: Request, 
 
 // ==========================================
 // VITE DEV SERVER / PRODUCTION STATIC SERVER
-// ==========================================
+// Serve public assets directory directly
+app.use(express.static(path.resolve(__dirname, 'public')));
+
 async function startServer() {
   if (!isProd) {
     // In dev: mount Vite middlewares so HMR and SPA routing work together on port 3000

@@ -199,12 +199,18 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const d = origImageData.data;
     const o = currentImageData.data;
 
-    const startIndex = (Math.floor(y) * width + Math.floor(x)) * 4;
+    const clampX = Math.max(0, Math.min(width - 1, Math.floor(x)));
+    const clampY = Math.max(0, Math.min(height - 1, Math.floor(y)));
+
+    const startIndex = (clampY * width + clampX) * 4;
     const seedR = d[startIndex];
     const seedG = d[startIndex + 1];
     const seedB = d[startIndex + 2];
+    const seedSum = seedR + seedG + seedB + 0.001;
+    const seedNormR = seedR / seedSum;
+    const seedNormG = seedG / seedSum;
 
-    const seedLum = Math.max(0.12, (0.299 * seedR + 0.587 * seedG + 0.114 * seedB) / 255);
+    const seedLum = Math.max(0.08, (0.299 * seedR + 0.587 * seedG + 0.114 * seedB) / 255);
 
     const cleanHex = selectedColorHex.replace('#', '');
     const targetInt = parseInt(cleanHex, 16);
@@ -212,40 +218,72 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const targetG = (targetInt >> 8) & 255;
     const targetB = targetInt & 255;
 
-    const tolSq = tolerance * tolerance * 3;
+    const effectiveTol = Math.max(18, tolerance || 28);
+    const tolSq = effectiveTol * effectiveTol * 3;
+    const chromaTol = 0.11 + (effectiveTol / 160);
+    const stepTolSq = 36 * 36 * 3;
+
     const visited = new Uint8Array(width * height);
-    const stack: number[] = [Math.floor(y) * width + Math.floor(x)];
+    const queue = new Int32Array(width * height);
+    let qStart = 0, qEnd = 0;
+
+    const seedPos = clampY * width + clampX;
+    queue[qEnd++] = seedPos;
+    visited[seedPos] = 1;
 
     let paintedPixels = 0;
 
-    while (stack.length > 0) {
-      const p = stack.pop()!;
-      if (visited[p]) continue;
-      visited[p] = 1;
-
+    while (qStart < qEnd) {
+      const p = queue[qStart++];
+      const px = p % width;
+      const py = Math.floor(p / width);
       const idx = p * 4;
-      const dr = d[idx] - seedR;
-      const dg = d[idx + 1] - seedG;
-      const db = d[idx + 2] - seedB;
 
-      if (dr * dr + dg * dg + db * db > tolSq) continue;
+      const pr = d[idx], pg = d[idx + 1], pb = d[idx + 2];
+      const pixelLum = (0.299 * pr + 0.587 * pg + 0.114 * pb) / 255;
+      const lumRatio = pixelLum / seedLum;
+      const factor = Math.min(1.42, Math.max(0.32, lumRatio));
 
-      const pixelLum = (0.299 * d[idx] + 0.587 * d[idx + 1] + 0.114 * d[idx + 2]) / 255;
-      const lumRatio = Math.min(1.4, Math.max(0.4, pixelLum / seedLum));
-
-      o[idx] = Math.min(255, Math.round(targetR * lumRatio));
-      o[idx + 1] = Math.min(255, Math.round(targetG * lumRatio));
-      o[idx + 2] = Math.min(255, Math.round(targetB * lumRatio));
+      o[idx] = Math.min(255, Math.round(targetR * factor));
+      o[idx + 1] = Math.min(255, Math.round(targetG * factor));
+      o[idx + 2] = Math.min(255, Math.round(targetB * factor));
       paintedPixels++;
 
-      const px = p % width;
-      if (px > 0) stack.push(p - 1);
-      if (px < width - 1) stack.push(p + 1);
-      if (p >= width) stack.push(p - width);
-      if (p < width * (height - 1)) stack.push(p + width);
+      const neighbors = [
+        px > 0 ? p - 1 : -1,
+        px < width - 1 ? p + 1 : -1,
+        py > 0 ? p - width : -1,
+        py < height - 1 ? p + width : -1
+      ];
+
+      for (let n = 0; n < 4; n++) {
+        const np = neighbors[n];
+        if (np === -1 || visited[np]) continue;
+
+        const ni = np * 4;
+        const nr = d[ni], ng = d[ni + 1], nb = d[ni + 2];
+
+        // Edge step tolerance
+        const sdr = nr - pr, sdg = ng - pg, sdb = nb - pb;
+        if (sdr * sdr + sdg * sdg + sdb * sdb > stepTolSq) continue;
+
+        // Chromaticity & color distance
+        const dr = nr - seedR, dg = ng - seedG, db = nb - seedB;
+        const distSq = dr * dr + dg * dg + db * db;
+
+        const nSum = nr + ng + nb + 0.001;
+        const nNormR = nr / nSum;
+        const nNormG = ng / nSum;
+        const cDist = Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
+
+        if (distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.4)) {
+          visited[np] = 1;
+          queue[qEnd++] = np;
+        }
+      }
     }
 
-    if (paintedPixels < 40) {
+    if (paintedPixels < 25) {
       setStatusMessage('Point was too small or on an edge. Try tapping firmly on an open wall.');
       return;
     }
@@ -262,16 +300,26 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     });
   };
 
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleCanvasInteraction = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
+    const x = ((clientX - rect.left) / rect.width) * canvas.width;
+    const y = ((clientY - rect.top) / rect.height) * canvas.height;
 
     setLastTappedCoords({ x, y });
     applyPaintAt(x, y);
+  };
+
+  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    handleCanvasInteraction(e.clientX, e.clientY);
+  };
+
+  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+      handleCanvasInteraction(e.clientX, e.clientY);
+    }
   };
 
   const handleUndo = () => {
@@ -482,6 +530,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               <canvas
                 ref={canvasRef}
                 onClick={handleCanvasClick}
+                onPointerDown={handleCanvasPointerDown}
                 className="w-full h-auto block cursor-crosshair touch-manipulation max-h-[540px] object-contain mx-auto"
                 style={{
                   clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,

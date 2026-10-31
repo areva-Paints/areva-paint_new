@@ -281,18 +281,21 @@ h2::after{content:"";display:block;height:8px;width:96px;border-radius:99px;marg
 .arr{position:absolute;top:50%;transform:translateY(-50%);z-index:6;width:46px;height:46px;border-radius:50%;border:0;background:rgba(255,255,255,.92);color:#a01c43;font-size:1.8rem;line-height:1;cursor:pointer;box-shadow:0 6px 16px rgba(0,0,0,.25)}.prev{left:12px}.nxt{right:12px}
 .ctrl button{background:rgba(255,255,255,.5)}.ctrl button[aria-current="true"]{background:#ffc233}
 @media(max-width:768px){
-  .hero{padding:.4rem 0 1rem}
-  .slider{border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.18)}
-  .slide{min-height:auto;padding:1.2rem 1rem 2.6rem}
-  .slide.pic{min-height:auto;padding:0}
-  .slide.pic img{width:100%;height:auto;max-height:45vh;object-fit:cover;border-radius:18px}
-  .slide.bright{min-height:auto;padding:1.4rem 1rem 3rem}
-  .slide.bright h1{font-size:clamp(1.5rem,4.8vw,2.2rem)}
-  .stage{grid-template-columns:1fr 1fr;margin:.6rem 0}
+  .hero{padding:.4rem 0 .8rem!important}
+  .slider{height:clamp(220px,58vw,360px);border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,0.18);position:relative;overflow:hidden}
+  .track{height:100%;display:flex}
+  .slide{height:100%;min-height:100%;padding:1rem 1rem 2.6rem;box-sizing:border-box}
+  .slide.pic{height:100%;min-height:100%;padding:0;background:transparent;overflow:hidden}
+  .slide.pic img{width:100%;height:100%;object-fit:cover;object-position:center;border-radius:18px;display:block}
+  .slide.bright{height:100%;min-height:100%;padding:1.2rem 1rem 2.6rem;overflow-y:auto}
+  .slide.bright h1{font-size:clamp(1.4rem,4.6vw,2rem);margin:0 0 .3rem}
+  .slide.bright .sub{margin:.2rem 0 .4rem;font-size:.9rem}
+  .stage{grid-template-columns:1fr 1fr;margin:.4rem 0}
   .spot{grid-column:1/-1;order:-1}
-  .bds{grid-auto-flow:column;justify-content:center;gap:.5rem}
-  .bd{width:min(21vw,90px)}
-  .arr{width:34px;height:34px;top:44%;font-size:1.4rem}
+  .bds{grid-auto-flow:column;justify-content:center;gap:.4rem}
+  .bd{width:min(18vw,75px);font-size:.7rem;padding:.2rem}
+  .bd i{font-size:1.2rem}
+  .arr{width:32px;height:32px;top:44%;font-size:1.3rem}
   .stats{grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.8rem}
   .stat{padding:.8rem 1rem;border-radius:16px}
   .stat b{font-size:1.5rem}
@@ -312,6 +315,7 @@ header .btn-main,.slide.bright .btn-main{background:#ffc233;color:#5b0f27;box-sh
 header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;border-color:rgba(255,255,255,.7)}
 .topbar{background:rgba(0,0,0,.22);font-size:.85rem}.topbar .wrap{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0}
 .hero{padding:1.2rem 0 2rem;background:var(--maroon);box-shadow:0 0 0 100vmax var(--maroon);clip-path:inset(0 -100vmax)}
+@media(max-width:768px){.hero{padding:.4rem 0 .8rem!important}}
 
 /* calculator, camera chip, hidden fix */
 [hidden]{display:none!important}
@@ -1282,208 +1286,43 @@ $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c
   }
 })();
 
-/* Flawless Room Visualizer: Layer-composite wall painting, crisp architectural rooms, before/after slider and custom home photo upload */
+/* Flawless Room Visualizer: Layer-composite wall painting, real photographic architectural rooms, before/after slider and custom home photo upload */
 const cv=$("#cv"),cx=cv.getContext("2d",{willReadFrequently:true});
 const cv0=$("#cv0"),cx0=cv0.getContext("2d",{willReadFrequently:true});
 const splitBar=$("#splitBar"),beforeTag=$("#beforeTag"),afterTag=$("#afterTag");
 let orig=null,hist=[],paintedRegions=[],snap=null,rm=0;
 
-/* Clean architectural room presets */
+/* Real architectural room presets */
 const SC=[
   {
-    n:'Living room',
+    n:'Scandinavian Living',
     g:0,
-    seeds:[[350,180],[120,200],[780,200]],
-    svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 520'>
-      <!-- Main wall -->
-      <rect x='0' y='0' width='900' height='380' fill='#ede6d6'/>
-      <!-- Ceiling molding -->
-      <rect x='0' y='0' width='900' height='26' fill='#faf8f5'/>
-      <rect x='0' y='26' width='900' height='5' fill='#d3cbba'/>
-      <!-- Baseboard & Hardwood Floor -->
-      <rect x='0' y='375' width='900' height='12' fill='#faf8f5'/>
-      <rect x='0' y='387' width='900' height='133' fill='#9c6843'/>
-      <!-- Floor planks detail -->
-      <path d='M0 430h900M0 475h900M220 387v43M580 387v43M110 430v45M450 430v45M760 430v45M300 475v45M660 475v45' stroke='#845431' stroke-width='2' opacity='0.4'/>
-      <!-- Large Modern Window with daylight -->
-      <rect x='60' y='65' width='220' height='260' fill='#bfe3f7' stroke='#faf8f5' stroke-width='14'/>
-      <rect x='165' y='65' width='10' height='260' fill='#faf8f5'/>
-      <rect x='60' y='190' width='220' height='10' fill='#faf8f5'/>
-      <!-- Window sunlight cast on floor -->
-      <polygon points='60,325 280,325 380,520 120,520' fill='#ffffff' opacity='0.18'/>
-      <!-- Contemporary Art Canvas on wall -->
-      <rect x='360' y='60' width='180' height='120' fill='#fff' stroke='#333' stroke-width='6' rx='4'/>
-      <rect x='375' y='75' width='70' height='90' fill='#ffb800' opacity='0.9'/>
-      <circle cx='470' cy='120' r='35' fill='#ff5a5f' opacity='0.85'/>
-      <rect x='410' y='110' width='80' height='40' fill='#0fb5a2' opacity='0.8'/>
-      <!-- Modern Designer Sofa -->
-      <rect x='280' y='250' width='340' height='130' fill='#2f3b5c' rx='22'/>
-      <rect x='260' y='290' width='50' height='90' fill='#242d47' rx='16'/>
-      <rect x='590' y='290' width='50' height='90' fill='#242d47' rx='16'/>
-      <rect x='305' y='320' width='290' height='60' fill='#283350' rx='12'/>
-      <!-- Sofa Cushions -->
-      <rect x='320' y='280' width='65' height='55' fill='#ff6b5e' rx='10'/>
-      <rect x='515' y='280' width='65' height='55' fill='#ffb800' rx='10'/>
-      <!-- Sofa wooden legs -->
-      <rect x='290' y='380' width='12' height='25' fill='#6b4226'/>
-      <rect x='598' y='380' width='12' height='25' fill='#6b4226'/>
-      <!-- Minimalist Arc Floor Lamp -->
-      <path d='M750 380 Q760 140 680 120' fill='none' stroke='#222' stroke-width='5'/>
-      <path d='M650 120 h60 l-15 -35 h-30 z' fill='#e2cf9f'/>
-      <circle cx='750' cy='385' r='18' fill='#222'/>
-      <circle cx='680' cy='125' r='20' fill='#fffae6' opacity='0.35'/>
-    </svg>`
+    seeds:[[480,180],[200,180],[720,180]],
+    img:'/assets/images/room_visualizer_living_1793203848949.jpg'
   },
   {
     n:'Master Bedroom',
     g:0,
-    seeds:[[450,150],[120,200],[780,200]],
-    svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 520'>
-      <!-- Bedroom feature wall -->
-      <rect x='0' y='0' width='900' height='390' fill='#e7dfd5'/>
-      <rect x='0' y='0' width='900' height='24' fill='#faf8f5'/>
-      <!-- Decorative vertical wall slat trims -->
-      <line x1='120' y1='24' x2='120' y2='390' stroke='#d2c7b8' stroke-width='3'/>
-      <line x1='240' y1='24' x2='240' y2='390' stroke='#d2c7b8' stroke-width='3'/>
-      <line x1='660' y1='24' x2='660' y2='390' stroke='#d2c7b8' stroke-width='3'/>
-      <line x1='780' y1='24' x2='780' y2='390' stroke='#d2c7b8' stroke-width='3'/>
-      <!-- Carpeted Floor -->
-      <rect x='0' y='385' width='900' height='135' fill='#b8ad9e'/>
-      <!-- Plush Rug under bed -->
-      <ellipse cx='450' cy='460' rx='340' ry='48' fill='#d8cfc4'/>
-      <!-- Headboard -->
-      <rect x='200' y='170' width='500' height='170' fill='#54463a' rx='14'/>
-      <rect x='220' y='185' width='460' height='140' fill='#6d5b4d' rx='10'/>
-      <!-- Pillows -->
-      <rect x='250' y='275' width='100' height='45' fill='#faf8f5' rx='10'/>
-      <rect x='365' y='275' width='100' height='45' fill='#faf8f5' rx='10'/>
-      <rect x='480' y='275' width='100' height='45' fill='#ff6b5e' rx='10'/>
-      <!-- Bed & Crisp Duvet -->
-      <rect x='210' y='310' width='480' height='130' fill='#f4f1ea' rx='16'/>
-      <rect x='210' y='360' width='480' height='80' fill='#2d9cff' rx='8'/>
-      <!-- Nightstands -->
-      <rect x='90' y='290' width='90' height='100' fill='#3a2e25' rx='6'/>
-      <rect x='720' y='290' width='90' height='100' fill='#3a2e25' rx='6'/>
-      <!-- Table Lamps with soft warm glow -->
-      <rect x='125' y='250' width='20' height='40' fill='#b59365'/>
-      <polygon points='115,250 155,250 145,215 125,215' fill='#fff5d6'/>
-      <circle cx='135' cy='232' r='25' fill='#fff3cc' opacity='0.35'/>
-      <rect x='755' y='250' width='20' height='40' fill='#b59365'/>
-      <polygon points='745,250 785,250 775,215 755,215' fill='#fff5d6'/>
-      <circle cx='765' cy='232' r='25' fill='#fff3cc' opacity='0.35'/>
-    </svg>`
+    seeds:[[450,160],[220,160],[720,160]],
+    img:'/assets/images/room_visualizer_bedroom_1793203849707.jpg'
   },
   {
     n:'Kitchen Studio',
     g:0,
-    seeds:[[350,120],[100,120],[800,120]],
-    svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 520'>
-      <!-- Upper Wall Area -->
-      <rect x='0' y='0' width='900' height='260' fill='#ebe3d5'/>
-      <rect x='0' y='0' width='900' height='20' fill='#faf8f5'/>
-      <!-- Tile Backsplash band -->
-      <rect x='0' y='220' width='900' height='110' fill='#d8e2dc'/>
-      <!-- Backsplash tiles lines -->
-      <path d='M0 245h900M0 270h900M0 295h900M0 320h900' stroke='#bcc7c1' stroke-width='1.5'/>
-      <!-- Kitchen Granite Countertop -->
-      <rect x='0' y='325' width='900' height='22' fill='#2c2e33'/>
-      <!-- Lower Cabinets -->
-      <rect x='0' y='347' width='900' height='173' fill='#475569'/>
-      <!-- Cabinet Doors & Handles -->
-      <rect x='30' y='360' width='180' height='140' fill='#334155' rx='4'/>
-      <rect x='240' y='360' width='180' height='140' fill='#334155' rx='4'/>
-      <rect x='480' y='360' width='180' height='140' fill='#334155' rx='4'/>
-      <rect x='690' y='360' width='180' height='140' fill='#334155' rx='4'/>
-      <rect x='110' y='375' width='20' height='6' fill='#cbd5e1' rx='2'/>
-      <rect x='320' y='375' width='20' height='6' fill='#cbd5e1' rx='2'/>
-      <rect x='560' y='375' width='20' height='6' fill='#cbd5e1' rx='2'/>
-      <rect x='770' y='375' width='20' height='6' fill='#cbd5e1' rx='2'/>
-      <!-- Upper Floating Shelves with jars -->
-      <rect x='80' y='95' width='320' height='14' fill='#8a5833' rx='3'/>
-      <rect x='110' y='55' width='30' height='40' fill='#0fb5a2' rx='4'/>
-      <rect x='160' y='45' width='35' height='50' fill='#ffb800' rx='4'/>
-      <rect x='220' y='55' width='25' height='40' fill='#ff5a5f' rx='4'/>
-      <!-- Kitchen Window with garden view -->
-      <rect x='480' y='50' width='220' height='150' fill='#bfe3f7' stroke='#faf8f5' stroke-width='12'/>
-      <circle cx='540' cy='120' r='30' fill='#8cd450' opacity='0.7'/>
-      <circle cx='620' cy='130' r='35' fill='#52b788' opacity='0.7'/>
-    </svg>`
+    seeds:[[200,180],[320,120],[760,220]],
+    img:'/assets/images/room_visualizer_kitchen.jpg'
   },
   {
     n:'Villa Exterior',
     g:1,
-    seeds:[[350,260],[650,260],[350,150]],
-    svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 520'>
-      <!-- Sky Background -->
-      <rect x='0' y='0' width='900' height='380' fill='#7ac2f5'/>
-      <circle cx='760' cy='90' r='48' fill='#ffc233'/>
-      <!-- Lush Lawn Grass -->
-      <rect x='0' y='380' width='900' height='140' fill='#4e9b38'/>
-      <!-- Paved Stone Entry Walkway -->
-      <polygon points='380,380 520,380 620,520 280,520' fill='#c8c2b5'/>
-      <!-- Two-Story Villa Facade Main Walls -->
-      <rect x='150' y='130' width='600' height='255' fill='#f0e8d8'/>
-      <!-- Architectural Corner Ashlar Stones -->
-      <rect x='150' y='130' width='22' height='255' fill='#d9cfbd'/>
-      <rect x='728' y='130' width='22' height='255' fill='#d9cfbd'/>
-      <!-- Sloped Terracotta Tiled Roof -->
-      <polygon points='110,135 450,25 790,135' fill='#a83e2c'/>
-      <polygon points='125,135 450,40 775,135' fill='#ba4935'/>
-      <!-- Upper Floor Windows with White Surrounds -->
-      <rect x='230' y='170' width='100' height='90' fill='#6bbbe8' stroke='#faf8f5' stroke-width='10' rx='4'/>
-      <rect x='570' y='170' width='100' height='90' fill='#6bbbe8' stroke='#faf8f5' stroke-width='10' rx='4'/>
-      <!-- Ground Floor Windows -->
-      <rect x='210' y='290' width='110' height='80' fill='#6bbbe8' stroke='#faf8f5' stroke-width='10' rx='4'/>
-      <rect x='580' y='290' width='110' height='80' fill='#6bbbe8' stroke='#faf8f5' stroke-width='10' rx='4'/>
-      <!-- Teak Front Door with Portico -->
-      <rect x='410' y='275' width='80' height='110' fill='#5c3519' rx='4'/>
-      <circle cx='422' cy='330' r='5' fill='#ffd34d'/>
-      <!-- Entry Pillars -->
-      <rect x='385' y='265' width='16' height='120' fill='#faf8f5'/>
-      <rect x='499' y='265' width='16' height='120' fill='#faf8f5'/>
-      <rect x='375' y='255' width='150' height='14' fill='#faf8f5' rx='3'/>
-      <!-- Ornamental Garden Bushes -->
-      <circle cx='130' cy='390' r='38' fill='#2d7522'/>
-      <circle cx='770' cy='390' r='38' fill='#2d7522'/>
-    </svg>`
+    seeds:[[340,240],[560,240],[450,160]],
+    img:'/assets/images/room_visualizer_exterior_1793203850484.jpg'
   },
   {
-    n:'Office &amp; Studio',
+    n:'Office & Studio',
     g:0,
-    seeds:[[380,180],[100,180],[800,180]],
-    svg:`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 520'>
-      <!-- Studio Primary Wall -->
-      <rect x='0' y='0' width='900' height='385' fill='#e2ddd3'/>
-      <rect x='0' y='0' width='900' height='22' fill='#faf8f5'/>
-      <!-- Light Scandinavian Floor -->
-      <rect x='0' y='380' width='900' height='140' fill='#c9b299'/>
-      <path d='M0 425h900M0 470h900M300 380v45M650 380v45M150 425v45M500 425v45M800 425v45' stroke='#b39b82' stroke-width='2' opacity='0.4'/>
-      <!-- Tall Bookshelf on Left -->
-      <rect x='40' y='50' width='200' height='335' fill='#3e2e23' rx='6'/>
-      <rect x='55' y='65' width='170' height='45' fill='#291e16'/>
-      <rect x='55' y='125' width='170' height='45' fill='#291e16'/>
-      <rect x='55' y='185' width='170' height='45' fill='#291e16'/>
-      <rect x='55' y='245' width='170' height='45' fill='#291e16'/>
-      <!-- Colorful Books -->
-      <rect x='65' y='72' width='15' height='38' fill='#ff5a5f'/>
-      <rect x='82' y='68' width='20' height='42' fill='#ffb800'/>
-      <rect x='105' y='75' width='16' height='35' fill='#0fb5a2'/>
-      <rect x='125' y='70' width='22' height='40' fill='#6c4cf5'/>
-      <!-- Studio Minimalist Work Desk -->
-      <rect x='320' y='270' width='360' height='20' fill='#2b2d42' rx='4'/>
-      <rect x='345' y='290' width='10' height='100' fill='#111'/>
-      <rect x='645' y='290' width='10' height='100' fill='#111'/>
-      <!-- Laptop on Desk -->
-      <rect x='450' y='240' width='90' height='30' fill='#94a3b8' rx='2'/>
-      <polygon points='435,270 555,270 545,264 445,264' fill='#cbd5e1'/>
-      <!-- Modern Task Lamp -->
-      <path d='M360 270 L380 190 L420 200' fill='none' stroke='#ffb800' stroke-width='4'/>
-      <circle cx='425' cy='202' r='14' fill='#ffb800'/>
-      <!-- Potted Fiddle Leaf Plant on Right -->
-      <rect x='740' y='330' width='55' height='55' fill='#fff' stroke='#ddd' stroke-width='3' rx='6'/>
-      <path d='M768 330 Q740 220 720 200 Q780 230 768 330' fill='#2d6a4f'/>
-      <path d='M768 330 Q790 200 820 180 Q810 240 768 330' fill='#40916c'/>
-    </svg>`
+    seeds:[[450,180],[220,180],[720,180]],
+    img:'/assets/images/hero_architectural_living_1793203849445.jpg'
   }
 ];
 
@@ -1499,44 +1338,90 @@ function rooms(){
   $("#rooms").innerHTML=h+'<button class="chip" type="button" id="mine" aria-pressed="'+(rm===-1)+'">Upload Photo</button><button class="chip live" type="button" id="camb" aria-pressed="'+(rm===-2)+'">📷 Live Camera AR</button>';
 }
 
-/* Flood Fill with luminance preservation */
+/* High-fidelity adaptive wall recoloring for real photographs */
 function floodFillWall(targetImg, origImg, startX, startY, hex, tol){
   const w=targetImg.width, h=targetImg.height;
   const d=origImg.data, o=targetImg.data;
   const tc=parseInt(hex.replace("#",""),16);
-  const tr=tc>>16, tg=(tc>>8)&255, tb=tc&255;
-  const tolSq=tol*tol*3;
-  const vis=new Uint8Array(w*h);
-  const st=[startY*w+startX];
+  const tr=(tc>>16)&255, tg=(tc>>8)&255, tb=tc&255;
 
-  const i0=st[0]*4;
-  const sr=d[i0], sg=d[i0+1], sb=d[i0+2];
-  const seedLum=Math.max(0.12, (0.299*sr + 0.587*sg + 0.114*sb)/255);
+  const clampX = Math.max(0, Math.min(w - 1, Math.floor(startX)));
+  const clampY = Math.max(0, Math.min(h - 1, Math.floor(startY)));
 
-  let count=0;
-  while(st.length>0){
-    const p=st.pop();
-    if(vis[p])continue;
-    vis[p]=1;
+  const startIndex = (clampY * w + clampX) * 4;
+  const seedR = d[startIndex], seedG = d[startIndex+1], seedB = d[startIndex+2];
+  const seedSum = seedR + seedG + seedB + 0.001;
+  const seedNormR = seedR / seedSum;
+  const seedNormG = seedG / seedSum;
+  const seedLum = Math.max(0.08, (0.299*seedR + 0.587*seedG + 0.114*seedB) / 255);
 
-    const i=p*4;
-    const dr=d[i]-sr, dg=d[i+1]-sg, db=d[i+2]-sb;
-    if(dr*dr + dg*dg + db*db > tolSq) continue;
+  const effectiveTol = Math.max(18, tol || 28);
+  const tolSq = effectiveTol * effectiveTol * 3;
+  const chromaTol = 0.11 + (effectiveTol / 160);
+  const stepTolSq = 36 * 36 * 3;
 
-    const pixLum=(0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2])/255;
-    const lumRatio=Math.min(1.45, Math.max(0.35, pixLum / seedLum));
+  const vis = new Uint8Array(w * h);
+  const queue = new Int32Array(w * h);
+  let qStart = 0, qEnd = 0;
 
-    o[i]=Math.min(255, Math.round(tr * lumRatio));
-    o[i+1]=Math.min(255, Math.round(tg * lumRatio));
-    o[i+2]=Math.min(255, Math.round(tb * lumRatio));
+  const seedPos = clampY * w + clampX;
+  queue[qEnd++] = seedPos;
+  vis[seedPos] = 1;
+
+  let count = 0;
+
+  while(qStart < qEnd){
+    const p = queue[qStart++];
+    const px = p % w;
+    const py = Math.floor(p / w);
+    const i = p * 4;
+
+    const pr = d[i], pg = d[i+1], pb = d[i+2];
+    const pixLum = (0.299*pr + 0.587*pg + 0.114*pb) / 255;
+
+    // Natural architectural modulation preserving textures & ambient light
+    const lumRatio = pixLum / seedLum;
+    const factor = Math.min(1.42, Math.max(0.32, lumRatio));
+
+    o[i] = Math.min(255, Math.max(0, Math.round(tr * factor)));
+    o[i+1] = Math.min(255, Math.max(0, Math.round(tg * factor)));
+    o[i+2] = Math.min(255, Math.max(0, Math.round(tb * factor)));
     count++;
 
-    const px=p%w;
-    if(px>0) st.push(p-1);
-    if(px<w-1) st.push(p+1);
-    if(p>=w) st.push(p-w);
-    if(p<w*(h-1)) st.push(p+w);
+    const neighbors = [
+      px > 0 ? p - 1 : -1,
+      px < w - 1 ? p + 1 : -1,
+      py > 0 ? p - w : -1,
+      py < h - 1 ? p + w : -1
+    ];
+
+    for(let n = 0; n < 4; n++){
+      const np = neighbors[n];
+      if(np === -1 || vis[np]) continue;
+
+      const ni = np * 4;
+      const nr = d[ni], ng = d[ni+1], nb = d[ni+2];
+
+      // Edge barrier step threshold
+      const sdr = nr - pr, sdg = ng - pg, sdb = nb - pb;
+      if(sdr*sdr + sdg*sdg + sdb*sdb > stepTolSq) continue;
+
+      // Global color & chromaticity checks
+      const dr = nr - seedR, dg = ng - seedG, db = nb - seedB;
+      const distSq = dr*dr + dg*dg + db*db;
+
+      const nSum = nr + ng + nb + 0.001;
+      const nNormR = nr / nSum;
+      const nNormG = ng / nSum;
+      const cDist = Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
+
+      if(distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.4)){
+        vis[np] = 1;
+        queue[qEnd++] = np;
+      }
+    }
   }
+
   return count;
 }
 
@@ -1545,7 +1430,7 @@ window.autoWall=function(){
   if(!orig)return;
   const w=cv.width, h=cv.height;
   const cur=new ImageData(new Uint8ClampedArray(orig.data), w, h);
-  const t=+$("#tol").value || 22;
+  const t=+$("#tol").value || 28;
 
   if(rm>=0 && SC[rm]){
     // Paint predefined room wall seeds with active color
@@ -1593,7 +1478,7 @@ function afterLoad(sceneObj){
   hist=[];
   paintedRegions=[];
   if(!sceneObj) rm=-1;
-  $("#tol").value=sceneObj?22:28;
+  $("#tol").value=sceneObj?28:34;
 
   cv0.width=cv.width;
   cv0.height=cv.height;
@@ -1603,28 +1488,30 @@ function afterLoad(sceneObj){
   ov(100);
   rooms();
 
-  if(sceneObj){
-    window.autoWall();
-    $("#hm").textContent="Repainted with "+cn+". Tap on the wall, accent panel or sofa to change surfaces.";
-  } else {
-    // For uploaded home photo, auto-paint immediately
-    window.autoWall();
-    $("#hm").textContent="Photo loaded and painted with "+cn+"! Tap any other wall or surface to paint.";
-  }
+  window.autoWall();
+  $("#hm").textContent="Wall painted in "+cn+"! Tap on any wall or surface to paint.";
 }
 
 function loadScene(i){
   if(live)stopCam();
   rm=i;
+  const item=SC[i];
   const im=new Image();
+  im.crossOrigin="anonymous";
   im.onload=()=>{
     cv.width=900;
-    cv.height=520;
-    cx.drawImage(im, 0, 0, 900, 520);
-    orig=cx.getImageData(0, 0, 900, 520);
-    afterLoad(SC[i]);
+    cv.height=Math.round(900 * (im.height || 506) / (im.width || 900)) || 506;
+    cx.drawImage(im, 0, 0, cv.width, cv.height);
+    orig=cx.getImageData(0, 0, cv.width, cv.height);
+    cv0.width=cv.width;
+    cv0.height=cv.height;
+    cx0.putImageData(orig, 0, 0);
+    afterLoad(item);
   };
-  im.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(SC[i].svg);
+  im.onerror=()=>{
+    $("#hm").textContent="Could not load room photo.";
+  };
+  im.src=item.img;
 }
 
 /* User taps on canvas to paint specific surface */
@@ -1648,9 +1535,9 @@ function handleCanvasTap(e){
   paintedRegions.push({x, y});
 
   const cur=cx.getImageData(0, 0, cv.width, cv.height);
-  const n=floodFillWall(cur, orig, x, y, curHex, +$("#tol").value || 22);
+  const n=floodFillWall(cur, orig, x, y, curHex, +$("#tol").value || 28);
 
-  if(n < 30){
+  if(n < 20){
     $("#hm").textContent="That target area is very small. Tap a larger wall section or raise the range slider.";
     hist.pop();
     paintedRegions.pop();
@@ -1662,6 +1549,11 @@ function handleCanvasTap(e){
 }
 
 cv.addEventListener("click", handleCanvasTap);
+cv.addEventListener("pointerdown", (e)=>{
+  if(e.pointerType === "touch" || e.pointerType === "pen"){
+    handleCanvasTap(e);
+  }
+});
 
 /* Undo */
 $("#un").onclick=()=>{
