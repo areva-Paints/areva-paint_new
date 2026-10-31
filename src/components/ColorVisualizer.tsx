@@ -141,8 +141,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
+    reader.onerror = () => setStatusMessage('Could not read this photo. Please choose a JPG, PNG, or WebP image.');
     reader.onload = (event) => {
       const img = new Image();
+      img.onerror = () => setStatusMessage('Could not open this photo. Please try another image.');
       img.onload = () => {
         const canvas = canvasRef.current;
         const origCanvas = originalCanvasRef.current;
@@ -171,6 +173,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   // Intelligent Luminance-Preserving Flood Fill Wall Paint
