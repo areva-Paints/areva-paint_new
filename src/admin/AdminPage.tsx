@@ -90,6 +90,7 @@ export function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false),
     [checking, setChecking] = useState(true),
     [password, setPassword] = useState("");
+  const [username, setUsername] = useState("admin");
   const [content, setContent] = useState<SiteContent | null>(null),
     [tab, setTab] = useState<Tab>("landingImages"),
     [search, setSearch] = useState(""),
@@ -146,7 +147,7 @@ export function AdminPage() {
     try {
       await request("/api/admin/login", {
         method: "POST",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username, password }),
       });
       setPassword("");
       await load();
@@ -372,6 +373,14 @@ export function AdminPage() {
             for every space.
           </h1>
           <p>Sign in to manage your website, products and dealer network.</p>
+          <Field label="Username">
+            <input
+              autoComplete="username"
+              required
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </Field>
           <Field label="Admin password">
             <input
               type="password"
@@ -391,8 +400,7 @@ export function AdminPage() {
             <ShieldCheck size={17} />
           </button>
           <small className="adm-login-note">
-            Administration requires a server-configured ADMIN_PASSWORD of at
-            least 12 characters.
+            Use the credentials configured by your website administrator.
           </small>
         </form>
         <div className="adm-login-art">

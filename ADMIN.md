@@ -15,11 +15,11 @@ Edits first go into the browser workspace. Select **Apply to workspace** in the 
 
 1. Use Node.js 24 and install dependencies with `npm install --package-lock=false`.
 2. Set `ADMIN_PASSWORD` in the server environment or an ignored `.env` file to a unique password of at least 12 characters. Never commit a real password. Without it, admin sign-in is disabled; the public website remains available.
-3. Run `npm run dev`, then open `/admin`. Sign in with the configured password.
+3. Run `npm run dev`, then open `/admin`. Sign in with username `admin` (or your `ADMIN_USERNAME`) and the configured password.
 
 Authentication uses an HttpOnly, SameSite=Strict cookie, eight-hour sessions and a login attempt limit. Sessions expire when the server restarts. Use HTTPS when deployed publicly. If HTTPS terminates at a trusted reverse proxy, configure Express proxy trust via `TRUST_PROXY_HOPS` (for example `1` for exactly one trusted proxy) so secure cookies and origin checks use the correct protocol. Do not enable proxy trust on a server directly accessible by untrusted clients.
 
-No default or hard-coded admin password is shipped. This provides a single shared admin account; individual staff accounts and password recovery are not implemented.
+A public demo login is available only when explicitly enabled with `ADMIN_TEST_LOGIN=true` and no `ADMIN_PASSWORD` is configured. Normal administration requires a unique configured password. This provides a single shared admin account; individual staff accounts and password recovery are not implemented.
 
 ## Storage and deployment
 
@@ -36,3 +36,13 @@ The original HTML source stays unchanged. Its served response receives saved con
 - `node --import tsx --test tests/admin.test.mjs` — starts an isolated server and temporary storage, checks sign-in and access control, file validation, content validation, revision conflicts, public products/dealers/calculator, escaped HTML output, logout and persistence across server restarts.
 
 Local server/browser checks may require the cloud command sandbox's supported escalation mechanism.
+
+## Render deployment and temporary test login
+
+A plain `Not Found` at both `/admin` and `/api/health` indicates that Render is not serving the current Express application. Use a **Node Web Service**, not a Static Site: admin authentication, saving and uploads require the backend. A static-site rewrite alone will not enable these functions.
+
+For an existing Web Service, select the repository's `main` branch, set the build command to `npm install --include=dev --package-lock=false && npx vite build`, and the start command to `npm start`. Set `NODE_ENV=production` and `TRUST_PROXY_HOPS=1` behind Render's proxy, then deploy the latest commit. After deployment, `/api/health` must return JSON and `/admin` must show the login form. If this is currently a Static Site, create a Web Service and use its URL; editing this repository cannot change an existing Render service's type.
+
+For temporary testing, set `ADMIN_TEST_LOGIN=true` in Render's Environment settings and leave `ADMIN_PASSWORD` unset or empty. Sign in with username **admin** and password **ArevaTest2026!**. These are public testing credentials; do not enable them for a site containing real customer data. To disable the test login, set `ADMIN_TEST_LOGIN=false` and set a unique `ADMIN_PASSWORD` of at least 12 characters. `ADMIN_USERNAME` defaults to `admin`; a configured password always takes precedence over the test password. Redeploy/restart after changing environment settings.
+
+`render.yaml` supplies an optional Blueprint for a Node Web Service with a persistent disk. Its `starter` service and disk require a paid Render plan. It keeps testing login disabled until you explicitly enable it. For a free Web Service, configure the build/start commands manually and note that saved content and uploads will not survive redeploys without external persistent storage. Adding this file does not automatically reconfigure an existing Render service or trigger a Blueprint deployment.

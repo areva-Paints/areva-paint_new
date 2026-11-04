@@ -20,7 +20,7 @@ test("admin authentication, uploads, validation, public integration and persiste
     password = crypto.randomBytes(24).toString("hex");
   let child,
     logs = "";
-  async function start() {
+  async function start(overrides = {}) {
     child = spawn(process.execPath, ["--import", "tsx", "server.ts"], {
       env: {
         ...process.env,
@@ -28,6 +28,9 @@ test("admin authentication, uploads, validation, public integration and persiste
         DISABLE_HMR: "true",
         ADMIN_PASSWORD: password,
         CONTENT_DATA_DIR: dataDir,
+        ADMIN_USERNAME: "admin",
+        ADMIN_TEST_LOGIN: "false",
+        ...overrides,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -223,6 +226,51 @@ test("admin authentication, uploads, validation, public integration and persiste
     assert.equal(restored.revision, 1);
     assert.equal(restored.products.at(-1).id, "test-product");
     assert.equal((await req(url)).status, 200);
+    await stop();
+    await start({ ADMIN_PASSWORD: "", ADMIN_TEST_LOGIN: "false" });
+    assert.equal(
+      (
+        await req("/api/admin/login", "POST", {
+          username: "admin",
+          password: "ArevaTest2026!",
+        })
+      ).status,
+      503,
+    );
+    await stop();
+    await start({ ADMIN_PASSWORD: "", ADMIN_TEST_LOGIN: "true" });
+    assert.equal(
+      (
+        await req("/api/admin/login", "POST", {
+          username: "wrong",
+          password: "ArevaTest2026!",
+        })
+      ).status,
+      401,
+    );
+    const demo = await req("/api/admin/login", "POST", {
+      username: "admin",
+      password: "ArevaTest2026!",
+    });
+    assert.equal(demo.status, 200);
+    cookie = demo.headers.get("set-cookie").split(";")[0];
+    assert.equal((await req("/api/admin/session")).status, 200);
+    await stop();
+    await start({ ADMIN_USERNAME: "owner", ADMIN_TEST_LOGIN: "true" });
+    assert.equal(
+      (
+        await req("/api/admin/login", "POST", {
+          username: "admin",
+          password: "ArevaTest2026!",
+        })
+      ).status,
+      401,
+    );
+    assert.equal(
+      (await req("/api/admin/login", "POST", { username: "owner", password }))
+        .status,
+      200,
+    );
   } finally {
     await stop();
     await rm(dataDir, { recursive: true, force: true });

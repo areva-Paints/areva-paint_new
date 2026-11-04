@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: areva-paint-new
+    runtime: node
+    plan: starter
+    buildCommand: npm install --include=dev --package-lock=false && npx vite build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: areva-content
+      mountPath: /var/data/areva
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.1
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: CONTENT_DATA_DIR
+        value: /var/data/areva
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_TEST_LOGIN
+        value: "false"
