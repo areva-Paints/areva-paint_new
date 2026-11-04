@@ -870,7 +870,7 @@ else if(d.f){gf=d.f;drawG()}
 else if(d.v!=null){$("#bs").selectedIndex=+d.v;$("#bk").scrollIntoView({behavior:"smooth",block:"center"})}
 else if(d.st){$("#dl").innerHTML='<a class="btn btn-wa" target="_blank" rel="noopener" href="'+wa("Hello Areva Paints, please share the nearest dealer in "+d.st+".")+'">Dealer in '+d.st+'</a> <a class="btn btn-line" href="tel:+'+WA+'">Call</a>'}
 else if(d.r){role=d.r;roles();if(signed)dash();if(!$("#lg").open)$("#lg").showModal()}});
-paint(C[5][2],C[5][0]+" ("+C[5][1]+")");drawSw();drawG();roles();
+
 $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c[2]+'"></i>'+c[0]+'</span>').join("");
 
 /* Areva Dedicated Color Splash Arcade Mini-Game (Opened on-demand, zero disturbance on page) */
@@ -1428,7 +1428,9 @@ function ov(v){
   }
 }
 
-function afterLoad(roomName){
+let roomWallMap = null;
+function afterLoad(roomName, scene = null){
+  roomWallMap = scene !== null ? makeRoomWallMap(scene) : null;
   if(live) stopCam();
   hist = [];
   used = [];
@@ -1588,7 +1590,7 @@ function loadScene(i){
           cv.height = Math.round(im.height * s);
           cx.drawImage(im, 0, 0, cv.width, cv.height);
           orig = cx.getImageData(0, 0, cv.width, cv.height);
-          afterLoad(item.n);
+          afterLoad(item.n, i);
         };
         im.onerror = () => nextUrl();
         im.src = blobUrl;
@@ -1609,7 +1611,7 @@ function loadScene(i){
         cv.height = Math.round(im.height * s);
         cx.drawImage(im, 0, 0, cv.width, cv.height);
         orig = cx.getImageData(0, 0, cv.width, cv.height);
-        afterLoad(item.n);
+        afterLoad(item.n, i);
       };
       im.onerror = () => {
         cv.width = 900;
@@ -1623,6 +1625,49 @@ function loadScene(i){
   }
 
   tryFetch(candidateUrls[0]);
+}
+
+// Outlines in the living-room photograph's reference coordinates.
+function makeRoomWallMap(scene){
+  const mask = document.createElement("canvas");
+  mask.width = cv.width;
+  mask.height = cv.height;
+  const ctx = mask.getContext("2d");
+  ctx.scale(mask.width / 600, mask.height / 338);
+  function polygon(points, colour){
+    ctx.fillStyle = colour;
+    ctx.beginPath();
+    points.forEach(([x,y], index) => index ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
+    ctx.closePath();
+    ctx.fill();
+  }
+  if(scene > 0){
+    ctx.setTransform(mask.width/400,0,0,mask.height/225,0,0);
+    const zones = [[[1,[[0,0],[65,8],[65,163],[0,202]]],[0,[[19,21],[48,32],[48,91],[19,88]]],[2,[[67,9],[330,9],[330,164],[67,164]]],[0,[[79,132],[94,131],[90,119],[76,115],[73,109],[84,113],[78,90],[89,100],[95,112],[103,94],[108,96],[99,117],[98,131],[105,131],[108,124],[110,93],[128,93],[128,132],[139,129],[140,87],[266,87],[267,128],[281,134],[291,141],[300,152],[310,169],[80,169]]],[0,[[293,116],[302,117],[311,110],[321,112],[319,117],[329,119],[326,125],[332,129],[326,136],[329,141],[321,147],[322,165],[302,165],[301,148],[294,145],[297,141],[291,135],[300,132],[294,128],[299,125]]],[3,[[368,144],[399,152],[399,192],[368,180]]]],[[1,[[0,3],[101,29],[101,122],[55,129],[55,186],[39,190],[39,25],[0,16]]],[0,[[53,68],[69,67],[69,63],[75,63],[76,68],[83,68],[84,63],[92,64],[94,70],[103,70],[103,79],[53,75]]],[0,[[53,94],[64,93],[68,89],[78,89],[80,93],[88,92],[89,86],[99,87],[101,100],[53,100]]],[0,[[63,113],[84,110],[91,111],[95,119],[101,120],[102,128],[64,130]]],[2,[[104,30],[147,20],[147,55],[149,55],[149,75],[137,59],[117,55],[117,31]]],[2,[[105,83],[141,84],[148,81],[148,107],[139,107],[139,118],[105,122]]],[3,[[299,64],[357,63],[357,71],[316,72],[316,124],[299,141]]]],[[1,[[89,56],[133,24],[214,63],[212,72],[178,60],[178,102],[199,108],[199,153],[183,153],[183,114],[89,116],[89,110],[176,102],[176,58],[151,48],[89,71]]],[2,[[215,63],[334,20],[334,67],[312,64],[312,95],[272,109],[272,153],[263,154],[263,113],[202,116],[202,106],[268,98],[285,51],[216,76]]],[2,[[272,99],[310,89],[310,164],[297,161],[296,154],[294,154],[294,112],[285,113],[285,153],[273,154]]],[3,[[335,22],[373,43],[373,157],[367,158],[367,117],[337,116],[337,162],[312,164],[312,92],[335,94]]],[0,[[354,55],[362,58],[361,101],[354,99]]]],[[1,[[0,13],[173,55],[173,140],[158,141],[130,145],[105,155],[102,177],[0,203]]],[0,[[48,66],[105,72],[105,137],[48,143]]],[0,[[110,73],[150,79],[150,134],[110,138]]],[2,[[201,63],[230,71],[230,94],[225,100],[224,130],[221,130],[221,102],[206,102],[206,131],[201,134]]]]];
+    for(const [zone, points] of zones[scene-1]) polygon(points, ["black","red","lime","blue"][zone]);
+    return ctx.getImageData(0,0,mask.width,mask.height).data;
+  }
+  polygon([[140,44],[172,44],[172,22],[514,22],[514,267],[502,267],[501,239],[498,232],[484,226],[472,226],[461,233],[457,208],[310,207],[305,211],[302,208],[270,210],[268,204],[259,208],[235,208],[232,212],[217,209],[223,227],[213,231],[208,238],[208,268],[140,268]], "#ff0000");
+  polygon([[389,95],[442,95],[442,167],[389,167]], "black");
+  polygon([[155,165],[168,165],[168,178],[155,178]], "black");
+  polygon([[516,22],[543,1],[593,0],[541,32],[541,242],[599,264],[599,310],[516,268]], "#00ff00");
+  return ctx.getImageData(0,0,mask.width,mask.height).data;
+}
+
+function paintRoomWall(cur,x,y){
+  const seed = (y * cur.width + x) * 4;
+  const channel = roomWallMap[seed] === 255 ? 0 : roomWallMap[seed+1] === 255 ? 1 : 2;
+  if(roomWallMap[seed + channel] !== 255 || roomWallMap[seed+3] !== 255) return 0;
+  const rgb = [1,3,5].map(i => parseInt(curHex.slice(i,i+2),16));
+  let count = 0;
+  for(let i=0;i<cur.data.length;i+=4){
+    if(roomWallMap[i+channel] !== 255 || !roomWallMap[i+3]) continue;
+    const shade = (0.299*orig.data[i]+0.587*orig.data[i+1]+0.114*orig.data[i+2])/194;
+    const alpha = roomWallMap[i+3]/255;
+    for(let k=0;k<3;k++) cur.data[i+k] = orig.data[i+k]*(1-alpha)+rgb[k]*shade*alpha;
+    count++;
+  }
+  return count;
 }
 
 /* User taps canvas to paint specific wall or surface */
@@ -1645,11 +1690,11 @@ function handleCanvasPaint(clientX, clientY){
   const cur = cx.getImageData(0, 0, w, h);
   const prev = new ImageData(new Uint8ClampedArray(cur.data), w, h);
   const t = +($("#tol") ? $("#tol").value : 25) || 25;
-  const n = flood(cur, x, y, t);
+  const n = roomWallMap ? paintRoomWall(cur,x,y) : flood(cur, x, y, t);
 
   if(n < 20){
     const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "That spot is too small. Tap a larger wall area, or raise the wall selection range.";
+    if(hmEl) hmEl.textContent = roomWallMap ? "Tap an exposed wall surface to paint the whole section." : "That spot is too small. Tap a larger wall area, or raise the wall selection range.";
     return;
   }
 
@@ -1805,8 +1850,7 @@ if(cmpInput) cmpInput.oninput = e => ov(e.target.value);
 const cc2Input = $("#cc2");
 if(cc2Input) cc2Input.oninput = e => paint(e.target.value, "Custom " + e.target.value);
 
-rooms();
-loadScene(0);
+
 
 /* Live camera AR: wall color-tracking */
 let live=false, stream=null, vid=null, seedRGB=null, lastPt=null, raf=0, rawCv=null;
@@ -1951,6 +1995,10 @@ if(stopCamBtn){
     loadScene(0);
   };
 }
+paint(C[5][2], C[5][0]+" ("+C[5][1]+")");
+drawG();
+roles();
+loadScene(0);
 </script>
 </body>
 </html>
