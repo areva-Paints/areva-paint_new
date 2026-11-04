@@ -864,7 +864,7 @@ if($("#st")){
   });
 }
 let role="Customer",signed=false;
-function roles(){$("#roles").innerHTML=["Customer","Architect","Builder","Admin"].map(r=>'<button class="chip" data-r="'+r+'" aria-pressed="'+(r==role)+'">'+r+'</button>').join("")}
+function roles(){$("#roles").innerHTML=["Customer","Architect","Builder","Admin"].map(r=>r==="Admin"?'<a class="chip" href="/admin" target="_top">Admin</a>':'<button class="chip" data-r="'+r+'" aria-pressed="'+(r==role)+'">'+r+'</button>').join("")}
 function dash(){const S=store.sv.map(k=>C.find(c=>c[1]===k)).filter(Boolean),ul=a=>a.length?"<ul>"+a.map(x=>"<li>"+x+"</li>").join("")+"</ul>":'<p class="note">None yet.</p>';let h="<h3>"+role+" dashboard</h3>";
 if(role=="Admin")h+='<p>Leads <b>'+store.leads.length+'</b>, bookings <b>'+store.books.length+'</b>, saved colours <b>'+S.length+'</b></p><table><tr><th>Date</th><th>Type</th><th>Status</th></tr>'+store.leads.map((l,i)=>"<tr><td>"+l.d+"</td><td>"+l.t+'</td><td><select data-s="'+i+'">'+["New","Contacted","Quoted","Won","Lost"].map(s=>"<option"+(s==l.s?" selected":"")+">"+s+"</option>").join("")+"</select></td></tr>").join("")+"</table>";
 else if(role=="Customer")h+="<p><b>Saved colours</b></p>"+ul(S.map(c=>c[0]+" ("+c[1]+")"))+"<p><b>Calculator history</b></p>"+ul(store.hist)+"<p><b>Bookings</b></p>"+ul(store.books);
@@ -882,7 +882,7 @@ else if(d.g!=null){const c=C[+d.g];paint(c[2],c[0]+" ("+c[1]+")");$("#visualizer
 else if(d.f){gf=d.f;drawG()}
 else if(d.v!=null){$("#bs").selectedIndex=+d.v;$("#bk").scrollIntoView({behavior:"smooth",block:"center"})}
 else if(d.st){$("#dl").innerHTML='<a class="btn btn-wa" target="_blank" rel="noopener" href="'+wa("Hello Areva Paints, please share the nearest dealer in "+d.st+".")+'">Dealer in '+d.st+'</a> <a class="btn btn-line" href="tel:+'+WA+'">Call</a>'}
-else if(d.r){role=d.r;roles();if(signed)dash();if(!$("#lg").open)$("#lg").showModal()}});
+else if(d.r){if(d.r==="Admin"){window.top.location.href="/admin";return;}role=d.r;roles();if(signed)dash();if(!$("#lg").open)$("#lg").showModal()}});
 
 $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c[2]+'"></i>'+c[0]+'</span>').join("");
 

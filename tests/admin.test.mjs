@@ -85,6 +85,13 @@ test("admin authentication, uploads, validation, public integration and persiste
     const original = await (await req("/api/admin/content")).json();
     assert.equal(original.products.length, 18);
     assert.equal(original.dealers.length, 13);
+    const homepage = await (
+      await req("/assets/aistudio/areva-paints_a2364c60.html")
+    ).text();
+    assert.ok(
+      homepage.includes('href="/admin" target="_top"'),
+      "Homepage Admin link must leave the demo portal for real authentication",
+    );
     assert.equal(
       original.products.find((p) => p.name === "Sheen Pro")
         .coverageSqFtPerLiter,
