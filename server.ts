@@ -14,7 +14,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const trustedProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+// Render terminates HTTPS before forwarding requests to this HTTP server.
+// Trust its single proxy hop automatically; explicit configuration still overrides it.
+const trustedProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? (process.env.RENDER === 'true' ? '1' : '0'));
 if (Number.isInteger(trustedProxyHops) && trustedProxyHops > 0) app.set('trust proxy', trustedProxyHops);
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const isProd = process.env.NODE_ENV === 'production';

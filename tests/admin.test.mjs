@@ -30,6 +30,8 @@ test("admin authentication, uploads, validation, public integration and persiste
         CONTENT_DATA_DIR: dataDir,
         ADMIN_USERNAME: "admin",
         ADMIN_TEST_LOGIN: "false",
+        RENDER: "false",
+        TRUST_PROXY_HOPS: "0",
         ...overrides,
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -277,6 +279,37 @@ test("admin authentication, uploads, validation, public integration and persiste
       (await req("/api/admin/login", "POST", { username: "owner", password }))
         .status,
       200,
+    );
+    await stop();
+    await start({ RENDER: "true", TRUST_PROXY_HOPS: undefined });
+    const proxied = await fetch(base + "/api/admin/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: `https://127.0.0.1:${port}`,
+        "X-Forwarded-Proto": "https",
+      },
+      body: JSON.stringify({ username: "admin", password }),
+    });
+    assert.equal(
+      proxied.status,
+      200,
+      "Render HTTPS origin should match the trusted forwarded protocol",
+    );
+    assert.match(proxied.headers.get("set-cookie"), /; Secure/i);
+    const foreignOrigin = await fetch(base + "/api/admin/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: "https://evil.example",
+        "X-Forwarded-Proto": "https",
+      },
+      body: JSON.stringify({ username: "admin", password }),
+    });
+    assert.equal(
+      foreignOrigin.status,
+      403,
+      "Foreign origins must remain blocked behind Render",
     );
   } finally {
     await stop();
