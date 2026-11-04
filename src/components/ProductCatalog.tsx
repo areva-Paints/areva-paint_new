@@ -1,6 +1,7 @@
+import { useSiteContent } from '../admin/ContentContext';
 import React, { useState } from 'react';
 import { Product } from '../types';
-import { CATEGORIES, PRODUCTS } from '../data/paintsData';
+import { CATEGORIES, PRODUCTS as DEFAULT_PRODUCTS } from '../data/paintsData';
 import { Info, Eye, MessageSquare, Check, Sparkles, Filter } from 'lucide-react';
 import { ProductImageZoom } from './ProductImageZoom';
 
@@ -19,6 +20,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   onOpenVisualizerWithProduct,
   onRequestQuoteForProduct,
 }) => {
+  const PRODUCTS = useSiteContent()?.products || DEFAULT_PRODUCTS;
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'featured' | 'coverage' | 'name'>('featured');
@@ -84,7 +86,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
               className="px-4 py-2.5 text-xs border border-stone-200 rounded-xl bg-white font-medium text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#6c4cf5] shadow-xs"
             >
               <option value="featured">Featured Formulations</option>
-              <option value="coverage">Coverage (sq ft/L)</option>
+              <option value="coverage">Coverage (sq ft/unit)</option>
               <option value="name">Product Name (A-Z)</option>
             </select>
           </div>
@@ -216,7 +218,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                     <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-stone-100 text-xs text-stone-600">
                       <div>
                         <span className="text-stone-400 block text-[10px] uppercase font-bold">Coverage</span>
-                        <span className="font-bold text-stone-900 font-mono">{product.coverageSqFtPerLiter} sq ft/L</span>
+                        <span className="font-bold text-stone-900 font-mono">{product.coverageSqFtPerLiter > 0 ? `${product.coverageSqFtPerLiter} sq ft/${product.coverageUnit || 'L'}` : 'Coverage not configured'}</span>
                       </div>
                       <div>
                         <span className="text-stone-400 block text-[10px] uppercase font-bold">VOC Rating</span>
@@ -231,7 +233,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                     <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-stone-900">
                       {product.availableSizes.map((sz) => (
                         <span key={sz} className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200">
-                          {sz}L
+                          {sz}{product.coverageUnit || 'L'}
                         </span>
                       ))}
                     </div>

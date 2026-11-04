@@ -1,3 +1,4 @@
+import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useEffect } from 'react';
 import { Eye, ArrowRight, Sparkles, CheckCircle2, ChevronRight, Layers, Palette, Camera } from 'lucide-react';
 import { COLOR_SHADES } from '../data/paintsData';
@@ -19,7 +20,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [selectedHeroShade, setSelectedHeroShade] = useState(COLOR_SHADES[7]); // Terracotta Hearth
 
-  const heroRooms = [
+  const content = useSiteContent();
+  const defaultRooms = [
     {
       id: 'living',
       label: 'Contemporary Living',
@@ -43,6 +45,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     },
   ];
 
+  const heroRooms = content?.landingImages.length ? content.landingImages : defaultRooms;
+
   // Auto-slide room preview every 7 seconds
   useEffect(() => {
     const timer = setInterval(() => {
@@ -51,7 +55,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
     return () => clearInterval(timer);
   }, [heroRooms.length]);
 
-  const activeRoom = heroRooms[activeSlideIndex];
+  const activeRoom = heroRooms[activeSlideIndex % heroRooms.length];
 
   const signatureShades = [
     COLOR_SHADES[7], // Terracotta Hearth

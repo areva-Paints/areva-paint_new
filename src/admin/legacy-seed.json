@@ -1,0 +1,316 @@
+{
+  "products": [
+    {
+      "id": "legacy-0",
+      "name": "Sheen Pro",
+      "categoryIndex": 0,
+      "description": "A decorative interior finish for smooth, good-looking walls.",
+      "image": "",
+      "coverage": 120,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-1",
+      "name": "Dazzle Glow",
+      "categoryIndex": 0,
+      "description": "A luxury-look interior finish for living spaces.",
+      "image": "",
+      "coverage": 110,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-2",
+      "name": "White Delight",
+      "categoryIndex": 0,
+      "description": "A clean white interior emulsion for everyday walls.",
+      "image": "",
+      "coverage": 130,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-3",
+      "name": "Aqua Elite",
+      "categoryIndex": 0,
+      "description": "Luxury interior emulsion for premium interior walls.",
+      "image": "",
+      "coverage": null,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-4",
+      "name": "AquaSafe Luxury",
+      "categoryIndex": 0,
+      "description": "Luxury-finish interior emulsion for interior walls, as shown on the supplied product pack.",
+      "image": "",
+      "coverage": null,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-5",
+      "name": "Lumina LusterFinish",
+      "categoryIndex": 1,
+      "description": "An exterior finish designed for weather exposure on suitable surfaces.",
+      "image": "",
+      "coverage": 100,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-6",
+      "name": "Gilt Edged",
+      "categoryIndex": 1,
+      "description": "A premium exterior coating marked for extreme protection.",
+      "image": "",
+      "coverage": 90,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-7",
+      "name": "Hydro 10",
+      "categoryIndex": 1,
+      "description": "Weather-shield exterior emulsion for all-season exterior protection. The supplied painter DBT poster advertises ₹600 cashback per bucket; confirm scheme eligibility and dates with Areva.",
+      "image": "",
+      "coverage": null,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-8",
+      "name": "AquaSafe",
+      "categoryIndex": 2,
+      "description": "A waterproofing solution designed for suitable building surfaces and protection requirements.",
+      "image": "",
+      "coverage": 60,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-9",
+      "name": "ROF-LEXA",
+      "categoryIndex": 2,
+      "description": "A roof protection coating for moisture and weather exposure.",
+      "image": "",
+      "coverage": 40,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-10",
+      "name": "Dry Lock",
+      "categoryIndex": 2,
+      "description": "A moisture protection product for suitable surfaces.",
+      "image": "",
+      "coverage": 50,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-11",
+      "name": "Pritex Shield",
+      "categoryIndex": 2,
+      "description": "A protective waterproofing product for building surfaces.",
+      "image": "",
+      "coverage": 55,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-12",
+      "name": "RedTape",
+      "categoryIndex": 3,
+      "description": "A tile adhesive for the installation applications specified for the product grade.",
+      "image": "",
+      "coverage": 45,
+      "unit": "kg",
+      "basis": "floor"
+    },
+    {
+      "id": "legacy-13",
+      "name": "Jointex Sealant",
+      "categoryIndex": 4,
+      "description": "A sealant for compatible joints and gaps, according to the specified product type.",
+      "image": "",
+      "coverage": null,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-14",
+      "name": "Renova Acrylic Putty",
+      "categoryIndex": 5,
+      "description": "An acrylic putty for preparing compatible wall surfaces for a smooth decorative finish.",
+      "image": "",
+      "coverage": 90,
+      "unit": "kg",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-15",
+      "name": "7XT Universal Primer",
+      "categoryIndex": 5,
+      "description": "A primer for preparing surfaces before painting.",
+      "image": "",
+      "coverage": 140,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-16",
+      "name": "Zester Series",
+      "categoryIndex": 6,
+      "description": "A decorative finish collection to explore exterior colour and texture possibilities.",
+      "image": "",
+      "coverage": null,
+      "unit": "L",
+      "basis": "wall"
+    },
+    {
+      "id": "legacy-17",
+      "name": "Areva Road Fix",
+      "categoryIndex": 7,
+      "description": "A repair mortar for roads and surface repair.",
+      "image": "",
+      "coverage": null,
+      "unit": "L",
+      "basis": "wall"
+    }
+  ],
+  "dealers": [
+    {
+      "name": "Sri Balaji Paint & Hardware Depot",
+      "pin": "560038",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "address": "Plot 42, 100 Feet Road, HAL 2nd Stage, Indiranagar",
+      "phone": "+91 98451 22334",
+      "badges": ["Automated Tinting", "Putty & Waterproofing", "Site Delivery"],
+      "id": "dealer-0"
+    },
+    {
+      "name": "Chamundi Color World",
+      "pin": "560078",
+      "city": "Bengaluru",
+      "state": "Karnataka",
+      "address": "14/A, Kanakapura Main Road, Near Metro, JP Nagar 6th Phase",
+      "phone": "+91 98801 44556",
+      "badges": ["Computerized Tinting", "Moisture Survey", "Express Delivery"],
+      "id": "dealer-1"
+    },
+    {
+      "name": "Cauvery Building Coatings",
+      "pin": "570001",
+      "city": "Mysuru",
+      "state": "Karnataka",
+      "address": "Shop 18, Sayyaji Rao Road, Near City Bus Stand",
+      "phone": "+91 94480 33221",
+      "badges": ["Full Architectural Range", "Contractor Rates"],
+      "id": "dealer-2"
+    },
+    {
+      "name": "North Karnataka Paint Distributors",
+      "pin": "580020",
+      "city": "Hubli - Dharwad",
+      "state": "Karnataka",
+      "address": "88 Station Road, Opposite Railway Office, Hubli",
+      "phone": "+91 98440 77889",
+      "badges": ["Industrial Putty", "Regional Master Depot"],
+      "id": "dealer-3"
+    },
+    {
+      "name": "Maruti Waterproofing & Surface Coatings",
+      "pin": "400058",
+      "city": "Mumbai",
+      "state": "Maharashtra",
+      "address": "Shop 4, SV Road, Near Andheri Station, Andheri West",
+      "phone": "+91 98200 44332",
+      "badges": ["Waterproofing Specialist", "Color Dispenser"],
+      "id": "dealer-4"
+    },
+    {
+      "name": "Shree Ganesh Paint Center",
+      "pin": "411028",
+      "city": "Pune",
+      "state": "Maharashtra",
+      "address": "Bypass Road, Near Magarpatta City, Hadapsar",
+      "phone": "+91 98220 11223",
+      "badges": ["Texture Coatings", "Same-Day Dispatch"],
+      "id": "dealer-5"
+    },
+    {
+      "name": "Godavari Color Plaza",
+      "pin": "422005",
+      "city": "Nashik",
+      "state": "Maharashtra",
+      "address": "22 College Road, Near Canada Corner, Nashik",
+      "phone": "+91 94222 55667",
+      "badges": ["Builder Supply", "Direct Warranty"],
+      "id": "dealer-6"
+    },
+    {
+      "name": "Meenakshi Paints & Chemicals",
+      "pin": "600010",
+      "city": "Chennai",
+      "state": "Tamil Nadu",
+      "address": "Poonamallee High Road, Near Ega Theatre, Kilpauk",
+      "phone": "+91 98400 99887",
+      "badges": ["Certified Depot", "Computer Tinting", "Bulk Stock"],
+      "id": "dealer-7"
+    },
+    {
+      "name": "Kongu Surface Solutions",
+      "pin": "641004",
+      "city": "Coimbatore",
+      "state": "Tamil Nadu",
+      "address": "450 Avinashi Road, Peelamedu, Coimbatore",
+      "phone": "+91 94430 11445",
+      "badges": ["Exterior Range", "Site Technical Team"],
+      "id": "dealer-8"
+    },
+    {
+      "name": "Pandian Paint House",
+      "pin": "625001",
+      "city": "Madurai",
+      "state": "Tamil Nadu",
+      "address": "76 West Veli Street, Near Town Hall, Madurai",
+      "phone": "+91 98421 66778",
+      "badges": ["Primer & Putty", "Free Shade Card"],
+      "id": "dealer-9"
+    },
+    {
+      "name": "Deccan Coating Systems",
+      "pin": "500072",
+      "city": "Hyderabad",
+      "state": "Andhra Pradesh",
+      "address": "Plot 104, Kukatpally Main Road, Near Metro Station",
+      "phone": "+91 98480 22119",
+      "badges": ["Regional Master Hub", "Same-Day Dispatch"],
+      "id": "dealer-10"
+    },
+    {
+      "name": "Coastal Wall Protection Hub",
+      "pin": "530020",
+      "city": "Visakhapatnam",
+      "state": "Andhra Pradesh",
+      "address": "Main Road, Daba Gardens, Near Jagadamba Center",
+      "phone": "+91 98491 55662",
+      "badges": ["Coastal Grade", "Waterproofing"],
+      "id": "dealer-11"
+    },
+    {
+      "name": "Krishna Paints & Adhesives",
+      "pin": "520002",
+      "city": "Vijayawada",
+      "state": "Andhra Pradesh",
+      "address": "MG Road, Governorpet, Opposite Swarna Palace",
+      "phone": "+91 98481 88990",
+      "badges": ["Tile Adhesive", "Wall Putty"],
+      "id": "dealer-12"
+    }
+  ]
+}

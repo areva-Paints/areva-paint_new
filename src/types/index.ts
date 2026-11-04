@@ -7,6 +7,8 @@ export interface Product {
   description: string;
   availableSizes: number[]; // in Liters, e.g. [1, 4, 10, 20]
   coverageSqFtPerLiter: number;
+  coverageUnit?: 'L' | 'kg';
+  calculationBasis?: 'wall' | 'floor';
   sheen: 'Ultra Matte' | 'Soft Sheen' | 'Satin Silk' | 'High Gloss' | 'Textured';
   vocLevel: 'Zero VOC (<5g/L)' | 'Low VOC (<30g/L)' | 'Standard';
   washability: 'Class 1 (Scrubbable)' | 'High Washable' | 'Wipeable' | 'Specialist';

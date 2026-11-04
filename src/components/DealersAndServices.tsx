@@ -1,3 +1,4 @@
+import { useSiteContent } from '../admin/ContentContext';
 import React, { useState } from 'react';
 import { MapPin, Phone, MessageSquare, Check, Calendar, ArrowRight, ShieldCheck } from 'lucide-react';
 
@@ -9,7 +10,7 @@ export const DealersAndServices: React.FC = () => {
   const [clientPhone, setClientPhone] = useState<string>('');
   const [clientCity, setClientCity] = useState<string>('Bengaluru');
 
-  const ALL_DEALERS: Array<{ pin: string; city: string; state: string; name: string; phone: string; address: string; badges: string[] }> = [
+  const DEFAULT_DEALERS: Array<{ pin: string; city: string; state: string; name: string; phone: string; address: string; badges: string[] }> = [
     { pin: '560038', city: 'Bengaluru Central', state: 'Karnataka', name: 'Sri Balaji Paint & Hardware Depot', phone: '+91 98451 22334', address: 'Plot 42, 100 Feet Road, HAL 2nd Stage, Indiranagar', badges: ['Automated Tinting', 'Putty & Waterproofing', 'Site Delivery'] },
     { pin: '560078', city: 'Bengaluru South', state: 'Karnataka', name: 'Chamundi Color World', phone: '+91 98801 44556', address: 'Kanakapura Main Road, Near Metro, JP Nagar 6th Phase', badges: ['Computerized Tinting', 'Moisture Survey', 'Express Delivery'] },
     { pin: '570001', city: 'Mysuru', state: 'Karnataka', name: 'Cauvery Building Coatings', phone: '+91 94480 33221', address: 'Shop 18, Sayyaji Rao Road, Near City Bus Stand', badges: ['Full Architectural Range', 'Contractor Rates'] },
@@ -24,6 +25,8 @@ export const DealersAndServices: React.FC = () => {
     { pin: '530020', city: 'Visakhapatnam', state: 'Andhra Pradesh', name: 'Coastal Wall Protection Hub', phone: '+91 98491 55662', address: 'Main Road, Daba Gardens, Near Jagadamba Center', badges: ['Coastal Grade', 'Waterproofing'] },
     { pin: '520002', city: 'Vijayawada', state: 'Andhra Pradesh', name: 'Krishna Paints & Adhesives', phone: '+91 98481 88990', address: 'MG Road, Governorpet, Opposite Swarna Palace', badges: ['Tile Adhesive', 'Wall Putty'] },
   ];
+
+  const ALL_DEALERS = useSiteContent()?.dealers || DEFAULT_DEALERS;
 
   const POPULAR_PINS = ['560038', '560078', '400058', '411028', '600010', '641004', '500072', '530020'];
 
@@ -101,7 +104,7 @@ export const DealersAndServices: React.FC = () => {
 
               {/* State Filter Buttons */}
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar pt-1">
-                {['All', 'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Andhra Pradesh'].map((state) => (
+                {['All', ...new Set(ALL_DEALERS.map(d => d.state))].map((state) => (
                   <button
                     key={state}
                     onClick={() => setSelectedState(state)}

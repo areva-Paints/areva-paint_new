@@ -1,0 +1,76 @@
+import fs from "node:fs";
+import path from "node:path";
+import { PRODUCTS, CATEGORIES } from "../data/paintsData";
+import seed from "./legacy-seed.json";
+import type { SiteContent } from "./content-types";
+export const dataDir = path.resolve(
+  process.env.CONTENT_DATA_DIR || ".local/content",
+);
+const categoryIds = [
+  "interior",
+  "exterior",
+  "waterproofing",
+  "tile-adhesives",
+  "sealants",
+  "putty-primers",
+  "textures",
+  "chemicals",
+];
+export function defaults(): SiteContent {
+  return {
+    revision: 0,
+    products: seed.products.map((p) => {
+      const match = PRODUCTS.find((x) =>
+        x.name
+          .toLowerCase()
+          .includes(p.name.toLowerCase().replace(/^areva /, "")),
+      );
+      const categoryId = categoryIds[p.categoryIndex] || "interior";
+      return {
+        ...PRODUCTS[0],
+        featured: false,
+        vocLevel: "Standard" as const,
+        washability: "Wipeable" as const,
+        specs: {
+          dryingTime: "",
+          recoatTime: "",
+          thinnedWith: "",
+          warrantyYears: 0,
+          recommendedSurfaces: [],
+          surfacePreparation: "",
+          applicationMethod: "",
+        },
+        ...match,
+        id: match?.id || p.id,
+        name: p.name,
+        categoryId,
+        categoryName:
+          CATEGORIES.find((c) => c.id === categoryId)?.name ||
+          "Interior Paints",
+        description: p.description,
+        tagline: match?.tagline || p.description,
+        image:
+          p.image || `/api/content/legacy-image/${p.id.replace("legacy-", "")}`,
+        coverageSqFtPerLiter: p.coverage ?? match?.coverageSqFtPerLiter ?? 0,
+        coverageUnit: p.unit as "L" | "kg",
+        calculationBasis: p.basis as "wall" | "floor",
+      };
+    }),
+    dealers: seed.dealers,
+    landingImages: [],
+  };
+}
+export function readContent(): SiteContent {
+  const file = path.join(dataDir, "content.json");
+  return fs.existsSync(file)
+    ? JSON.parse(fs.readFileSync(file, "utf8"))
+    : defaults();
+}
+export function saveContent(content: SiteContent) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  const file = path.join(dataDir, "content.json");
+  fs.writeFileSync(file + ".tmp", JSON.stringify(content, null, 2), {
+    mode: 0o600,
+  });
+  fs.renameSync(file + ".tmp", file);
+}

@@ -126,11 +126,11 @@ export default function App() {
               }}
             />
             <PaintCalculator
-              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown }) => {
+              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown, unit }) => {
                 handleOpenEnquiry({
                   topic: 'Request a quotation',
                   product: productName,
-                  message: `Paint Calculator: ${productName} for ${paintableArea} sq ft (${litersNeeded} L).`,
+                  message: `Paint Calculator: ${productName} for ${paintableArea} sq ft (${litersNeeded} ${unit || 'L'}).`,
                 });
               }}
               selectedColorHex={selectedColorHex}
@@ -226,11 +226,11 @@ export default function App() {
 
             {/* Precision Paint Coverage Calculator */}
             <PaintCalculator
-              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown }) => {
+              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown, unit }) => {
                 handleOpenEnquiry({
                   topic: 'Request a quotation',
                   product: productName,
-                  message: `Paint Calculator Estimate: ${productName} for ${paintableArea} sq ft. Estimated volume: ${litersNeeded} Litres (${canBreakdown}).`,
+                  message: `Paint Calculator Estimate: ${productName} for ${paintableArea} sq ft. Estimated volume: ${litersNeeded} ${unit || 'L'} (${canBreakdown}).`,
                 });
               }}
               selectedColorHex={selectedColorHex}

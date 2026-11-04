@@ -1,6 +1,7 @@
+import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useEffect } from 'react';
 import { Calculator, MessageSquare, Check, Layers, Sparkles, ChevronDown } from 'lucide-react';
-import { PRODUCTS, CATEGORIES } from '../data/paintsData';
+import { PRODUCTS as DEFAULT_PRODUCTS, CATEGORIES } from '../data/paintsData';
 
 interface PaintCalculatorProps {
   onRequestQuoteWithEstimate: (details: {
@@ -8,6 +9,7 @@ interface PaintCalculatorProps {
     paintableArea: number;
     litersNeeded: number;
     canBreakdown: string;
+    unit?: string;
   }) => void;
   selectedColorHex: string;
   selectedColorName: string;
@@ -18,6 +20,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
   selectedColorHex,
   selectedColorName,
 }) => {
+  const PRODUCTS = (useSiteContent()?.products || DEFAULT_PRODUCTS).filter(p => p.coverageSqFtPerLiter > 0);
   const [length, setLength] = useState<number>(14);
   const [width, setWidth] = useState<number>(12);
   const [height, setHeight] = useState<number>(10);
@@ -44,10 +47,12 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
   // Calculation Math
   const grossWallArea = 2 * (length + width) * height;
   const deductions = doors * 21 + windows * 15;
-  const netArea = Math.max(0, grossWallArea - deductions);
+  const unit = selectedProduct.coverageUnit || 'L';
+  const appliedCoats = selectedProduct.calculationBasis === 'floor' ? 1 : coats;
+  const netArea = selectedProduct.calculationBasis === 'floor' ? length * width : Math.max(0, grossWallArea - deductions);
 
   // Liters needed = (netArea * coats / coveragePerLiter) * 1.10 (10% safety buffer)
-  const exactLiters = (netArea * coats) / selectedProduct.coverageSqFtPerLiter;
+  const exactLiters = (netArea * appliedCoats) / selectedProduct.coverageSqFtPerLiter;
   const totalLitersWithWastage = Math.ceil(exactLiters * 1.1 * 2) / 2;
 
   // Package sizing optimizer
@@ -71,7 +76,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
 
   const recommendedCans = calculateCans(totalLitersWithWastage);
   const canBreakdownString = recommendedCans
-    .map((c) => `${c.count} × ${c.size}L`)
+    .map((c) => `${c.count} × ${c.size}${unit}`)
     .join(' + ');
 
   const handleSendEstimate = () => {
@@ -80,6 +85,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
       paintableArea: Math.round(netArea),
       litersNeeded: totalLitersWithWastage,
       canBreakdown: canBreakdownString,
+      unit,
     });
   };
 
@@ -154,7 +160,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
                 >
                   {filteredProducts.map((p) => (
                     <option key={p.id} value={p.id} className="py-2">
-                      {p.name} — {p.categoryName} ({p.coverageSqFtPerLiter} sq ft/Litre · {p.sheen})
+                      {p.name} — {p.categoryName} ({p.coverageSqFtPerLiter} sq ft/{p.coverageUnit||'L'} · {p.sheen})
                     </option>
                   ))}
                 </select>
@@ -172,7 +178,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
                   <span className="text-amber-900 font-semibold">{selectedProduct.sheen}</span>
                 </div>
                 <div className="flex items-center gap-3 text-stone-700 font-mono text-[11px]">
-                  <span>Rating: <strong>{selectedProduct.coverageSqFtPerLiter} sq ft/L</strong></span>
+                  <span>Rating: <strong>{selectedProduct.coverageSqFtPerLiter} sq ft/{unit}</strong></span>
                   <span>·</span>
                   <span>Standard: <strong>{selectedProduct.recommendedCoats} Coats</strong></span>
                 </div>
@@ -277,7 +283,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
                 {selectedProduct.name}
               </h3>
               <p className="text-xs text-stone-400 mt-1">
-                Calculated for {coats} coats with {selectedProduct.coverageSqFtPerLiter} sq ft/L coverage + 10% safety buffer.
+                Calculated for {appliedCoats} coats with {selectedProduct.coverageSqFtPerLiter} sq ft/{unit} coverage + 10% safety buffer.
               </p>
             </div>
 
@@ -296,7 +302,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
                 <span className="font-mono text-3xl font-extrabold text-amber-400 tabular-nums">
                   {totalLitersWithWastage}
                 </span>
-                <span className="text-xs text-stone-400 ml-1">Litres</span>
+                <span className="text-xs text-stone-400 ml-1">{unit === 'kg' ? 'kg' : 'Litres'}</span>
               </div>
             </div>
 
@@ -311,7 +317,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
                     key={i}
                     className="px-3 py-1.5 rounded-xl bg-stone-800 border border-stone-700 text-xs font-mono font-bold text-stone-200"
                   >
-                    {can.count} × {can.size} Litre Can{can.count > 1 ? 's' : ''}
+                    {can.count} × {can.size} {unit === 'kg' ? 'kg bag' : 'Litre can'}{can.count > 1 ? 's' : ''}
                   </span>
                 ))}
               </div>
@@ -324,7 +330,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
                 className="w-full py-4 px-4 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-700 text-white transition-all shadow-md active:scale-[0.99]"
               >
                 <MessageSquare className="w-4 h-4" />
-                <span>Request Quotation for {totalLitersWithWastage} Litres</span>
+                <span>Request Quotation for {totalLitersWithWastage} {unit}</span>
               </button>
               
               <div className="text-[11px] text-stone-400 text-center mt-2.5">

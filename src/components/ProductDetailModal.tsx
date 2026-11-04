@@ -78,7 +78,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
                 <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200">
                   <span className="text-stone-400 block text-[10px] uppercase font-semibold">Coverage Rate</span>
-                  <span className="font-bold text-stone-900 font-mono">{product.coverageSqFtPerLiter} sq ft / Litre</span>
+                  <span className="font-bold text-stone-900 font-mono">{product.coverageSqFtPerLiter > 0 ? `${product.coverageSqFtPerLiter} sq ft / ${product.coverageUnit || 'L'}` : 'Coverage not configured'}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200">
                   <span className="text-stone-400 block text-[10px] uppercase font-semibold">Environmental</span>
@@ -96,7 +96,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-stone-900">
                   {product.availableSizes.map((sz) => (
                     <span key={sz} className="px-2 py-0.5 rounded bg-stone-100 border border-stone-200">
-                      {sz} Litres
+                      {sz} {product.coverageUnit === 'kg' ? 'kg' : 'Litres'}
                     </span>
                   ))}
                 </div>

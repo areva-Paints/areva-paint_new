@@ -1,17 +1,21 @@
+import 'dotenv/config';
+import { contentRouter, uploads } from './src/admin/routes';
+import { readContent } from './src/admin/content-store';
+import { legacyPage } from './src/admin/legacy-page';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import { PRODUCTS, CATEGORIES, COLOR_SHADES } from './src/data/paintsData';
+import { CATEGORIES, COLOR_SHADES } from './src/data/paintsData';
 
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const trustedProxyHops = Number(process.env.TRUST_PROXY_HOPS || 0);
+if (Number.isInteger(trustedProxyHops) && trustedProxyHops > 0) app.set('trust proxy', trustedProxyHops);
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const isProd = process.env.NODE_ENV === 'production';
 
@@ -25,6 +29,9 @@ app.use((_req, res, next) => {
 
 // Body Parser Middleware
 app.use(express.json({ limit: '10mb' }));
+app.use('/api', contentRouter);
+app.use('/uploads', uploads());
+app.get(['/assets/aistudio/areva-paints_a2364c60.html','/attached-page','/areva-html','/attached-version'], (_req,res) => { res.setHeader('Cache-Control','no-store'); res.type('html').send(legacyPage()); });
 app.use(express.urlencoded({ extended: true }));
 
 export interface DealerDepot {
@@ -95,10 +102,10 @@ app.get('/api/health', (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     environment: isProd ? 'production' : 'development',
     catalogStats: {
-      productsCount: PRODUCTS.length,
+      productsCount: readContent().products.length,
       categoriesCount: CATEGORIES.length,
       shadesCount: COLOR_SHADES.length,
-      dealerDepotsCount: DEALER_LOCATIONS.length,
+      dealerDepotsCount: readContent().dealers.length,
     },
   });
 });
@@ -107,7 +114,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.get('/api/products', (req: Request, res: Response) => {
   const { category, search } = req.query;
 
-  let results = [...PRODUCTS];
+  let results = [...readContent().products];
 
   if (category && category !== 'all') {
     results = results.filter((p) => p.categoryId === category);
@@ -133,7 +140,7 @@ app.get('/api/products', (req: Request, res: Response) => {
 
 // 3. Single Coating Details Endpoint
 app.get('/api/products/:id', (req: Request, res: Response) => {
-  const product = PRODUCTS.find((p) => p.id === req.params.id);
+  const product = readContent().products.find((p) => p.id === req.params.id);
   if (!product) {
     return res.status(404).json({ error: 'Product not found in Areva catalogue.' });
   }
@@ -159,7 +166,7 @@ app.get('/api/shades', (req: Request, res: Response) => {
 // 5. Authorized Dealer Depots
 app.get('/api/dealers', (req: Request, res: Response) => {
   const { state } = req.query;
-  let depots = [...DEALER_LOCATIONS];
+  let depots = [...readContent().dealers];
 
   if (state) {
     depots = depots.filter((d) => d.state.toLowerCase() === (state as string).toLowerCase());
@@ -167,7 +174,7 @@ app.get('/api/dealers', (req: Request, res: Response) => {
 
   res.json({
     depots,
-    statesCovered: ['Karnataka', 'Maharashtra', 'Tamil Nadu', 'Andhra Pradesh'],
+    statesCovered: [...new Set(readContent().dealers.map(d => d.state))],
     total: depots.length,
   });
 });
@@ -182,13 +189,16 @@ app.post('/api/calculator/estimate', (req: Request, res: Response) => {
     });
   }
 
-  const product = PRODUCTS.find((p) => p.id === productId) || PRODUCTS[0];
+  const product = readContent().products.find((p) => p.id === productId) || readContent().products[0];
+
+  if (product.coverageSqFtPerLiter <= 0) return res.status(400).json({error: 'Coverage has not been configured for this product.'});
 
   const grossWallArea = 2 * (Number(length) + Number(width)) * Number(height);
   const deductions = Number(doors) * 21 + Number(windows) * 15;
-  const netArea = Math.max(0, grossWallArea - deductions);
+  const netArea = product.calculationBasis === 'floor' ? Number(length) * Number(width) : Math.max(0, grossWallArea - deductions);
+  const effectiveCoats = product.calculationBasis === 'floor' ? 1 : Number(coats);
 
-  const exactLiters = (netArea * Number(coats)) / product.coverageSqFtPerLiter;
+  const exactLiters = (netArea * effectiveCoats) / product.coverageSqFtPerLiter;
   const totalLitersWithWastage = Math.ceil(exactLiters * 1.1 * 2) / 2; // 10% safety buffer rounded to 0.5L
 
   // Package sizing calculation
@@ -207,7 +217,7 @@ app.post('/api/calculator/estimate', (req: Request, res: Response) => {
   if (cans4L > 0) canBreakdown.push({ size: 4, count: cans4L });
   if (cans1L > 0) canBreakdown.push({ size: 1, count: cans1L });
 
-  const breakdownString = canBreakdown.map((c) => `${c.count} × ${c.size}L`).join(' + ');
+  const breakdownString = canBreakdown.map((c) => `${c.count} × ${c.size}${product.coverageUnit || 'L'}`).join(' + ');
 
   return res.json({
     product: {
@@ -220,7 +230,8 @@ app.post('/api/calculator/estimate', (req: Request, res: Response) => {
     deductions: { doors: Number(doors), windows: Number(windows), totalSqFt: deductions },
     grossWallAreaSqFt: grossWallArea,
     netPaintableAreaSqFt: Math.round(netArea),
-    coats: Number(coats),
+    coats: effectiveCoats,
+    unit: product.coverageUnit || 'L',
     exactLitersRequired: Math.round(exactLiters * 100) / 100,
     recommendedTotalLiters: totalLitersWithWastage,
     canBreakdown,
@@ -239,9 +250,9 @@ app.post('/api/enquiries', (req: Request, res: Response) => {
   }
 
   // Find nearest dealer depot for city
-  const matchedDepot = DEALER_LOCATIONS.find(
+  const matchedDepot = readContent().dealers.find(
     (d: DealerDepot) => d.city.toLowerCase() === (city || '').toLowerCase()
-  ) || DEALER_LOCATIONS[0];
+  ) || readContent().dealers[0];
 
   const newTicketId = `ARV-REQ-${Math.floor(10000 + Math.random() * 90000)}`;
 
@@ -255,8 +266,8 @@ app.post('/api/enquiries', (req: Request, res: Response) => {
     shadeName: shadeName || undefined,
     message: message || undefined,
     createdAt: new Date().toISOString(),
-    status: 'assigned_to_dealer',
-    assignedDepot: `${matchedDepot.name} (${matchedDepot.city})`,
+    status: matchedDepot ? 'assigned_to_dealer' : 'pending',
+    assignedDepot: matchedDepot ? `${matchedDepot.name} (${matchedDepot.city})` : 'Pending dealer assignment',
   };
 
   enquiriesStore.unshift(newEnquiry);
@@ -266,7 +277,7 @@ app.post('/api/enquiries', (req: Request, res: Response) => {
     ticketId: newTicketId,
     enquiry: newEnquiry,
     assignedDepot: matchedDepot,
-    message: `Enquiry registered successfully. Routing to ${matchedDepot.name}.`,
+    message: matchedDepot ? `Enquiry registered successfully. Routing to ${matchedDepot.name}.` : 'Enquiry registered successfully. A dealer will be assigned.',
   });
 });
 

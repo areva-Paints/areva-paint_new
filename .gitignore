@@ -7,3 +7,6 @@ coverage/
 .env*
 !.env.example
 extracted_areva/
+
+# Persistent admin content and uploaded images
+.local/
