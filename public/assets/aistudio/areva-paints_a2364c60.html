@@ -870,7 +870,7 @@ else if(d.f){gf=d.f;drawG()}
 else if(d.v!=null){$("#bs").selectedIndex=+d.v;$("#bk").scrollIntoView({behavior:"smooth",block:"center"})}
 else if(d.st){$("#dl").innerHTML='<a class="btn btn-wa" target="_blank" rel="noopener" href="'+wa("Hello Areva Paints, please share the nearest dealer in "+d.st+".")+'">Dealer in '+d.st+'</a> <a class="btn btn-line" href="tel:+'+WA+'">Call</a>'}
 else if(d.r){role=d.r;roles();if(signed)dash();if(!$("#lg").open)$("#lg").showModal()}});
-paint(C[5][2],C[5][0]+" ("+C[5][1]+")");drawSw();drawG();roles();
+
 $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c[2]+'"></i>'+c[0]+'</span>').join("");
 
 /* Areva Dedicated Color Splash Arcade Mini-Game (Opened on-demand, zero disturbance on page) */
@@ -1805,8 +1805,7 @@ if(cmpInput) cmpInput.oninput = e => ov(e.target.value);
 const cc2Input = $("#cc2");
 if(cc2Input) cc2Input.oninput = e => paint(e.target.value, "Custom " + e.target.value);
 
-rooms();
-loadScene(0);
+
 
 /* Live camera AR: wall color-tracking */
 let live=false, stream=null, vid=null, seedRGB=null, lastPt=null, raf=0, rawCv=null;
@@ -1951,6 +1950,10 @@ if(stopCamBtn){
     loadScene(0);
   };
 }
+paint(C[5][2], C[5][0]+" ("+C[5][1]+")");
+drawG();
+roles();
+loadScene(0);
 </script>
 </body>
 </html>
