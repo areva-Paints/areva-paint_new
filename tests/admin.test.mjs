@@ -242,6 +242,13 @@ test("admin authentication, uploads, validation, public integration and persiste
       (await req("/api/admin/content", "PUT", duplicate)).status,
       400,
     );
+    const missingImage = structuredClone(edited);
+    missingImage.landingImages[0].image =
+      "/uploads/ffffffff-ffff-ffff-ffff-ffffffffffff.png";
+    assert.equal(
+      (await req("/api/admin/content", "PUT", missingImage)).status,
+      400,
+    );
     const invalidHex = structuredClone(edited);
     invalidHex.colours[0].hex = "red";
     assert.equal(

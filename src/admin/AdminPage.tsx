@@ -1,3 +1,4 @@
+import { ImagePreview, checkImage } from "./ImagePreview";
 import { ColourManager } from "./ColourManager";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -165,23 +166,31 @@ export function AdminPage() {
       setBusy(false);
     }
   }
-  async function save() {
-    if (!content || busy || uploading) return;
+  async function persist(next: SiteContent): Promise<boolean> {
+    if (busy || uploading) return false;
     setBusy(true);
     setError("");
     try {
       const c = await request("/api/admin/content", {
         method: "PUT",
-        body: JSON.stringify(content),
+        body: JSON.stringify(next),
       });
       setContent(c);
       setDirty(false);
       setNotice("Changes saved. Your website is up to date.");
+      try {
+        localStorage.setItem("areva-content-updated", String(c.revision));
+      } catch {}
+      return true;
     } catch (e) {
       setError((e as Error).message);
+      return false;
     } finally {
       setBusy(false);
     }
+  }
+  async function save() {
+    if (content) await persist(content);
   }
   function add() {
     setIsNew(true);
@@ -235,18 +244,40 @@ export function AdminPage() {
         },
       });
   }
-  function apply(e: React.FormEvent) {
+  async function apply(e: React.FormEvent) {
     e.preventDefault();
-    if (!content || !editor || uploading || tab === "colours") return;
+    if (!content || !editor || uploading || busy || tab === "colours") return;
+    const publish =
+      (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ===
+      "publish";
+    if ("image" in editor) {
+      setUploading(true);
+      setError("");
+      try {
+        await checkImage(editor.image.trim());
+      } catch (e) {
+        setError((e as Error).message);
+        return;
+      } finally {
+        setUploading(false);
+      }
+    }
     const key = tab === "coverage" ? "products" : tab;
     const items = content[key] as (Product | Dealer | LandingImage)[];
-    update({
+    const entry =
+      "image" in editor ? { ...editor, image: editor.image.trim() } : editor;
+    const next = {
       ...content,
       [key]: isNew
-        ? [...items, editor]
-        : items.map((i) => (i.id === editor.id ? editor : i)),
-    });
-    setEditor(null);
+        ? [...items, entry]
+        : items.map((i) => (i.id === entry.id ? entry : i)),
+    };
+    if (publish) {
+      if (await persist(next)) setEditor(null);
+    } else {
+      update(next);
+      setEditor(null);
+    }
   }
   function remove(id: string) {
     if (!content || tab === "colours") return;
@@ -320,14 +351,7 @@ export function AdminPage() {
   const imageEditor = editor && "image" in editor && (
     <div className="adm-image-editor">
       {editor.image ? (
-        <img
-          src={editor.image}
-          alt="Image preview"
-          onError={(e) => {
-            e.currentTarget.alt =
-              "Image could not be loaded. Check the URL or upload another image.";
-          }}
-        />
+        <ImagePreview src={editor.image} alt="Image preview" />
       ) : (
         <div className="adm-image-placeholder">
           <ImagePlus size={30} />
@@ -556,7 +580,10 @@ export function AdminPage() {
           {notice && (
             <div className="adm-success" role="status">
               <Check size={18} />
-              {notice}
+              <span>{notice}</span>
+              <a href="/" target="_blank" rel="noreferrer">
+                Open updated homepage <ExternalLink size={14} />
+              </a>
             </div>
           )}
           {error && !editor && (
@@ -607,7 +634,7 @@ export function AdminPage() {
                     return (
                       <article key={l.id}>
                         <div className="adm-gallery-image">
-                          <img src={l.image} alt={l.label} />
+                          <ImagePreview src={l.image} alt={l.label} />
                           <span>{String(i + 1).padStart(2, "0")}</span>
                         </div>
                         <div className="adm-gallery-copy">
@@ -842,7 +869,7 @@ export function AdminPage() {
               <X />
             </button>
           </div>
-          <div className="adm-dialog-body">
+          <div className="adm-dialog-body" inert={uploading || busy}>
             {editor && (
               <>
                 {tab === "landingImages" ? (
@@ -1063,10 +1090,38 @@ export function AdminPage() {
             >
               Cancel
             </button>
-            <button className="adm-primary" disabled={uploading}>
-              <Check size={17} />
-              {uploading ? "Uploading…" : "Apply to workspace"}
-            </button>
+            {tab === "landingImages" ? (
+              <>
+                <button
+                  className="adm-secondary"
+                  type="submit"
+                  name="action"
+                  value="workspace"
+                  disabled={uploading || busy}
+                >
+                  Apply to workspace
+                </button>
+                <button
+                  className="adm-primary"
+                  type="submit"
+                  name="action"
+                  value="publish"
+                  disabled={uploading || busy}
+                >
+                  <Save size={17} />
+                  {uploading
+                    ? "Checking image…"
+                    : busy
+                      ? "Saving…"
+                      : "Save to website"}
+                </button>
+              </>
+            ) : (
+              <button className="adm-primary" disabled={uploading || busy}>
+                <Check size={17} />
+                {uploading ? "Checking image…" : "Apply to workspace"}
+              </button>
+            )}
           </div>
         </form>
       </dialog>

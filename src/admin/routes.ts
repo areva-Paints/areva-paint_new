@@ -253,6 +253,18 @@ function validate(c: SiteContent) {
       !text(l.recommendedProduct, 200)
     )
       throw Error("Landing images need a caption and valid image.");
+  for (const image of [...c.landingImages, ...c.products]) {
+    if (
+      image.image.startsWith("/uploads/") &&
+      (!/^\/uploads\/[a-f0-9-]+\.(png|jpeg|webp)$/.test(image.image) ||
+        !fs.existsSync(
+          path.join(dataDir, "uploads", path.basename(image.image)),
+        ))
+    )
+      throw Error(
+        "An uploaded image is missing. Edit the affected entry and upload it again before saving.",
+      );
+  }
 }
 contentRouter.put("/admin/content", (req, res) => {
   try {

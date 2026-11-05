@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import { contentUrl } from '../site-content';
+import { useSiteContent } from '../admin/ContentContext';
+import React, { useState, useRef, useEffect } from 'react';
 import { ExternalLink, RefreshCw, Maximize2, Minimize2, ArrowLeft } from 'lucide-react';
 
 interface AttachedPageViewerProps {
@@ -14,7 +16,15 @@ export const AttachedPageViewer: React.FC<AttachedPageViewerProps> = ({
   const [refreshKey, setRefreshKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const attachedUrl = '/assets/aistudio/areva-paints_a2364c60.html';
+  const revision = useSiteContent()?.revision;
+  const lastRevision = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (revision === undefined) return;
+    if (lastRevision.current !== undefined && lastRevision.current !== revision) setRefreshKey(key => key+1);
+    lastRevision.current = revision;
+  }, [revision]);
+
+  const attachedUrl = contentUrl('/assets/aistudio/areva-paints_a2364c60.html');
 
   const handleRefresh = () => {
     setRefreshKey((prev) => prev + 1);
