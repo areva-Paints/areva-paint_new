@@ -1,5 +1,6 @@
+import { useSiteContent } from '../admin/ContentContext';
 import React from 'react';
-import { COLOR_SHADES } from '../data/paintsData';
+import { COLOR_SHADES as DEFAULT_SHADES } from '../data/paintsData';
 
 interface ColorTickerProps {
   onSelectColor: (hex: string, name: string) => void;
@@ -10,6 +11,7 @@ export const ColorTicker: React.FC<ColorTickerProps> = ({
   onSelectColor,
   onOpenVisualizer,
 }) => {
+  const COLOR_SHADES = useSiteContent()?.colours || DEFAULT_SHADES;
   const tickerItems = [...COLOR_SHADES, ...COLOR_SHADES, ...COLOR_SHADES];
 
   return (

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { dataDir, readContent, saveContent } from "./content-store";
-import { CATEGORIES } from "../data/paintsData";
+import { CATEGORIES, COLOR_SHADES } from "../data/paintsData";
 import type { SiteContent } from "./content-types";
 
 export const contentRouter = express.Router();
@@ -121,6 +121,45 @@ function validate(c: SiteContent) {
     throw Error(
       "Keep 1–200 products, up to 500 dealers and 12 landing images.",
     );
+  if (
+    !Array.isArray(c.colours) ||
+    !c.colours.length ||
+    c.colours.length > 5000 ||
+    !Array.isArray(c.shadeCards) ||
+    c.shadeCards.length > 50
+  )
+    throw Error("Keep 1–5,000 colours and up to 50 PDF shade cards.");
+  const families = new Set(COLOR_SHADES.map((c) => c.family));
+  const codes = new Set<string>();
+  for (const colour of c.colours) {
+    if (
+      !nonempty(colour.name, 150) ||
+      typeof colour.code !== "string" ||
+      !/^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$/.test(colour.code) ||
+      !/^#[0-9A-Fa-f]{6}$/.test(colour.hex) ||
+      !families.has(colour.family) ||
+      !Array.isArray(colour.goesWellWith) ||
+      colour.goesWellWith.length > 20 ||
+      !colour.goesWellWith.every((v) => /^#[0-9A-Fa-f]{6}$/.test(v))
+    )
+      throw Error(
+        "Each colour needs a name, valid code, six-digit HEX value and colour family.",
+      );
+    const code = colour.code.trim().toUpperCase();
+    if (codes.has(code))
+      throw Error("Colour codes must be unique, regardless of letter case.");
+    codes.add(code);
+  }
+  if (!ids(c.shadeCards))
+    throw Error("PDF shade cards need unique identifiers.");
+  for (const card of c.shadeCards)
+    if (
+      !nonempty(card.title, 150) ||
+      typeof card.url !== "string" ||
+      !/^\/uploads\/[a-f0-9-]+\.pdf$/.test(card.url) ||
+      !fs.existsSync(path.join(dataDir, "uploads", path.basename(card.url)))
+    )
+      throw Error("Shade cards need a title and an uploaded PDF.");
   if (!ids(c.products) || !ids(c.dealers) || !ids(c.landingImages))
     throw Error("Each entry needs a unique identifier.");
   if (!c.products.some((p) => p.coverageSqFtPerLiter > 0))
@@ -219,6 +258,8 @@ contentRouter.put("/admin/content", (req, res) => {
   try {
     const current = readContent(),
       c = req.body as SiteContent;
+    c.colours ??= current.colours;
+    c.shadeCards ??= current.shadeCards;
     validate(c);
     if (c.revision !== current.revision)
       return res.status(409).json({
@@ -226,6 +267,8 @@ contentRouter.put("/admin/content", (req, res) => {
           "Someone else saved changes. Reload this page before editing again.",
       });
     const next = {
+      colours: c.colours,
+      shadeCards: c.shadeCards,
       products: c.products,
       dealers: c.dealers,
       landingImages: c.landingImages,
@@ -236,6 +279,32 @@ contentRouter.put("/admin/content", (req, res) => {
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
+});
+contentRouter.post("/admin/pdf-upload", (req, res) => {
+  const match =
+    typeof req.body.data === "string" &&
+    req.body.data.match(/^data:application\/pdf;base64,([A-Za-z0-9+/=]+)$/);
+  if (!match)
+    return res
+      .status(400)
+      .json({ error: "Choose a PDF shade card up to 5 MB." });
+  const bytes = Buffer.from(match[1], "base64");
+  if (
+    bytes.length < 12 ||
+    bytes.length > 5 * 1024 * 1024 ||
+    bytes.toString("ascii", 0, 5) !== "%PDF-" ||
+    !bytes
+      .subarray(Math.max(0, bytes.length - 1024))
+      .includes(Buffer.from("%%EOF"))
+  )
+    return res
+      .status(400)
+      .json({ error: "The file is not a valid PDF, or exceeds 5 MB." });
+  const dir = path.join(dataDir, "uploads");
+  fs.mkdirSync(dir, { recursive: true });
+  const name = crypto.randomUUID() + ".pdf";
+  fs.writeFileSync(path.join(dir, name), bytes);
+  res.status(201).json({ url: "/uploads/" + name });
 });
 contentRouter.post("/admin/upload", (req, res) => {
   const match =
@@ -291,7 +360,9 @@ contentRouter.use("/content/legacy-image", (req, res) => {
 });
 export function uploads() {
   return express.static(path.join(dataDir, "uploads"), {
-    setHeaders(res) {
+    setHeaders(res, file) {
+      if (file.endsWith(".pdf"))
+        res.setHeader("Content-Disposition", "attachment");
       res.setHeader("X-Content-Type-Options", "nosniff");
     },
   });

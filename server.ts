@@ -7,7 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
-import { CATEGORIES, COLOR_SHADES } from './src/data/paintsData';
+import { CATEGORIES } from './src/data/paintsData';
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -106,7 +106,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
     catalogStats: {
       productsCount: readContent().products.length,
       categoriesCount: CATEGORIES.length,
-      shadesCount: COLOR_SHADES.length,
+      shadesCount: readContent().colours.length,
       dealerDepotsCount: readContent().dealers.length,
     },
   });
@@ -152,7 +152,11 @@ app.get('/api/products/:id', (req: Request, res: Response) => {
 // 4. Architectural Shades Palette
 app.get('/api/shades', (req: Request, res: Response) => {
   const { family } = req.query;
-  let shades = [...COLOR_SHADES];
+  let shades = [...readContent().colours];
+  if (typeof req.query.search === 'string') {
+    const query = req.query.search.toLowerCase().trim();
+    shades = shades.filter(shade => shade.name.toLowerCase().includes(query) || shade.code.toLowerCase().includes(query));
+  }
 
   if (family && family !== 'All') {
     shades = shades.filter((s) => s.family === family);
@@ -160,7 +164,7 @@ app.get('/api/shades', (req: Request, res: Response) => {
 
   res.json({
     shades,
-    families: ['All', 'Warm Neutrals', 'Cool Tones', 'Vibrant Accents', 'Greens & Earth'],
+    families: ['All', ...new Set(readContent().colours.map(c=>c.family))],
     total: shades.length,
   });
 });

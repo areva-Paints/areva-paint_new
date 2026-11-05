@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -87,6 +87,50 @@ test("admin authentication, uploads, validation, public integration and persiste
     const original = await (await req("/api/admin/content")).json();
     assert.equal(original.products.length, 18);
     assert.equal(original.dealers.length, 13);
+    assert.equal(original.colours.length, 24);
+    assert.equal(original.shadeCards.length, 0);
+    // Upgrade a saved file written before the palette feature existed.
+    await writeFile(
+      path.join(dataDir, "content.json"),
+      JSON.stringify({
+        ...original,
+        colours: undefined,
+        shadeCards: undefined,
+      }),
+    );
+    assert.equal(
+      (await (await req("/api/admin/content")).json()).colours.length,
+      24,
+    );
+    assert.equal(
+      (
+        await req(
+          "/api/admin/pdf-upload",
+          "POST",
+          { data: "data:application/pdf;base64,eA==" },
+          false,
+        )
+      ).status,
+      401,
+    );
+    assert.equal(
+      (
+        await req("/api/admin/pdf-upload", "POST", {
+          data: "data:application/pdf;base64,aW52YWxpZA==",
+        })
+      ).status,
+      400,
+    );
+    const pdf = Buffer.from("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF");
+    const uploadedPdf = await req("/api/admin/pdf-upload", "POST", {
+      data: "data:application/pdf;base64," + pdf.toString("base64"),
+    });
+    assert.equal(uploadedPdf.status, 201);
+    const pdfUrl = (await uploadedPdf.json()).url;
+    const download = await req(pdfUrl);
+    assert.match(download.headers.get("content-type"), /application\/pdf/);
+    assert.match(download.headers.get("content-disposition"), /attachment/);
+
     const homepage = await (
       await req("/assets/aistudio/areva-paints_a2364c60.html")
     ).text();
@@ -153,6 +197,17 @@ test("admin authentication, uploads, validation, public integration and persiste
     };
     const edited = {
       ...original,
+      colours: [
+        ...original.colours,
+        {
+          name: "Coastal Mist <test>",
+          code: "AR901",
+          hex: "#B3CCD5",
+          family: "Coastal & Blues",
+          goesWellWith: [],
+        },
+      ],
+      shadeCards: [{ id: "test-pdf", title: "Shade card", url: pdfUrl }],
       products: [...original.products, product],
       landingImages: [
         {
@@ -177,6 +232,28 @@ test("admin authentication, uploads, validation, public integration and persiste
         },
       ],
     };
+
+    const duplicate = structuredClone(edited);
+    duplicate.colours.push({
+      ...duplicate.colours[0],
+      code: duplicate.colours[0].code.toLowerCase(),
+    });
+    assert.equal(
+      (await req("/api/admin/content", "PUT", duplicate)).status,
+      400,
+    );
+    const invalidHex = structuredClone(edited);
+    invalidHex.colours[0].hex = "red";
+    assert.equal(
+      (await req("/api/admin/content", "PUT", invalidHex)).status,
+      400,
+    );
+    const noColours = structuredClone(edited);
+    noColours.colours = [];
+    assert.equal(
+      (await req("/api/admin/content", "PUT", noColours)).status,
+      400,
+    );
     const invalid = structuredClone(edited);
     invalid.products[0].coverageSqFtPerLiter = -1;
     assert.equal((await req("/api/admin/content", "PUT", invalid)).status, 400);
@@ -200,6 +277,14 @@ test("admin authentication, uploads, validation, public integration and persiste
     assert.equal(saved.status, 200);
     assert.equal((await saved.json()).revision, 1);
     assert.equal((await req("/api/admin/content", "PUT", edited)).status, 409);
+
+    const palette = await (await req("/api/shades?search=ar901")).json();
+    assert.equal(palette.total, 1);
+    assert.equal(palette.shades[0].hex, "#B3CCD5");
+    const nameSearch = await (
+      await req("/api/shades?search=coastal%20mist")
+    ).json();
+    assert.equal(nameSearch.total, 1);
     const pub = await (await req("/api/products")).json();
     assert.ok(pub.products.some((p) => p.id === "test-product"));
     const dealers = await (await req("/api/dealers?state=Kerala")).json();
@@ -223,6 +308,8 @@ test("admin authentication, uploads, validation, public integration and persiste
     assert.ok(html.includes("A new landing image"));
     assert.ok(html.includes("Test Dealer"));
     assert.ok(html.includes("Test coating"));
+    assert.ok(html.includes("Coastal Mist &lt;test&gt;"));
+    assert.ok(html.includes(pdfUrl));
     assert.ok(!html.includes("<script>alert(1)</script>"));
     assert.ok(html.includes("&lt;script&gt;"));
     assert.equal((await req("/admin")).status, 200);
@@ -233,6 +320,8 @@ test("admin authentication, uploads, validation, public integration and persiste
     await login();
     const restored = await (await req("/api/admin/content")).json();
     assert.equal(restored.revision, 1);
+    assert.equal(restored.colours.at(-1).code, "AR901");
+    assert.equal(restored.shadeCards[0].url, pdfUrl);
     assert.equal(restored.products.at(-1).id, "test-product");
     assert.equal((await req(url)).status, 200);
     await stop();

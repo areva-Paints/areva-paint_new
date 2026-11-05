@@ -21,6 +21,11 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   const [selectedHeroShade, setSelectedHeroShade] = useState(COLOR_SHADES[7]); // Terracotta Hearth
 
   const content = useSiteContent();
+  useEffect(() => {
+    if (content?.colours) {
+      setSelectedHeroShade(previous => content.colours.find(c => c.code === previous.code) || content.colours[0]);
+    }
+  }, [content?.colours]);
   const defaultRooms = [
     {
       id: 'living',
@@ -57,7 +62,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 
   const activeRoom = heroRooms[activeSlideIndex % heroRooms.length];
 
-  const signatureShades = [
+  const signatureShades = content?.colours ? content.colours.slice(0, 6) : [
     COLOR_SHADES[7], // Terracotta Hearth
     COLOR_SHADES[16], // Calm Linen
     COLOR_SHADES[3], // Lagoon

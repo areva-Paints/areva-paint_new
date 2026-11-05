@@ -1,3 +1,5 @@
+import { ShadeCardDownloads } from './ShadeCardDownloads';
+import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   RotateCcw, 
@@ -12,7 +14,7 @@ import {
   Camera
 } from 'lucide-react';
 import { ColorShade, RoomPreset } from '../types';
-import { COLOR_SHADES, ROOM_PRESETS } from '../data/paintsData';
+import { COLOR_SHADES as DEFAULT_SHADES, ROOM_PRESETS } from '../data/paintsData';
 
 interface ColorVisualizerProps {
   selectedColorHex: string;
@@ -29,6 +31,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   onRequestQuote,
   onOpenLiveAR,
 }) => {
+  const COLOR_SHADES = useSiteContent()?.colours || DEFAULT_SHADES;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const originalCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -855,6 +858,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         </div>
 
       </div>
-    </section>
+    <ShadeCardDownloads/>
+</section>
   );
 };

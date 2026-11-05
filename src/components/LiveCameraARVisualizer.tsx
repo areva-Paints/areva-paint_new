@@ -1,3 +1,4 @@
+import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Camera, 
@@ -16,7 +17,7 @@ import {
   HelpCircle,
   ShieldCheck
 } from 'lucide-react';
-import { COLOR_SHADES } from '../data/paintsData';
+import { COLOR_SHADES as DEFAULT_SHADES } from '../data/paintsData';
 import { ColorShade } from '../types';
 
 interface LiveCameraARVisualizerProps {
@@ -34,6 +35,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   initialShadeName,
   onRequestQuoteWithShade,
 }) => {
+  const COLOR_SHADES = useSiteContent()?.colours || DEFAULT_SHADES;
   // Video and Canvas Refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -52,7 +54,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   // Selected Paint Color
   const defaultShade = COLOR_SHADES.find(
     (c) => c.hex.toLowerCase() === (initialShadeHex || '').toLowerCase()
-  ) || COLOR_SHADES[7]; // Default: Terracotta Hearth
+  ) || COLOR_SHADES[7] || COLOR_SHADES[0]; // Default: Terracotta Hearth
 
   const [selectedShade, setSelectedShade] = useState<ColorShade>(defaultShade);
   const [colorCategory, setColorCategory] = useState<string>('All');

@@ -1021,3 +1021,120 @@
     min-width: 260px;
   }
 }
+
+.adm-colour-manager {
+  display: grid;
+  gap: 24px;
+}
+.adm-colour-tools {
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+.adm-colour-tools .adm-search input {
+  width: 100%;
+  font-size: 13px;
+}
+.adm-colour-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  padding: 0 22px 22px;
+}
+.adm-colour-card {
+  border: 1px solid #ebe3f2;
+  border-radius: 12px;
+  overflow: hidden;
+  min-width: 0;
+}
+.adm-colour-swatch {
+  height: 90px;
+  border-bottom: 1px solid #0001;
+}
+.adm-colour-card > div:last-child {
+  padding: 14px;
+}
+.adm-colour-card strong {
+  font-size: 12px;
+  display: block;
+  overflow-wrap: anywhere;
+}
+.adm-colour-card small {
+  font-size: 10px;
+  color: #9b87ac;
+  display: block;
+  margin: 5px 0;
+}
+.adm-colour-card .adm-row-actions {
+  margin-top: 13px;
+}
+.adm-pdf-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e9e0f0;
+  border-radius: 8px;
+  padding: 12px;
+  color: #9a80ae;
+}
+.adm-pdf-row input {
+  border: 1px solid #e8dff1;
+  border-radius: 6px;
+  padding: 8px;
+  min-width: 0;
+  width: 100%;
+  font: inherit;
+  color: #685177;
+}
+.adm-pdf-row button {
+  border: 0;
+  background: none;
+  color: #a48daf;
+  padding: 4px;
+}
+.adm-pdf-row code {
+  font-size: 10px;
+}
+.adm-import-preview {
+  max-height: 320px;
+  overflow: auto;
+  display: grid;
+  gap: 6px;
+}
+.adm-import-preview .adm-pdf-row {
+  padding: 8px;
+  gap: 7px;
+  font-size: 11px;
+}
+.adm-colour-tools > button {
+  justify-self: start;
+}
+.adm-colour-manager input[type="color"] {
+  padding: 4px;
+  height: 44px;
+}
+@media (max-width: 1100px) {
+  .adm-colour-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .adm-colour-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding: 0 14px 14px;
+  }
+  .adm-colour-tools {
+    padding: 15px;
+  }
+  .adm-import-preview .adm-pdf-row {
+    flex-wrap: wrap;
+  }
+  .adm-import-preview input {
+    flex: 1;
+    min-width: 70px;
+  }
+  .adm-colour-manager .adm-panel-toolbar .adm-upload {
+    margin-top: 12px;
+  }
+}

@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { PRODUCTS, CATEGORIES } from "../data/paintsData";
+import { PRODUCTS, CATEGORIES, COLOR_SHADES } from "../data/paintsData";
 import seed from "./legacy-seed.json";
 import type { SiteContent } from "./content-types";
 export const dataDir = path.resolve(
@@ -19,6 +19,8 @@ const categoryIds = [
 export function defaults(): SiteContent {
   return {
     revision: 0,
+    colours: COLOR_SHADES,
+    shadeCards: [],
     products: seed.products.map((p) => {
       const match = PRODUCTS.find((x) =>
         x.name
@@ -62,9 +64,13 @@ export function defaults(): SiteContent {
 }
 export function readContent(): SiteContent {
   const file = path.join(dataDir, "content.json");
-  return fs.existsSync(file)
-    ? JSON.parse(fs.readFileSync(file, "utf8"))
-    : defaults();
+  if (!fs.existsSync(file)) return defaults();
+  const content = JSON.parse(fs.readFileSync(file, "utf8"));
+  return {
+    ...content,
+    colours: content.colours ?? COLOR_SHADES,
+    shadeCards: content.shadeCards ?? [],
+  };
 }
 export function saveContent(content: SiteContent) {
   fs.mkdirSync(dataDir, { recursive: true });

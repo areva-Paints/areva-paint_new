@@ -83,6 +83,26 @@ export function legacyPage() {
     'let activeState="All";',
     `ST.splice(0,ST.length,'All',...new Set(DEALERS.map(d=>d.state)));\nlet activeState="All";`,
   );
+  html = html.replace(
+    "const save=()=>",
+    `C.splice(0,C.length,...${json(c.colours.map((s) => [esc(s.name), esc(s.code), s.hex]))});\nconst save=()=>`,
+  );
+  html = html.replace(
+    'paint(C[5][2], C[5][0]+" ("+C[5][1]+")")',
+    'paint((C[5]||C[0])[2], (C[5]||C[0])[0]+" ("+(C[5]||C[0])[1]+")")',
+  );
+  if (c.shadeCards.length) {
+    const cards =
+      '<div class="wrap" style="padding:20px"><h3>Download colour shade cards</h3>' +
+      c.shadeCards
+        .map(
+          (card) =>
+            `<a class="btn btn-line" href="${esc(card.url)}" download>${esc(card.title)} (PDF)</a>`,
+        )
+        .join(" ") +
+      "</div>";
+    html = html.replace("<footer>", cards + "<footer>");
+  }
   // No selling price is configured in administration; do not present a zero-price estimate.
   html = html.replace('d.cost.toLocaleString("en-IN")', "'Contact dealer'");
   html = html

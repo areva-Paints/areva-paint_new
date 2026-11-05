@@ -1,4 +1,4 @@
-import type { Product } from "../types";
+import type { Product, ColorShade } from "../types";
 export interface LandingImage {
   id: string;
   label: string;
@@ -16,7 +16,14 @@ export interface Dealer {
   phone: string;
   badges: string[];
 }
+export interface ShadeCard {
+  id: string;
+  title: string;
+  url: string;
+}
 export interface SiteContent {
+  colours: ColorShade[];
+  shadeCards: ShadeCard[];
   products: Product[];
   dealers: Dealer[];
   landingImages: LandingImage[];

@@ -1,3 +1,4 @@
+import { ColourManager } from "./ColourManager";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -23,8 +24,15 @@ import type { Product } from "../types";
 import type { Dealer, LandingImage, SiteContent } from "./content-types";
 import "./admin.css";
 
-type Tab = "landingImages" | "products" | "dealers" | "coverage";
+type Tab = "landingImages" | "products" | "dealers" | "coverage" | "colours";
 const sections = [
+  {
+    id: "colours" as Tab,
+    label: "Colours & shade cards",
+    icon: Droplets,
+    description:
+      "Manage searchable colour names and codes, or upload a PDF shade card.",
+  },
   {
     id: "landingImages" as Tab,
     label: "Landing images",
@@ -229,7 +237,7 @@ export function AdminPage() {
   }
   function apply(e: React.FormEvent) {
     e.preventDefault();
-    if (!content || !editor || uploading) return;
+    if (!content || !editor || uploading || tab === "colours") return;
     const key = tab === "coverage" ? "products" : tab;
     const items = content[key] as (Product | Dealer | LandingImage)[];
     update({
@@ -241,7 +249,7 @@ export function AdminPage() {
     setEditor(null);
   }
   function remove(id: string) {
-    if (!content) return;
+    if (!content || tab === "colours") return;
     const key = tab === "coverage" ? "products" : tab;
     if (key === "products" && content.products.length === 1) {
       setError("Keep at least one product for the paint calculator.");
@@ -414,9 +422,11 @@ export function AdminPage() {
       </div>
     );
   const items = content
-    ? tab === "coverage"
-      ? content.products
-      : content[tab]
+    ? tab === "colours"
+      ? []
+      : tab === "coverage"
+        ? content.products
+        : content[tab]
     : [];
   const filtered = items.filter((i) =>
     JSON.stringify(i).toLowerCase().includes(search.toLowerCase()),
@@ -436,6 +446,7 @@ export function AdminPage() {
           {sections.map((s) => (
             <button
               key={s.id}
+              disabled={uploading || busy}
               className={tab === s.id ? "active" : ""}
               onClick={() => {
                 setTab(s.id);
@@ -494,22 +505,24 @@ export function AdminPage() {
             View live website <ExternalLink size={14} />
           </a>
         </header>
-        <main className="adm-content">
+        <main className="adm-content" inert={busy}>
           <div className="adm-page-heading">
             <div>
               <span className="adm-eyebrow">YOUR WEBSITE, YOUR WAY</span>
               <h1>{section.label}</h1>
               <p>{section.description}</p>
             </div>
-            <button className="adm-primary" onClick={add}>
-              <Plus size={17} />
-              Add{" "}
-              {tab === "landingImages"
-                ? "image"
-                : tab === "dealers"
-                  ? "dealer"
-                  : "product"}
-            </button>
+            {tab !== "colours" && (
+              <button className="adm-primary" onClick={add}>
+                <Plus size={17} />
+                Add{" "}
+                {tab === "landingImages"
+                  ? "image"
+                  : tab === "dealers"
+                    ? "dealer"
+                    : "product"}
+              </button>
+            )}
           </div>
           <div className="adm-overview">
             {[
@@ -551,214 +564,222 @@ export function AdminPage() {
               {error}
             </div>
           )}
-          <section className="adm-panel">
-            <div className="adm-panel-toolbar">
-              <div>
-                <h2>
-                  {tab === "coverage"
-                    ? "Coverage specifications"
-                    : tab === "landingImages"
-                      ? "Homepage gallery"
-                      : tab === "products"
-                        ? "Product catalog"
-                        : "Dealer directory"}
-                </h2>
-                <small>
-                  {items.length} {items.length === 1 ? "entry" : "entries"} ·{" "}
-                  {tab === "coverage"
-                    ? "Coverage per litre or kilogram, per coat"
-                    : "Manage what customers see on your website"}
-                </small>
+          {tab === "colours" && content ? (
+            <ColourManager
+              content={content}
+              onChange={update}
+              onBusy={setUploading}
+            />
+          ) : (
+            <section className="adm-panel">
+              <div className="adm-panel-toolbar">
+                <div>
+                  <h2>
+                    {tab === "coverage"
+                      ? "Coverage specifications"
+                      : tab === "landingImages"
+                        ? "Homepage gallery"
+                        : tab === "products"
+                          ? "Product catalog"
+                          : "Dealer directory"}
+                  </h2>
+                  <small>
+                    {items.length} {items.length === 1 ? "entry" : "entries"} ·{" "}
+                    {tab === "coverage"
+                      ? "Coverage per litre or kilogram, per coat"
+                      : "Manage what customers see on your website"}
+                  </small>
+                </div>
+                <label className="adm-search">
+                  <Search size={17} />
+                  <input
+                    aria-label="Search entries"
+                    placeholder="Search entries…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </label>
               </div>
-              <label className="adm-search">
-                <Search size={17} />
-                <input
-                  aria-label="Search entries"
-                  placeholder="Search entries…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </label>
-            </div>
-            {tab === "landingImages" ? (
-              <div className="adm-gallery">
-                {filtered.map((item, i) => {
-                  const l = item as LandingImage;
-                  return (
-                    <article key={l.id}>
-                      <div className="adm-gallery-image">
-                        <img src={l.image} alt={l.label} />
-                        <span>{String(i + 1).padStart(2, "0")}</span>
-                      </div>
-                      <div className="adm-gallery-copy">
-                        <h3>{l.label}</h3>
-                        <p>{l.roomType || "Homepage image"}</p>
-                        <div className="adm-row-actions">
-                          <button
-                            onClick={() => {
-                              setEditor(l);
-                              setIsNew(false);
-                            }}
-                          >
-                            <Pencil size={14} />
-                            Edit
-                          </button>
-                          <button
-                            disabled={content?.landingImages[0]?.id === l.id}
-                            onClick={() => {
-                              if (!content) return;
-                              const list = [...content.landingImages],
-                                index = list.findIndex((x) => x.id === l.id);
-                              [list[index - 1], list[index]] = [
-                                list[index],
-                                list[index - 1],
-                              ];
-                              update({ ...content, landingImages: list });
-                            }}
-                          >
-                            Move earlier
-                          </button>
-                          <button
-                            aria-label={"Remove " + l.label}
-                            onClick={() => remove(l.id)}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+              {tab === "landingImages" ? (
+                <div className="adm-gallery">
+                  {filtered.map((item, i) => {
+                    const l = item as LandingImage;
+                    return (
+                      <article key={l.id}>
+                        <div className="adm-gallery-image">
+                          <img src={l.image} alt={l.label} />
+                          <span>{String(i + 1).padStart(2, "0")}</span>
                         </div>
-                      </div>
-                    </article>
-                  );
-                })}
-                <button className="adm-add-tile" onClick={add}>
-                  <span>
-                    <Plus size={25} />
-                  </span>
-                  <b>Add landing image</b>
-                  <small>Give your homepage a new look</small>
-                </button>
-              </div>
-            ) : (
-              <div className="adm-table-scroll">
-                <table>
-                  <thead>
-                    <tr>
-                      {(tab === "dealers"
-                        ? ["Dealer", "Location", "Contact", ""]
-                        : tab === "coverage"
-                          ? [
-                              "Product",
-                              "Category",
-                              "Coverage / coat",
-                              "Coats",
-                              "",
-                            ]
-                          : ["Product", "Category", "Coverage / coat", ""]
-                      ).map((h, i) => (
-                        <th key={i}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((item) => {
-                      const p = item as Product,
-                        d = item as Dealer;
-                      return (
-                        <tr key={item.id}>
-                          <td>
-                            <div className="adm-item-name">
-                              {tab !== "dealers" && (
-                                <img src={p.image} alt="" />
-                              )}
-                              <div>
-                                <strong>
-                                  {"name" in item ? item.name : ""}
-                                </strong>
-                                <small>
-                                  {tab === "dealers"
-                                    ? d.address
-                                    : tab === "coverage"
-                                      ? p.sheen
-                                      : p.tagline}
-                                </small>
+                        <div className="adm-gallery-copy">
+                          <h3>{l.label}</h3>
+                          <p>{l.roomType || "Homepage image"}</p>
+                          <div className="adm-row-actions">
+                            <button
+                              onClick={() => {
+                                setEditor(l);
+                                setIsNew(false);
+                              }}
+                            >
+                              <Pencil size={14} />
+                              Edit
+                            </button>
+                            <button
+                              disabled={content?.landingImages[0]?.id === l.id}
+                              onClick={() => {
+                                if (!content) return;
+                                const list = [...content.landingImages],
+                                  index = list.findIndex((x) => x.id === l.id);
+                                [list[index - 1], list[index]] = [
+                                  list[index],
+                                  list[index - 1],
+                                ];
+                                update({ ...content, landingImages: list });
+                              }}
+                            >
+                              Move earlier
+                            </button>
+                            <button
+                              aria-label={"Remove " + l.label}
+                              onClick={() => remove(l.id)}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                  <button className="adm-add-tile" onClick={add}>
+                    <span>
+                      <Plus size={25} />
+                    </span>
+                    <b>Add landing image</b>
+                    <small>Give your homepage a new look</small>
+                  </button>
+                </div>
+              ) : (
+                <div className="adm-table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        {(tab === "dealers"
+                          ? ["Dealer", "Location", "Contact", ""]
+                          : tab === "coverage"
+                            ? [
+                                "Product",
+                                "Category",
+                                "Coverage / coat",
+                                "Coats",
+                                "",
+                              ]
+                            : ["Product", "Category", "Coverage / coat", ""]
+                        ).map((h, i) => (
+                          <th key={i}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((item) => {
+                        const p = item as Product,
+                          d = item as Dealer;
+                        return (
+                          <tr key={item.id}>
+                            <td>
+                              <div className="adm-item-name">
+                                {tab !== "dealers" && (
+                                  <img src={p.image} alt="" />
+                                )}
+                                <div>
+                                  <strong>
+                                    {"name" in item ? item.name : ""}
+                                  </strong>
+                                  <small>
+                                    {tab === "dealers"
+                                      ? d.address
+                                      : tab === "coverage"
+                                        ? p.sheen
+                                        : p.tagline}
+                                  </small>
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                          {tab === "dealers" ? (
-                            <>
-                              <td>
-                                {d.city}, {d.state}
-                                <small>PIN {d.pin}</small>
-                              </td>
-                              <td>{d.phone}</td>
-                            </>
-                          ) : (
-                            <>
-                              <td>
-                                <span className="adm-category">
-                                  {p.categoryName}
-                                </span>
-                              </td>
-                              <td>
-                                <b>{p.coverageSqFtPerLiter || "Not set"}</b>{" "}
-                                <span className="adm-muted">
-                                  {p.coverageSqFtPerLiter > 0
-                                    ? `sq ft/${p.coverageUnit || "L"}`
-                                    : ""}
-                                </span>
-                              </td>
-                              {tab === "coverage" && (
-                                <td>{p.recommendedCoats}</td>
-                              )}
-                            </>
-                          )}
-                          <td>
-                            <div className="adm-row-actions">
-                              <button
-                                onClick={() => {
-                                  setEditor(item);
-                                  setIsNew(false);
-                                  setError("");
-                                }}
-                                aria-label={
-                                  "Edit " +
-                                  ("name" in item ? item.name : "entry")
-                                }
-                              >
-                                <Pencil size={15} />
-                                <span>Edit</span>
-                              </button>
-                              <button
-                                onClick={() => remove(item.id)}
-                                aria-label={
-                                  "Remove " +
-                                  ("name" in item ? item.name : "entry")
-                                }
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-                {!filtered.length && (
-                  <div className="adm-empty">
-                    <Search size={26} />
-                    <h3>
-                      {search ? "No matching entries" : "Nothing here yet"}
-                    </h3>
-                    <p>
-                      {search
-                        ? "Try another name or keyword."
-                        : "Add your first entry to get started."}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
+                            </td>
+                            {tab === "dealers" ? (
+                              <>
+                                <td>
+                                  {d.city}, {d.state}
+                                  <small>PIN {d.pin}</small>
+                                </td>
+                                <td>{d.phone}</td>
+                              </>
+                            ) : (
+                              <>
+                                <td>
+                                  <span className="adm-category">
+                                    {p.categoryName}
+                                  </span>
+                                </td>
+                                <td>
+                                  <b>{p.coverageSqFtPerLiter || "Not set"}</b>{" "}
+                                  <span className="adm-muted">
+                                    {p.coverageSqFtPerLiter > 0
+                                      ? `sq ft/${p.coverageUnit || "L"}`
+                                      : ""}
+                                  </span>
+                                </td>
+                                {tab === "coverage" && (
+                                  <td>{p.recommendedCoats}</td>
+                                )}
+                              </>
+                            )}
+                            <td>
+                              <div className="adm-row-actions">
+                                <button
+                                  onClick={() => {
+                                    setEditor(item);
+                                    setIsNew(false);
+                                    setError("");
+                                  }}
+                                  aria-label={
+                                    "Edit " +
+                                    ("name" in item ? item.name : "entry")
+                                  }
+                                >
+                                  <Pencil size={15} />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  onClick={() => remove(item.id)}
+                                  aria-label={
+                                    "Remove " +
+                                    ("name" in item ? item.name : "entry")
+                                  }
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                  {!filtered.length && (
+                    <div className="adm-empty">
+                      <Search size={26} />
+                      <h3>
+                        {search ? "No matching entries" : "Nothing here yet"}
+                      </h3>
+                      <p>
+                        {search
+                          ? "Try another name or keyword."
+                          : "Add your first entry to get started."}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
           <div className="adm-tip">
             <ShieldCheck size={18} />
             <p>
