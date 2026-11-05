@@ -297,10 +297,10 @@ export function AdminPage() {
   async function upload(file?: File) {
     if (!file) return;
     if (
-      file.size > 5 * 1024 * 1024 ||
+      file.size > 25 * 1024 * 1024 ||
       !["image/jpeg", "image/png", "image/webp"].includes(file.type)
     ) {
-      setError("Choose a JPEG, PNG or WebP image up to 5 MB.");
+      setError("Choose a JPEG, PNG or WebP image up to 25 MB.");
       return;
     }
     setUploading(true);
@@ -371,7 +371,7 @@ export function AdminPage() {
           }}
         />
       </label>
-      <small>JPEG, PNG or WebP · Up to 5 MB</small>
+      <small>JPEG, PNG or WebP · Up to 25 MB</small>
       {input(
         "image",
         "Or use an image URL",
@@ -634,11 +634,14 @@ export function AdminPage() {
                     return (
                       <article key={l.id}>
                         <div className="adm-gallery-image">
-                          <ImagePreview src={l.image} alt={l.label} />
+                          <ImagePreview
+                            src={l.image}
+                            alt={l.label || "Landing image"}
+                          />
                           <span>{String(i + 1).padStart(2, "0")}</span>
                         </div>
                         <div className="adm-gallery-copy">
-                          <h3>{l.label}</h3>
+                          <h3>{l.label || "Landing image"}</h3>
                           <p>{l.roomType || "Homepage image"}</p>
                           <div className="adm-row-actions">
                             <button
@@ -875,11 +878,16 @@ export function AdminPage() {
                 {tab === "landingImages" ? (
                   <>
                     {imageEditor}
-                    {input("label", "Image caption / alt text")}
-                    {input("roomType", "Subtitle", "text", false)}
+                    {input(
+                      "label",
+                      "Image caption / alt text (optional)",
+                      "text",
+                      false,
+                    )}
+                    {input("roomType", "Subtitle (optional)", "text", false)}
                     {input(
                       "recommendedProduct",
-                      "Recommended product",
+                      "Recommended product (optional)",
                       "text",
                       false,
                     )}

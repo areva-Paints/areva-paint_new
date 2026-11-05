@@ -187,6 +187,22 @@ test("admin authentication, uploads, validation, public integration and persiste
       ).status,
       400,
     );
+    const largeImage = Buffer.alloc(25 * 1024 * 1024);
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(largeImage);
+    const largeUpload = await req("/api/admin/upload", "POST", {
+      data: "data:image/png;base64," + largeImage.toString("base64"),
+    });
+    assert.equal(
+      largeUpload.status,
+      201,
+      "25 MiB image must pass the base64 JSON parser and upload limit",
+    );
+    const tooLarge = Buffer.concat([largeImage, Buffer.from([0])]);
+    const oversizedUpload = await req("/api/admin/upload", "POST", {
+      data: "data:image/png;base64," + tooLarge.toString("base64"),
+    });
+    assert.equal(oversizedUpload.status, 400);
+    assert.match((await oversizedUpload.json()).error, /25 MB/);
     const product = {
       ...original.products[0],
       id: "test-product",
@@ -330,6 +346,28 @@ test("admin authentication, uploads, validation, public integration and persiste
     assert.equal(restored.colours.at(-1).code, "AR901");
     assert.equal(restored.shadeCards[0].url, pdfUrl);
     assert.equal(restored.products.at(-1).id, "test-product");
+    const imageOnly = {
+      ...restored,
+      landingImages: [{ id: "image-only", image: url }],
+    };
+    const imageOnlyResponse = await req("/api/admin/content", "PUT", imageOnly);
+    assert.equal(
+      imageOnlyResponse.status,
+      200,
+      "Image-only landing slides must not require metadata",
+    );
+    const imageOnlySaved = await imageOnlyResponse.json();
+    assert.equal(imageOnlySaved.landingImages[0].label, "");
+    assert.equal(imageOnlySaved.landingImages[0].roomType, "");
+    assert.equal(imageOnlySaved.landingImages[0].recommendedProduct, "");
+    const imageOnlyHtml = await (
+      await req("/assets/aistudio/areva-paints_a2364c60.html")
+    ).text();
+    assert.ok(
+      imageOnlyHtml.includes(`src="${url}" alt="Landing image"></div>`),
+      "Image-only slides should not render an empty caption overlay",
+    );
+
     assert.equal((await req(url)).status, 200);
     await stop();
     await start({ ADMIN_PASSWORD: "", ADMIN_TEST_LOGIN: "false" });

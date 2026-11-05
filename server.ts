@@ -30,6 +30,8 @@ app.use((_req, res, next) => {
 });
 
 // Body Parser Middleware
+// A 25 MiB image needs roughly 33.4 MiB when encoded as JSON/base64.
+app.use('/api/admin/upload', express.json({ limit: '36mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use('/api', contentRouter);
 app.use('/uploads', uploads());

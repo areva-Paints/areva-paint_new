@@ -115,7 +115,7 @@ export function legacyPage() {
     const slides = c.landingImages
       .map(
         (l) =>
-          `<div class="slide pic"><img src="${esc(l.image)}" alt="${esc(l.label)}"><div style="position:absolute;bottom:30px;left:30px;background:#ffffffed;padding:16px;border-radius:16px"><h2>${esc(l.label)}</h2><p>${esc(l.roomType)}</p></div></div>`,
+          `<div class="slide pic"><img src="${esc(l.image)}" alt="${esc(l.label || "Landing image")}">${l.label || l.roomType ? `<div style="position:absolute;bottom:30px;left:30px;background:#ffffffed;padding:16px;border-radius:16px">${l.label ? `<h2>${esc(l.label)}</h2>` : ""}${l.roomType ? `<p>${esc(l.roomType)}</p>` : ""}</div>` : ""}</div>`,
       )
       .join("");
     html = html.replace(

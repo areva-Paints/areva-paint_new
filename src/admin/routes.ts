@@ -245,14 +245,20 @@ function validate(c: SiteContent) {
       !d.badges.every((x) => text(x, 100))
     )
       throw Error("Dealers need contact details and a six-digit PIN code.");
-  for (const l of c.landingImages)
+  for (const l of c.landingImages) {
+    l.label ??= "";
+    l.roomType ??= "";
+    l.recommendedProduct ??= "";
     if (
-      !nonempty(l.label, 150) ||
+      !text(l.label, 150) ||
       !image(l.image) ||
       !text(l.roomType, 150) ||
       !text(l.recommendedProduct, 200)
     )
-      throw Error("Landing images need a caption and valid image.");
+      throw Error(
+        "Landing images need a valid image. Caption, subtitle and recommended product are optional.",
+      );
+  }
   for (const image of [...c.landingImages, ...c.products]) {
     if (
       image.image.startsWith("/uploads/") &&
@@ -327,10 +333,10 @@ contentRouter.post("/admin/upload", (req, res) => {
   if (!match)
     return res.status(400).json({ error: "Choose a JPEG, PNG or WebP image." });
   const bytes = Buffer.from(match[2], "base64");
-  if (bytes.length > 5 * 1024 * 1024 || bytes.length < 12)
+  if (bytes.length > 25 * 1024 * 1024 || bytes.length < 12)
     return res
       .status(400)
-      .json({ error: "Image must be between 12 bytes and 5 MB." });
+      .json({ error: "Image must be between 12 bytes and 25 MB." });
   const valid =
     match[1] === "png"
       ? bytes

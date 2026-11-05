@@ -187,7 +187,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
-                  {room.label}
+                  {room.label || "Image " + (idx + 1)}
                 </button>
               ))}
             </div>
@@ -197,7 +197,7 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
               
               <img
                 src={activeRoom.image}
-                alt={activeRoom.label}
+                alt={activeRoom.label || "Landing image"}
                 className="w-full h-84 sm:h-110 lg:h-120 object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
                 referrerPolicy="no-referrer"
               />
