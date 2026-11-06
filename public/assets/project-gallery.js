@@ -1,0 +1,167 @@
+(() => {
+  "use strict";
+
+  const section = document.getElementById("gallery");
+  const projectData = document.getElementById("pg-project-data");
+  if (!section || !projectData || section.dataset.pgReady) return;
+  section.dataset.pgReady = "true";
+
+  let projects;
+  try {
+    projects = JSON.parse(projectData.textContent || "[]");
+  } catch {
+    return;
+  }
+  if (!Array.isArray(projects)) return;
+
+  const element = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  const button = (className, label, text) => {
+    const node = element("button", className, text);
+    node.type = "button";
+    node.setAttribute("aria-label", label);
+    return node;
+  };
+  const observeImage = (image, fallback) => {
+    const update = () => {
+      const failed = image.complete && image.naturalWidth === 0;
+      image.hidden = failed;
+      fallback.hidden = !failed;
+    };
+    image.addEventListener("load", update);
+    image.addEventListener("error", update);
+    if (image.complete) update();
+  };
+
+  section.querySelectorAll(".pg-cover").forEach((cover) => {
+    const image = cover.querySelector("img");
+    const fallback = cover.querySelector(".pg-image-fallback");
+    if (image && fallback) observeImage(image, fallback);
+  });
+  if (!projects.length) return;
+
+  const dialog = element("dialog", "pg-dialog");
+  dialog.setAttribute("aria-labelledby", "pg-album-title");
+  dialog.setAttribute("aria-describedby", "pg-album-counter");
+  const album = element("div", "pg-album");
+  const heading = element("div", "pg-album-heading");
+  const headingText = element("div");
+  const kicker = element("p", "pg-kicker", "PROJECT ALBUM");
+  const title = element("h2", "pg-album-title");
+  title.id = "pg-album-title";
+  const location = element("p", "pg-album-location");
+  const close = button("pg-close", "Close project album", "×");
+  close.autofocus = true;
+  headingText.append(kicker, title, location);
+  heading.append(headingText, close);
+
+  const stage = element("div", "pg-stage");
+  const previous = button("pg-prev pg-step", "Previous photo", "‹");
+  const next = button("pg-next pg-step", "Next photo", "›");
+  const frame = element("figure", "pg-photo-frame");
+  const photo = element("img", "pg-photo");
+  photo.decoding = "async";
+  const fallback = element("span", "pg-image-fallback", "Photo unavailable");
+  fallback.hidden = true;
+  fallback.setAttribute("role", "img");
+  fallback.setAttribute("aria-label", "Photo unavailable");
+  const caption = element("figcaption", "pg-caption");
+  frame.append(photo, fallback, caption);
+  stage.append(previous, frame, next);
+  observeImage(photo, fallback);
+
+  const footer = element("div", "pg-album-footer");
+  const counter = element("p", "pg-counter");
+  counter.id = "pg-album-counter";
+  counter.setAttribute("aria-live", "polite");
+  counter.setAttribute("aria-atomic", "true");
+  const description = element("p", "pg-description");
+  footer.append(counter, description);
+  const thumbnails = element("div", "pg-thumbnails");
+  thumbnails.setAttribute("role", "group");
+  thumbnails.setAttribute("aria-label", "Choose a project photo");
+  album.append(heading, stage, footer, thumbnails);
+  dialog.append(album);
+  document.body.append(dialog);
+
+  let activeProject = null;
+  let currentPhoto = 0;
+  let opener = null;
+  let previousOverflow = "";
+
+  const showPhoto = (index) => {
+    if (!activeProject) return;
+    currentPhoto = (index + activeProject.photos.length) % activeProject.photos.length;
+    const item = activeProject.photos[currentPhoto];
+    // Show a newly selected image while it loads, even after an earlier failure.
+    photo.hidden = false;
+    fallback.hidden = true;
+    photo.alt = item.caption || `${activeProject.title}, photo ${currentPhoto + 1}`;
+    photo.src = item.image;
+    caption.textContent = item.caption || "";
+    caption.hidden = !item.caption;
+    counter.textContent = `Photo ${currentPhoto + 1} of ${activeProject.photos.length}`;
+    thumbnails.querySelectorAll("button").forEach((thumbnail, number) => {
+      thumbnail.setAttribute("aria-pressed", String(number === currentPhoto));
+    });
+  };
+
+  const openProject = (index, source) => {
+    const project = projects[index];
+    if (!project || !Array.isArray(project.photos) || !project.photos.length) return;
+    activeProject = project;
+    opener = source;
+    title.textContent = project.title;
+    location.textContent = project.location || "";
+    location.hidden = !project.location;
+    description.textContent = project.description || "";
+    description.hidden = !project.description;
+    previous.hidden = next.hidden = project.photos.length < 2;
+    thumbnails.replaceChildren();
+    project.photos.forEach((item, number) => {
+      const thumbnail = button(
+        "pg-thumbnail",
+        `Show photo ${number + 1}${item.caption ? `: ${item.caption}` : ""}`,
+      );
+      const image = element("img");
+      image.src = item.image;
+      image.alt = "";
+      image.loading = "lazy";
+      image.decoding = "async";
+      thumbnail.append(image);
+      thumbnail.addEventListener("click", () => showPhoto(number));
+      thumbnails.append(thumbnail);
+    });
+    showPhoto(0);
+    previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.showModal();
+  };
+
+  section.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const source = event.target.closest("button[data-pg-open]");
+    if (source && section.contains(source)) openProject(Number(source.dataset.pgOpen), source);
+  });
+  close.addEventListener("click", () => dialog.close());
+  previous.addEventListener("click", () => showPhoto(currentPhoto - 1));
+  next.addEventListener("click", () => showPhoto(currentPhoto + 1));
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
+  });
+  dialog.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      showPhoto(currentPhoto + (event.key === "ArrowLeft" ? -1 : 1));
+    }
+  });
+  dialog.addEventListener("close", () => {
+    document.body.style.overflow = previousOverflow;
+    opener?.focus({ preventScroll: true });
+    activeProject = null;
+  });
+})();

@@ -130,7 +130,6 @@ nav ul{gap:1rem}nav a{font-size:.95rem}
 .g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1rem}
 .box{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:1.4rem}
 .box h3{font-size:1.25rem;margin-bottom:.5rem}.box ul{margin:0 0 1rem;padding-left:1.1rem;color:var(--muted)}.box p{margin:0 0 1rem;color:var(--muted)}
-.gi{border-radius:22px;min-height:170px;padding:1.1rem;color:#fff;display:flex;flex-direction:column;justify-content:end;cursor:pointer;border:0;text-align:left;font:inherit;text-shadow:0 1px 4px rgba(0,0,0,.45);background:linear-gradient(150deg,var(--a),var(--b))}
 table{width:100%;border-collapse:collapse}td,th{padding:.5rem;border-bottom:1px solid var(--line);text-align:left;font-size:.9rem}
 /* more colour */
 body{background:radial-gradient(900px 520px at 6% 0,color-mix(in srgb,var(--pink) 16%,transparent),transparent),radial-gradient(800px 520px at 96% 18%,color-mix(in srgb,var(--sky) 16%,transparent),transparent),var(--bg);background-attachment:fixed}
@@ -138,7 +137,7 @@ h2{background:linear-gradient(90deg,var(--violet),var(--pink),var(--coral));-web
 header::after{content:"";display:block;height:4px;background:linear-gradient(90deg,var(--coral),var(--sun),var(--teal),var(--sky),var(--violet),var(--pink))}
 #products{background:linear-gradient(180deg,transparent,color-mix(in srgb,var(--sun) 14%,transparent))}
 #calculator{background:color-mix(in srgb,var(--teal) 11%,transparent)}
-#gallery{background:color-mix(in srgb,var(--pink) 10%,transparent)}
+
 #services{background:color-mix(in srgb,var(--sky) 11%,transparent)}
 #certs{background:color-mix(in srgb,var(--violet) 9%,transparent)}
 .stat:nth-child(1){background:linear-gradient(135deg,#ff5a5f,#ff4fa3)}.stat:nth-child(2){background:linear-gradient(135deg,#6c4cf5,#2d9cff)}.stat:nth-child(3){background:linear-gradient(135deg,#0fb5a2,#6ddb8c)}.stat:nth-child(4){background:linear-gradient(135deg,#ff7a18,#ffb800)}
@@ -245,8 +244,8 @@ body::before{content:"";position:fixed;inset:-10%;z-index:-1;pointer-events:none
 @media(max-width:600px){.slide::after,.cta::after{opacity:.35}}
 h2::after{content:"";display:block;height:8px;width:96px;border-radius:99px;margin-top:.6rem;background:linear-gradient(90deg,var(--coral),var(--sun),var(--teal),var(--sky))}
 .btn-main{background:linear-gradient(135deg,var(--coral),var(--pink),var(--violet));background-size:200% 100%;box-shadow:0 8px 20px rgba(255,79,163,.35)}.btn-main:hover{background-position:100% 0}
-#products,#calculator,#gallery,#services,#certs{border-radius:56px;margin:0 .6rem}
-#calculator{background:color-mix(in srgb,var(--teal) 18%,transparent)}#gallery{background:color-mix(in srgb,var(--pink) 17%,transparent)}#services{background:color-mix(in srgb,var(--sky) 18%,transparent)}#products{background:color-mix(in srgb,var(--sun) 22%,transparent)}#certs{background:color-mix(in srgb,var(--violet) 15%,transparent)}
+#products,#calculator,#services,#certs{border-radius:56px;margin:0 .6rem}
+#calculator{background:color-mix(in srgb,var(--teal) 18%,transparent)}#services{background:color-mix(in srgb,var(--sky) 18%,transparent)}#products{background:color-mix(in srgb,var(--sun) 22%,transparent)}#certs{background:color-mix(in srgb,var(--violet) 15%,transparent)}
 .tile:nth-child(odd){transform:rotate(-1.2deg)}.tile:nth-child(even){transform:rotate(1deg)}.tile:hover{transform:translateY(-6px) scale(1.03)}
 .tile .em{background:rgba(255,255,255,.28);width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-size:1.9rem}
 .card{transition:transform .2s}.card:hover{transform:translateY(-6px) rotate(.5deg)}
@@ -306,7 +305,7 @@ h2::after{content:"";display:block;height:8px;width:96px;border-radius:99px;marg
   .stat b{font-size:1.5rem}
   .wrap{width:94%}
   section{padding:1.6rem 0}
-  #products,#calculator,#gallery,#services,#certs{border-radius:24px;margin:0}
+  #products,#calculator,#services,#certs{border-radius:24px;margin:0}
   .cpanel,.cres{border-radius:20px;padding:1.1rem}
   .two{grid-template-columns:1fr;gap:1.4rem}
   .two2 b{font-size:1.8rem}
@@ -351,6 +350,7 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 #grid p{font-weight:400;line-height:1.5}
 #grid .btn{margin-top:6px}
 </style>
+<link rel="stylesheet" href="/assets/landing-theme.css">
 </head>
 <body>
 <header><div class="topbar"><div class="wrap"><span>Paint your dreams</span><span id="today"></span></div></div><div class="wrap nav">
@@ -414,7 +414,8 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 <p class="note">Tile adhesive is calculated on floor area (length × width).</p></div>
 <div class="cres" id="cres" aria-live="polite"></div></div></div></section>
 
-<section id="gallery"><div class="wrap"><h2>Inspiration gallery</h2><p class="lead">Choose a room type, then tap a project to try its colour in the visualizer.</p><div class="chips" id="gf"></div><div class="g3" id="gg"></div></div></section>
+
+<!-- PROJECT_GALLERY -->
 
 <section id="services"><div class="wrap"><h2>Services</h2><div class="g3" id="sv"></div>
 <form id="bk" style="margin-top:1.5rem"><h3>Book a service</h3><div class="row"><label>Service<select id="bs"></select></label><label>Preferred date<input id="bd" type="date" required></label></div><div class="row"><label>Name<input id="bn" required></label><label>Phone<input id="bp" type="tel" required></label></div><button class="btn btn-main" type="submit">Book on WhatsApp</button></form></div></section>
@@ -732,9 +733,6 @@ $("#cf").addEventListener("input",e=>{if(e.target.id=="cp")info();rc()});
 $("#cfl").addEventListener("click",e=>{const b=e.target.closest("[data-cf]");if(b){cfl=b.dataset.cf;drawCF()}});
 $("#cres").addEventListener("click",e=>{if(e.target.id!="cq")return;const d=calc();store.hist.push(d.p[0]+": "+d.q+" "+d.u+", ₹"+d.cost);lead("Calculator quote","Areva Paints quote request: "+d.p[0]+", "+Math.round(d.a)+" sq ft, "+d.q+" "+(d.u=="kg"?"kg":"litres")+" ("+d.pk.join(" + ")+").")});
 drawCF();
-const G=[["Living","Warm living room",0,8,"Sheen Pro"],["Living","Calm blue lounge",4,11,"White Delight"],["Bedroom","Orchid bedroom",6,13,"Dazzle Glow"],["Bedroom","Soft sand retreat",8,9,"Sheen Pro"],["Exterior","Terracotta facade",7,8,"Lumina LusterFinish"],["Exterior","Lagoon villa",3,11,"Zester Series"],["Kitchen","Mango kitchen",1,11,"White Delight"],["Kitchen","Olive and cream",12,13,"Sheen Pro"]];
-let gf="All";
-function drawG(){$("#gf").innerHTML=["All","Living","Bedroom","Exterior","Kitchen"].map(r=>'<button class="chip" data-f="'+r+'" aria-pressed="'+(r==gf)+'">'+r+'</button>').join("");$("#gg").innerHTML=G.map(g=>g[0]==gf||gf=="All"?'<button class="gi" data-g="'+g[2]+'" style="--a:'+C[g[2]][2]+';--b:'+C[g[3]][2]+'"><b>'+g[1]+'</b>'+C[g[2]][0]+' '+C[g[2]][1]+' with '+g[4]+'</button>':"").join("")}
 const SV=[["Painting","Interior and exterior painting by trained crews."],["Colour consultation","Choose shades with an expert."],["Waterproofing","Roof and wall protection."],["Site visit","We inspect, measure and advise."]];
 $("#sv").innerHTML=SV.map((s,i)=>'<div class="box"><h3>'+s[0]+'</h3><p>'+s[1]+'</p><button class="btn btn-line" data-v="'+i+'">Book this</button></div>').join("");
 $("#bs").innerHTML=SV.map(s=>"<option>"+s[0]+"</option>").join("");
@@ -874,12 +872,10 @@ $("#lf").addEventListener("submit",e=>{e.preventDefault();signed=true;$("#lf").h
 $("#dash").addEventListener("change",e=>{if(e.target.dataset.s!=null)store.leads[+e.target.dataset.s].s=e.target.value});
 $("#dash").addEventListener("click",e=>{if(e.target.id=="so"){signed=false;$("#dash").innerHTML="";$("#lf").hidden=false}});
 $("#lx").onclick=()=>$("#lg").close();
-document.addEventListener("click",e=>{const t=e.target.closest("[data-c],[data-h],[data-x],[data-g],[data-f],[data-v],[data-st],[data-r]");if(!t)return;const d=t.dataset;
+document.addEventListener("click",e=>{const t=e.target.closest("[data-c],[data-h],[data-x],[data-v],[data-st],[data-r]");if(!t)return;const d=t.dataset;
 if(d.c!=null){const c=C[d.c];paint(c[2],c[0]+" ("+c[1]+")")}
 else if(d.h!=null){const k=C[d.h][1],i=store.sv.indexOf(k);i<0?store.sv.push(k):store.sv.splice(i,1);save();drawSw()}
 else if(d.x)paint(d.x,d.x);
-else if(d.g!=null){const c=C[+d.g];paint(c[2],c[0]+" ("+c[1]+")");$("#visualizer").scrollIntoView({behavior:"smooth"})}
-else if(d.f){gf=d.f;drawG()}
 else if(d.v!=null){$("#bs").selectedIndex=+d.v;$("#bk").scrollIntoView({behavior:"smooth",block:"center"})}
 else if(d.st){$("#dl").innerHTML='<a class="btn btn-wa" target="_blank" rel="noopener" href="'+wa("Hello Areva Paints, please share the nearest dealer in "+d.st+".")+'">Dealer in '+d.st+'</a> <a class="btn btn-line" href="tel:+'+WA+'">Call</a>'}
 else if(d.r){if(d.r==="Admin"){window.top.location.href="/admin";return;}role=d.r;roles();if(signed)dash();if(!$("#lg").open)$("#lg").showModal()}});
@@ -2009,7 +2005,6 @@ if(stopCamBtn){
   };
 }
 paint(C[5][2], C[5][0]+" ("+C[5][1]+")");
-drawG();
 roles();
 loadScene(0);
 </script>

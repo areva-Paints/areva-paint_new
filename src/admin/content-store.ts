@@ -19,6 +19,7 @@ const categoryIds = [
 export function defaults(): SiteContent {
   return {
     revision: 0,
+    galleryProjects: [],
     colours: COLOR_SHADES,
     shadeCards: [],
     products: seed.products.map((p) => {
@@ -68,6 +69,7 @@ export function readContent(): SiteContent {
   const content = JSON.parse(fs.readFileSync(file, "utf8"));
   return {
     ...content,
+    galleryProjects: content.galleryProjects ?? [],
     colours: content.colours ?? COLOR_SHADES,
     shadeCards: content.shadeCards ?? [],
   };

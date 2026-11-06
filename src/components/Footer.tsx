@@ -81,11 +81,7 @@ export const Footer: React.FC<FooterProps> = ({
                   Paint Coverage Calculator
                 </button>
               </li>
-              <li>
-                <a href="#gallery" className="hover:text-white transition-colors">
-                  Color Stories & Lookbook
-                </a>
-              </li>
+              <li><a href="#gallery" className="hover:text-white transition-colors">Project gallery</a></li>
               <li>
                 <a href="#dealers" className="hover:text-white transition-colors">
                   Authorized Depot Stockists

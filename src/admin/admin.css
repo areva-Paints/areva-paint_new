@@ -1178,3 +1178,91 @@
     margin-left: 0;
   }
 }
+
+.adm-project-tools {
+  padding: 20px 24px 0;
+  display: grid;
+  gap: 8px;
+}
+.adm-project-tools .adm-field {
+  max-width: 420px;
+}
+.adm-project-tools p {
+  font-size: 11px;
+  color: #96839f;
+  margin: 4px 0;
+}
+.adm-project-dialog {
+  width: min(880px, calc(100vw - 28px));
+}
+.adm-project-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+.adm-project-upload-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.adm-project-upload-heading h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+}
+.adm-project-photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.adm-project-photo {
+  border: 1px solid #e9e0f0;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.adm-project-photo-image {
+  height: 160px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #f5f0f8;
+}
+.adm-project-photo-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.adm-project-photo-image > span {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: #fffe;
+  color: #65447d;
+  font-size: 10px;
+  padding: 4px 7px;
+  border-radius: 5px;
+}
+.adm-project-manager > .adm-gallery:empty {
+  padding: 0;
+}
+@media (max-width: 760px) {
+  .adm-project-tools {
+    padding: 16px 16px 0;
+  }
+  .adm-project-photos {
+    grid-template-columns: 1fr;
+  }
+  .adm-project-upload-heading {
+    flex-wrap: wrap;
+  }
+  .adm-project-dialog .adm-dialog-footer {
+    flex-wrap: wrap;
+  }
+}

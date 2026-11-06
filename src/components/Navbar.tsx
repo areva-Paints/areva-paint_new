@@ -83,12 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Eye className="w-4 h-4 text-amber-600" />
               <span>Visualizer Studio</span>
             </a>
-            <a
-              href="#gallery"
-              className="hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1"
-            >
-              Color Stories
-            </a>
+            <a href="#gallery" className="hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1">Gallery</a>
             <a
               href="#calculator"
               onClick={(e) => {
@@ -237,13 +232,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>Visualizer Studio</span>
               <Eye className="w-4 h-4" />
             </a>
-            <a
-              href="#gallery"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-900 hover:bg-stone-100"
-            >
-              Color Stories & Lookbook
-            </a>
+            <a href="#gallery" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-900 hover:bg-stone-100">Gallery</a>
             <a
               href="#calculator"
               onClick={() => {

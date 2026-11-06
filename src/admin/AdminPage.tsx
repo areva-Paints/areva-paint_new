@@ -1,3 +1,4 @@
+import { ProjectGalleryManager } from "./ProjectGalleryManager";
 import { ImagePreview, checkImage } from "./ImagePreview";
 import { ColourManager } from "./ColourManager";
 import React, { useEffect, useRef, useState } from "react";
@@ -25,8 +26,21 @@ import type { Product } from "../types";
 import type { Dealer, LandingImage, SiteContent } from "./content-types";
 import "./admin.css";
 
-type Tab = "landingImages" | "products" | "dealers" | "coverage" | "colours";
+type Tab =
+  | "landingImages"
+  | "products"
+  | "dealers"
+  | "coverage"
+  | "colours"
+  | "galleryProjects";
 const sections = [
+  {
+    id: "galleryProjects" as Tab,
+    label: "Gallery",
+    icon: ImagePlus,
+    description:
+      "Share your latest project photos, grouped into project albums.",
+  },
   {
     id: "colours" as Tab,
     label: "Colours & shade cards",
@@ -246,7 +260,15 @@ export function AdminPage() {
   }
   async function apply(e: React.FormEvent) {
     e.preventDefault();
-    if (!content || !editor || uploading || busy || tab === "colours") return;
+    if (
+      !content ||
+      !editor ||
+      uploading ||
+      busy ||
+      tab === "colours" ||
+      tab === "galleryProjects"
+    )
+      return;
     const publish =
       (e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") ===
       "publish";
@@ -280,7 +302,7 @@ export function AdminPage() {
     }
   }
   function remove(id: string) {
-    if (!content || tab === "colours") return;
+    if (!content || tab === "colours" || tab === "galleryProjects") return;
     const key = tab === "coverage" ? "products" : tab;
     if (key === "products" && content.products.length === 1) {
       setError("Keep at least one product for the paint calculator.");
@@ -446,7 +468,7 @@ export function AdminPage() {
       </div>
     );
   const items = content
-    ? tab === "colours"
+    ? tab === "colours" || tab === "galleryProjects"
       ? []
       : tab === "coverage"
         ? content.products
@@ -536,7 +558,7 @@ export function AdminPage() {
               <h1>{section.label}</h1>
               <p>{section.description}</p>
             </div>
-            {tab !== "colours" && (
+            {tab !== "colours" && tab !== "galleryProjects" && (
               <button className="adm-primary" onClick={add}>
                 <Plus size={17} />
                 Add{" "}
@@ -591,7 +613,15 @@ export function AdminPage() {
               {error}
             </div>
           )}
-          {tab === "colours" && content ? (
+          {tab === "galleryProjects" && content ? (
+            <ProjectGalleryManager
+              content={content}
+              onChange={update}
+              onPublish={persist}
+              onBusy={setUploading}
+              publishError={error}
+            />
+          ) : tab === "colours" && content ? (
             <ColourManager
               content={content}
               onChange={update}

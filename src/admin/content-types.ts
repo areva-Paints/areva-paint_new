@@ -21,7 +21,22 @@ export interface ShadeCard {
   title: string;
   url: string;
 }
+export interface ProjectPhoto {
+  id: string;
+  image: string;
+  caption: string;
+}
+export interface GalleryProject {
+  id: string;
+  title: string;
+  location: string;
+  description: string;
+  photos: ProjectPhoto[];
+  createdAt: string;
+  updatedAt: string;
+}
 export interface SiteContent {
+  galleryProjects: GalleryProject[];
   colours: ColorShade[];
   shadeCards: ShadeCard[];
   products: Product[];

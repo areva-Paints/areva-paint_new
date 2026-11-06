@@ -1,3 +1,4 @@
+import { renderProjectGallery } from "./project-gallery-page";
 import fs from "node:fs";
 import path from "node:path";
 import { readContent } from "./content-store";
@@ -15,6 +16,9 @@ export function legacyPage() {
     "utf8",
   );
   const c = readContent();
+  html = html.replace("<!-- PROJECT_GALLERY -->", () =>
+    renderProjectGallery(c.galleryProjects),
+  );
   if (c.revision === 0) return html;
   const cats = [
     "interior",

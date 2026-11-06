@@ -1,3 +1,4 @@
+import { ProjectGallery } from './components/ProjectGallery';
 import React, { useState, useEffect } from 'react';
 import { Product } from './types';
 import { COLOR_SHADES } from './data/paintsData';
@@ -5,7 +6,6 @@ import { HeroSlider } from './components/HeroSlider';
 import { ColorTicker } from './components/ColorTicker';
 import { ProductCatalog } from './components/ProductCatalog';
 import { ColorVisualizer } from './components/ColorVisualizer';
-import { InspirationGallery } from './components/InspirationGallery';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { PaintCalculator } from './components/PaintCalculator';
 import { DealersAndServices } from './components/DealersAndServices';
@@ -26,7 +26,7 @@ export default function App() {
   // View mode switcher: 'attached' (shows the user's attached HTML file), 'react' (modern React platform), 'split' (side-by-side)
   const [viewMode, setViewMode] = useState<'attached' | 'react' | 'split'>('attached');
 
-  // Global Color State (synced across Visualizer, Catalog, Calculator, and Inspiration)
+  // Global Color State (synced across Visualizer, Catalog, and Calculator)
   const [selectedColorHex, setSelectedColorHex] = useState<string>(COLOR_SHADES[7].hex); // Terracotta Hearth
   const [selectedColorName, setSelectedColorName] = useState<string>(COLOR_SHADES[7].name);
 
@@ -136,6 +136,7 @@ export default function App() {
               selectedColorHex={selectedColorHex}
               selectedColorName={selectedColorName}
             />
+            <ProjectGallery />
             <DealersAndServices />
           </div>
 
@@ -218,11 +219,6 @@ export default function App() {
               }}
             />
 
-            {/* Designer Inspiration & Project Gallery */}
-            <InspirationGallery
-              onSelectColor={handleSelectColor}
-              onOpenVisualizer={() => scrollToSection('visualizer')}
-            />
 
             {/* Precision Paint Coverage Calculator */}
             <PaintCalculator
@@ -237,6 +233,8 @@ export default function App() {
               selectedColorName={selectedColorName}
             />
 
+            {/* Latest project photo albums */}
+            <ProjectGallery />
             {/* Dealers & On-Site Technical Services */}
             <DealersAndServices />
 

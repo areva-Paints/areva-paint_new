@@ -129,6 +129,35 @@ function validate(c: SiteContent) {
     c.shadeCards.length > 50
   )
     throw Error("Keep 1–5,000 colours and up to 50 PDF shade cards.");
+  if (
+    !Array.isArray(c.galleryProjects) ||
+    c.galleryProjects.length > 100 ||
+    !ids(c.galleryProjects)
+  )
+    throw Error("Keep up to 100 projects, each with a unique identifier.");
+  for (const project of c.galleryProjects) {
+    project.location ??= "";
+    project.description ??= "";
+    if (
+      !nonempty(project.title, 150) ||
+      !text(project.location, 200) ||
+      !text(project.description, 2000) ||
+      !Array.isArray(project.photos) ||
+      !project.photos.length ||
+      project.photos.length > 20 ||
+      !ids(project.photos)
+    )
+      throw Error(
+        "Each project needs a name and 1–20 photos. Location and description are optional.",
+      );
+    for (const photo of project.photos) {
+      photo.caption ??= "";
+      if (!image(photo.image) || !text(photo.caption, 300))
+        throw Error(
+          "Project photos need a valid image; captions are optional.",
+        );
+    }
+  }
   const families = new Set(COLOR_SHADES.map((c) => c.family));
   const codes = new Set<string>();
   for (const colour of c.colours) {
@@ -259,7 +288,11 @@ function validate(c: SiteContent) {
         "Landing images need a valid image. Caption, subtitle and recommended product are optional.",
       );
   }
-  for (const image of [...c.landingImages, ...c.products]) {
+  for (const image of [
+    ...c.landingImages,
+    ...c.products,
+    ...c.galleryProjects.flatMap((p) => p.photos),
+  ]) {
     if (
       image.image.startsWith("/uploads/") &&
       (!/^\/uploads\/[a-f0-9-]+\.(png|jpeg|webp)$/.test(image.image) ||
@@ -276,6 +309,7 @@ contentRouter.put("/admin/content", (req, res) => {
   try {
     const current = readContent(),
       c = req.body as SiteContent;
+    c.galleryProjects ??= current.galleryProjects;
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);
@@ -284,7 +318,44 @@ contentRouter.put("/admin/content", (req, res) => {
         error:
           "Someone else saved changes. Reload this page before editing again.",
       });
+    const now = new Date().toISOString();
+    const galleryProjects = c.galleryProjects.map((project) => {
+      const previous = current.galleryProjects.find((p) => p.id === project.id);
+      const fields = {
+        id: project.id,
+        title: project.title.trim(),
+        location: project.location,
+        description: project.description,
+        photos: project.photos.map((p) => ({
+          id: p.id,
+          image: p.image,
+          caption: p.caption,
+        })),
+      };
+      const unchanged =
+        previous &&
+        JSON.stringify({
+          ...fields,
+          createdAt: previous.createdAt,
+          updatedAt: previous.updatedAt,
+        }) ===
+          JSON.stringify({
+            id: previous.id,
+            title: previous.title,
+            location: previous.location,
+            description: previous.description,
+            photos: previous.photos,
+            createdAt: previous.createdAt,
+            updatedAt: previous.updatedAt,
+          });
+      return {
+        ...fields,
+        createdAt: previous?.createdAt || now,
+        updatedAt: unchanged ? previous.updatedAt : now,
+      };
+    });
     const next = {
+      galleryProjects,
       colours: c.colours,
       shadeCards: c.shadeCards,
       products: c.products,
