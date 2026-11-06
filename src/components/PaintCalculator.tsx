@@ -10,6 +10,7 @@ interface PaintCalculatorProps {
     litersNeeded: number;
     canBreakdown: string;
     unit?: string;
+    safetyAllowancePercent?: number;
   }) => void;
   selectedColorHex: string;
   selectedColorName: string;
@@ -27,6 +28,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
   const [doors, setDoors] = useState<number>(1);
   const [windows, setWindows] = useState<number>(2);
   const [coats, setCoats] = useState<number>(2);
+  const [safetyAllowance, setSafetyAllowance] = useState<number>(10);
   const [selectedProductId, setSelectedProductId] = useState<string>('sheen-pro');
   const [filterCategory, setFilterCategory] = useState<string>('all');
 
@@ -51,9 +53,9 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
   const appliedCoats = selectedProduct.calculationBasis === 'floor' ? 1 : coats;
   const netArea = selectedProduct.calculationBasis === 'floor' ? length * width : Math.max(0, grossWallArea - deductions);
 
-  // Liters needed = (netArea * coats / coveragePerLiter) * 1.10 (10% safety buffer)
+  // Default allowance stays at 10%; customers can adjust it for their project.
   const exactLiters = (netArea * appliedCoats) / selectedProduct.coverageSqFtPerLiter;
-  const totalLitersWithWastage = Math.ceil(exactLiters * 1.1 * 2) / 2;
+  const totalLitersWithWastage = Math.ceil(exactLiters * (1 + safetyAllowance / 100) * 2) / 2;
 
   // Package sizing optimizer
   const calculateCans = (liters: number) => {
@@ -86,6 +88,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
       litersNeeded: totalLitersWithWastage,
       canBreakdown: canBreakdownString,
       unit,
+      safetyAllowancePercent: safetyAllowance,
     });
   };
 
@@ -270,6 +273,28 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
               </div>
             </div>
 
+            <div>
+              <label htmlFor="safety-allowance" className="text-xs font-bold text-stone-900 block mb-2">
+                4. Safety Allowance (%)
+              </label>
+              <input
+                id="safety-allowance"
+                type="number"
+                min="0"
+                max="30"
+                step="1"
+                value={safetyAllowance}
+                aria-describedby="safety-allowance-hint"
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  setSafetyAllowance(Math.min(30, Math.max(0, Number.isFinite(value) ? value : 10)));
+                }}
+                className="w-full px-3 py-2 text-sm font-semibold border border-stone-200 rounded-xl bg-stone-50 focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <p id="safety-allowance-hint" className="text-[11px] text-stone-500 mt-2">
+                Allow 0–30% for surface variation and application loss. The default is 10%.
+              </p>
+            </div>
           </div>
 
           {/* Results Summary Box (5 Cols) */}
@@ -283,7 +308,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
                 {selectedProduct.name}
               </h3>
               <p className="text-xs text-stone-400 mt-1">
-                Calculated for {appliedCoats} coats with {selectedProduct.coverageSqFtPerLiter} sq ft/{unit} coverage + 10% safety buffer.
+                Calculated for {appliedCoats} coats with {selectedProduct.coverageSqFtPerLiter} sq ft/{unit} coverage + {safetyAllowance}% safety allowance.
               </p>
             </div>
 

@@ -138,6 +138,8 @@ test("admin authentication, uploads, validation, public integration and persiste
       homepage.includes('href="/admin" target="_top"'),
       "Homepage Admin link must leave the demo portal for real authentication",
     );
+    assert.ok(homepage.includes('id="home" class="ref-home"'));
+    assert.ok(homepage.includes('src="/assets/reference-layout.js"'));
     assert.equal(
       original.products.find((p) => p.name === "Sheen Pro")
         .coverageSqFtPerLiter,
@@ -206,10 +208,11 @@ test("admin authentication, uploads, validation, public integration and persiste
     const product = {
       ...original.products[0],
       id: "test-product",
-      name: "Test coating",
+      name: "Test coating $&",
       description: "A durable finish <script>alert(1)</script>",
       coverageSqFtPerLiter: 50,
       image: url,
+      specs: { ...original.products[0].specs, applicationMethod: "Brush & roller <wall>" },
     };
     const edited = {
       ...original,
@@ -229,7 +232,7 @@ test("admin authentication, uploads, validation, public integration and persiste
         {
           id: "test-slide",
           image: url,
-          label: "A new landing image",
+          label: "A new landing image $&",
           roomType: "Interior",
           recommendedProduct: "Test coating",
         },
@@ -238,7 +241,7 @@ test("admin authentication, uploads, validation, public integration and persiste
         ...original.dealers,
         {
           id: "test-dealer",
-          name: "Test Dealer",
+          name: "Test Dealer $&",
           phone: "+91 90000 00000",
           pin: "682001",
           city: "Kochi",
@@ -331,6 +334,10 @@ test("admin authentication, uploads, validation, public integration and persiste
     assert.ok(html.includes("A new landing image"));
     assert.ok(html.includes("Test Dealer"));
     assert.ok(html.includes("Test coating"));
+    assert.ok(html.includes("Test coating $&"), "Saved product names must retain literal replacement characters");
+    assert.ok(html.includes("A new landing image $&"));
+    assert.ok(html.includes("Test Dealer $&"));
+    assert.ok(html.includes("Brush &amp; roller &lt;wall&gt;"));
     assert.ok(html.includes("Coastal Mist &lt;test&gt;"));
     assert.ok(html.includes(pdfUrl));
     assert.ok(!html.includes("<script>alert(1)</script>"));

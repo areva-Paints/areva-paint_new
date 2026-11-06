@@ -1,4 +1,5 @@
 import { renderProjectGallery } from "./project-gallery-page";
+import { referenceLayout } from "./reference-layout";
 import fs from "node:fs";
 import path from "node:path";
 import { readContent } from "./content-store";
@@ -19,7 +20,6 @@ export function legacyPage() {
   html = html.replace("<!-- PROJECT_GALLERY -->", () =>
     renderProjectGallery(c.galleryProjects),
   );
-  if (c.revision === 0) return html;
   const cats = [
     "interior",
     "exterior",
@@ -40,6 +40,20 @@ export function legacyPage() {
         ? `${p.coverageSqFtPerLiter} sq ft/${p.coverageUnit || "L"} per coat`
         : "Coverage awaiting confirmation",
       `${p.recommendedCoats} recommended coats`,
+      ...(p.availableSizes.length
+        ? [
+            `Pack sizes: ${p.availableSizes.join(", ")} ${p.coverageUnit || "L"}`,
+          ]
+        : []),
+      ...Object.entries({
+        Finish: p.sheen,
+        "Drying time": p.specs.dryingTime,
+        "Recoat time": p.specs.recoatTime,
+        Application: p.specs.applicationMethod,
+        "Surface preparation": p.specs.surfacePreparation,
+      })
+        .filter(([, v]) => v)
+        .map(([key, v]) => esc(`${key}: ${v}`)),
     ],
     esc(p.image),
   ]);
@@ -73,23 +87,23 @@ export function legacyPage() {
   const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
   html = html.replace(
     "const $ =",
-    `P.splice(0,P.length,...${json(productData)});\nconst $ =`,
+    () => `P.splice(0,P.length,...${json(productData)});\nconst $ =`,
   );
   html = html.replace(
     'let cfl="All";',
-    `PR.splice(0,PR.length,...${json(coverage)});\nlet cfl="All";`,
+    () => `PR.splice(0,PR.length,...${json(coverage)});\nlet cfl="All";`,
   );
   html = html.replace(
     "const ST=[",
-    `DEALERS.splice(0,DEALERS.length,...${json(dealers)});\nconst ST=[`,
+    () => `DEALERS.splice(0,DEALERS.length,...${json(dealers)});\nconst ST=[`,
   );
   html = html.replace(
     'let activeState="All";',
-    `ST.splice(0,ST.length,'All',...new Set(DEALERS.map(d=>d.state)));\nlet activeState="All";`,
+    () => `ST.splice(0,ST.length,'All',...new Set(DEALERS.map(d=>d.state)));\nlet activeState="All";`,
   );
   html = html.replace(
     "const save=()=>",
-    `C.splice(0,C.length,...${json(c.colours.map((s) => [esc(s.name), esc(s.code), s.hex]))});\nconst save=()=>`,
+    () => `C.splice(0,C.length,...${json(c.colours.map((s) => [esc(s.name), esc(s.code), s.hex]))});\nconst save=()=>`,
   );
   html = html.replace(
     'paint(C[5][2], C[5][0]+" ("+C[5][1]+")")',
@@ -105,7 +119,7 @@ export function legacyPage() {
         )
         .join(" ") +
       "</div>";
-    html = html.replace("<footer>", cards + "<footer>");
+    html = html.replace("<footer>", () => cards + "<footer>");
   }
   // No selling price is configured in administration; do not present a zero-price estimate.
   html = html.replace('d.cost.toLocaleString("en-IN")', "'Contact dealer'");
@@ -124,8 +138,8 @@ export function legacyPage() {
       .join("");
     html = html.replace(
       /(<div class="track" id="track">)[\s\S]*?(<div class="ctrl" id="dots")/,
-      `$1${slides}</div>\n$2`,
+      (_match, start, end) => `${start}${slides}</div>\n${end}`,
     );
   }
-  return html;
+  return referenceLayout(html, c);
 }

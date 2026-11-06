@@ -1,4 +1,5 @@
 import { ProjectGallery } from './components/ProjectGallery';
+import './reference-theme.css';
 import React, { useState, useEffect } from 'react';
 import { Product } from './types';
 import { COLOR_SHADES } from './data/paintsData';
@@ -75,7 +76,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans text-[#1b1340]">
+    <div className="areva-reference-site min-h-screen flex flex-col font-sans text-[#1b1340]">
       {/* Main Content Area */}
       {viewMode === 'attached' ? (
         <div className="flex-1 w-full h-screen">
@@ -126,11 +127,11 @@ export default function App() {
               }}
             />
             <PaintCalculator
-              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown, unit }) => {
+              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown, unit, safetyAllowancePercent }) => {
                 handleOpenEnquiry({
                   topic: 'Request a quotation',
                   product: productName,
-                  message: `Paint Calculator: ${productName} for ${paintableArea} sq ft (${litersNeeded} ${unit || 'L'}).`,
+                  message: `Paint Calculator: ${productName} for ${paintableArea} sq ft (${litersNeeded} ${unit || 'L'}, ${safetyAllowancePercent ?? 10}% safety allowance).`,
                 });
               }}
               selectedColorHex={selectedColorHex}
@@ -222,11 +223,11 @@ export default function App() {
 
             {/* Precision Paint Coverage Calculator */}
             <PaintCalculator
-              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown, unit }) => {
+              onRequestQuoteWithEstimate={({ productName, paintableArea, litersNeeded, canBreakdown, unit, safetyAllowancePercent }) => {
                 handleOpenEnquiry({
                   topic: 'Request a quotation',
                   product: productName,
-                  message: `Paint Calculator Estimate: ${productName} for ${paintableArea} sq ft. Estimated volume: ${litersNeeded} ${unit || 'L'} (${canBreakdown}).`,
+                  message: `Paint Calculator Estimate: ${productName} for ${paintableArea} sq ft. Estimated volume: ${litersNeeded} ${unit || 'L'} (${canBreakdown}), including ${safetyAllowancePercent ?? 10}% safety allowance.`,
                 });
               }}
               selectedColorHex={selectedColorHex}
