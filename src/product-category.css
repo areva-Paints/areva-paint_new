@@ -120,5 +120,5 @@
 @media (prefers-reduced-motion: reduce) {
   .areva-reference-site #products.pc-catalog .pc-category-card { transition: none; }
   .areva-reference-site #products.pc-catalog .pc-category-card:hover { transform: none; }
-  .areva-reference-site #products.pc-catalog .pc-flip-inner { transition: none; transform: none !important; }
+  .areva-reference-site #products.pc-catalog .pc-flip-inner { transition: none; }
 }

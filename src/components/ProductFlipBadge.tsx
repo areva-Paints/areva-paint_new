@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
 interface ProductFlipBadgeProps {
   name: string;
@@ -7,42 +7,29 @@ interface ProductFlipBadgeProps {
   onOpen: () => void;
 }
 
-/** The accessible button name stays constant while its decorative faces turn. */
+/** Switch faces only after an explicit click or native keyboard activation. */
 export function ProductFlipBadge({ name, image, sheen, onOpen }: ProductFlipBadgeProps) {
   const [photoReady, setPhotoReady] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
-  const [showPhoto, setShowPhoto] = useState(false);
-  const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
-  const [reducedMotion, setReducedMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const [photoRequested, setPhotoRequested] = useState(false);
   const productName = name.replace(/^Areva\s+/i, '');
-
-  useEffect(() => {
-    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updateMotion = () => setReducedMotion(media.matches);
-    const updateVisibility = () => setPageVisible(!document.hidden);
-    updateMotion();
-    updateVisibility();
-    media.addEventListener('change', updateMotion);
-    document.addEventListener('visibilitychange', updateVisibility);
-    return () => {
-      media.removeEventListener('change', updateMotion);
-      document.removeEventListener('visibilitychange', updateVisibility);
-    };
-  }, []);
-
-  useEffect(() => {
-    setShowPhoto(false);
-    if (!photoReady || photoFailed || reducedMotion || !pageVisible) return;
-    const interval = window.setInterval(() => setShowPhoto((previous) => !previous), 1000);
-    return () => window.clearInterval(interval);
-  }, [photoReady, photoFailed, reducedMotion, pageVisible]);
+  const unavailable = !image || photoFailed;
+  const showPhoto = photoRequested && photoReady && !unavailable;
+  const actionLabel = unavailable
+    ? `Photo unavailable. View ${name} specifications`
+    : photoRequested
+      ? photoReady ? `Show ${name} name` : `Loading ${name} photo. Activate to keep the name face`
+      : `Show ${name} product photo`;
 
   return (
     <button
       className={`pc-name-badge pc-flip-badge${showPhoto ? ' is-photo' : ''}`}
       type="button"
-      onClick={onOpen}
-      aria-label={`View ${name} photo and specifications`}
+      onClick={() => unavailable ? onOpen() : setPhotoRequested((previous) => !previous)}
+      aria-label={actionLabel}
+      aria-pressed={photoRequested && !unavailable}
+      aria-busy={photoRequested && !photoReady && !unavailable}
+      title={unavailable ? 'Photo unavailable — view product specifications' : showPhoto ? 'Click to show product name' : 'Click to show product photo'}
     >
       <span className="pc-flip-inner" aria-hidden="true">
         <span className="pc-flip-face pc-flip-front">
@@ -61,7 +48,7 @@ export function ProductFlipBadge({ name, image, sheen, onOpen }: ProductFlipBadg
                 if (event.currentTarget.naturalWidth > 0) setPhotoReady(true);
                 else setPhotoFailed(true);
               }}
-              onError={() => { setPhotoReady(false); setPhotoFailed(true); setShowPhoto(false); }}
+              onError={() => { setPhotoReady(false); setPhotoFailed(true); setPhotoRequested(false); }}
             />
           )}
         </span>

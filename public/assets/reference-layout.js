@@ -30,36 +30,39 @@
   };
   let current = "";
   let currentCategory = null;
-  let productFlipTimer = null;
-  let productPhotoSide = false;
-  const productMotion = matchMedia("(prefers-reduced-motion: reduce)");
-  function setProductPhotoSide(showPhoto) {
-    productPhotoSide = showPhoto;
-    main.querySelectorAll(".ref-flip-badge").forEach((badge) => {
-      badge.classList.toggle(
-        "is-flipped",
-        showPhoto && badge.classList.contains("ref-photo-ready"),
-      );
-    });
+  function setProductPhotoSide(badge, showPhoto) {
+    badge.classList.toggle("is-flipped", showPhoto);
+    badge.setAttribute("aria-pressed", String(showPhoto));
+    badge.setAttribute(
+      "aria-label",
+      (showPhoto ? "Show product name for " : "Show product photo for ") +
+        badge.dataset.productName,
+    );
   }
   function updatePhoto(image) {
     const badge = image.closest(".ref-flip-badge");
     if (!badge || !image.complete) return;
     const ready = image.naturalWidth > 0;
     badge.classList.toggle("ref-photo-ready", ready);
-    badge.classList.toggle("is-flipped", ready && productPhotoSide);
-  }
-  function syncProductFlip() {
-    clearInterval(productFlipTimer);
-    productFlipTimer = null;
-    setProductPhotoSide(false);
-    main.querySelectorAll(".ref-flip-photo").forEach(updatePhoto);
-    if (current !== "products" || document.hidden || productMotion.matches)
-      return;
-    productFlipTimer = setInterval(
-      () => setProductPhotoSide(!productPhotoSide),
-      1000,
+    badge.removeAttribute("aria-busy");
+    badge.disabled = !ready;
+    if (!ready) badge.dataset.photoRequested = "false";
+    setProductPhotoSide(
+      badge,
+      ready && badge.dataset.photoRequested === "true",
     );
+    if (!ready)
+      badge.setAttribute(
+        "aria-label",
+        "Product photo unavailable for " + badge.dataset.productName,
+      );
+  }
+  function resetProductPhotos() {
+    main.querySelectorAll(".ref-flip-badge").forEach((badge) => {
+      badge.dataset.photoRequested = "false";
+      setProductPhotoSide(badge, false);
+    });
+    main.querySelectorAll(".ref-flip-photo").forEach(updatePhoto);
   }
   for (const eventName of ["load", "error"]) {
     main.addEventListener(
@@ -74,10 +77,21 @@
       true,
     );
   }
-  document.addEventListener("visibilitychange", syncProductFlip);
-  productMotion.addEventListener("change", syncProductFlip);
-  window.addEventListener("pagehide", () => clearInterval(productFlipTimer));
-  window.addEventListener("pageshow", syncProductFlip);
+  main.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    const badge = event.target.closest("[data-product-flip]");
+    if (!badge || badge.disabled) return;
+    const image = badge.querySelector(".ref-flip-photo");
+    if (!image) return;
+    const requested = badge.dataset.photoRequested !== "true";
+    badge.dataset.photoRequested = String(requested);
+    if (!requested) setProductPhotoSide(badge, false);
+    else {
+      image.loading = "eager";
+      if (!image.complete) badge.setAttribute("aria-busy", "true");
+      updatePhoto(image);
+    }
+  });
   const categories = window.arevaProductCategories || [];
   const categoryCopy = {
     interior:
@@ -146,7 +160,7 @@
       if (camera && !camera.hidden) document.getElementById("stopcam")?.click();
     }
     current = view;
-    syncProductFlip();
+    resetProductPhotos();
     views.forEach((node) => {
       node.hidden = node.dataset.refView !== view;
     });
