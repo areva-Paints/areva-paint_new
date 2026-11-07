@@ -30,6 +30,23 @@
   };
   let current = "";
   let currentCategory = null;
+  let productFlipTimer = null;
+  const productMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  function scheduleProductFlip() {
+    clearInterval(productFlipTimer);
+    productFlipTimer = null;
+    if (current !== "products" || document.hidden || productMotion.matches)
+      return;
+    productFlipTimer = setInterval(() => {
+      main
+        .querySelectorAll(".ref-flip-badge.ref-photo-ready:not(:disabled)")
+        .forEach((badge) => {
+          const showPhoto = badge.dataset.photoRequested !== "true";
+          badge.dataset.photoRequested = String(showPhoto);
+          setProductPhotoSide(badge, showPhoto);
+        });
+    }, 5000);
+  }
   function setProductPhotoSide(badge, showPhoto) {
     badge.classList.toggle("is-flipped", showPhoto);
     badge.setAttribute("aria-pressed", String(showPhoto));
@@ -91,7 +108,16 @@
       if (!image.complete) badge.setAttribute("aria-busy", "true");
       updatePhoto(image);
     }
+    scheduleProductFlip();
   });
+  function restartProductFlip() {
+    if (!document.hidden) resetProductPhotos();
+    scheduleProductFlip();
+  }
+  document.addEventListener("visibilitychange", restartProductFlip);
+  productMotion.addEventListener("change", restartProductFlip);
+  window.addEventListener("pageshow", restartProductFlip);
+  window.addEventListener("pagehide", () => clearInterval(productFlipTimer));
   const categories = window.arevaProductCategories || [];
   const categoryCopy = {
     interior:
@@ -161,6 +187,7 @@
     }
     current = view;
     resetProductPhotos();
+    scheduleProductFlip();
     views.forEach((node) => {
       node.hidden = node.dataset.refView !== view;
     });

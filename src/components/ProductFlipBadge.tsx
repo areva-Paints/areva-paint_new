@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface ProductFlipBadgeProps {
   name: string;
@@ -7,11 +7,13 @@ interface ProductFlipBadgeProps {
   onOpen: () => void;
 }
 
-/** Switch faces only after an explicit click or native keyboard activation. */
+/** Alternate loaded faces every five seconds; manual activation restarts the delay. */
 export function ProductFlipBadge({ name, image, sheen, onOpen }: ProductFlipBadgeProps) {
   const [photoReady, setPhotoReady] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
   const [photoRequested, setPhotoRequested] = useState(false);
+  const [pageVisible, setPageVisible] = useState(() => typeof document === 'undefined' || !document.hidden);
+  const [reducedMotion, setReducedMotion] = useState(() => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const productName = name.replace(/^Areva\s+/i, '');
   const unavailable = !image || photoFailed;
   const showPhoto = photoRequested && photoReady && !unavailable;
@@ -20,6 +22,26 @@ export function ProductFlipBadge({ name, image, sheen, onOpen }: ProductFlipBadg
     : photoRequested
       ? photoReady ? `Show ${name} name` : `Loading ${name} photo. Activate to keep the name face`
       : `Show ${name} product photo`;
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotion = () => setReducedMotion(media.matches);
+    const updateVisibility = () => setPageVisible(!document.hidden);
+    updateMotion();
+    updateVisibility();
+    media.addEventListener('change', updateMotion);
+    document.addEventListener('visibilitychange', updateVisibility);
+    return () => {
+      media.removeEventListener('change', updateMotion);
+      document.removeEventListener('visibilitychange', updateVisibility);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!photoReady || unavailable || !pageVisible || reducedMotion) return;
+    const timeout = window.setTimeout(() => setPhotoRequested((previous) => !previous), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [photoReady, unavailable, pageVisible, reducedMotion, photoRequested]);
 
   return (
     <button
