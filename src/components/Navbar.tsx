@@ -62,7 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </a>
 
           {/* Center Navigation Links (Clean, spacious, single-line) */}
-          <nav className="hidden md:flex items-center gap-5 lg:gap-8 xl:gap-10 text-sm font-semibold text-stone-700">
+          <nav className="hidden xl:flex items-center gap-5 lg:gap-8 xl:gap-10 text-sm font-semibold text-stone-700">
             <a
               href="#products"
               className={`hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1 ${
@@ -117,7 +117,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             {/* Mobile Hamburger Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 text-stone-700 hover:text-stone-950 rounded-xl hover:bg-stone-100 focus:outline-none"
+              className="xl:hidden p-2 text-stone-700 hover:text-stone-950 rounded-xl hover:bg-stone-100 focus:outline-none"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -127,7 +127,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-stone-200 bg-white px-5 pt-4 pb-6 space-y-3 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="xl:hidden border-t border-stone-200 bg-white px-5 pt-4 pb-6 space-y-3 shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
             {onToggleAttachedView && (
               <button
                 onClick={() => {

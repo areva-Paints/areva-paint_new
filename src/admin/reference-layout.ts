@@ -125,16 +125,58 @@ export function referenceLayout(html: string, content: SiteContent) {
     () => `const REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
   );
   html = html.replace(
-    "<p>'+p[2]+'</p><button",
-    "<p>'+p[2]+'</p>'+(REFERENCE_PRODUCT_SPEC_HTML[i]||'')+'<button",
+    "<h2>Products for every surface</h2>",
+    '<div id="refCategoryOverview"><h2>Products for every surface</h2>',
   );
   html = html.replace(
-    ">View details</button>",
-    ">View specifications</button>",
+    '<div class="tiles" id="tiles"></div>',
+    '<div class="tiles" id="tiles"></div></div>',
   );
+  html = html.replace(
+    '<div class="grid" id="grid"',
+    '<p class="lead ref-category-intro" id="refCategoryIntro" hidden></p><div class="grid" id="grid"',
+  );
+  html = html.replace(
+    /function renderGrid\(\)\{[\s\S]*?\n\}/,
+    () => `function renderGrid(){
+  const list=P.map((p,i)=>[p,i]).filter(([p])=>sel.c===null||p[1]===sel.c);
+  $("#listTitle").textContent=sel.c===null?"All products":"Our "+cats[sel.c][0];
+  $("#showAll").hidden=sel.c===null;
+  $("#showAll").textContent="All product types";
+  $("#grid").innerHTML=list.map(([p,i])=>{const c=cats[p[1]];return '<article class="card ref-category-product"><div class="product-copy"><span class="tag">'+c[0]+'</span><h4>'+p[0]+'</h4><p>'+p[2]+'</p>'+(REFERENCE_PRODUCT_SPEC_HTML[i]||'')+'<button class="btn btn-line" data-p="'+i+'">View specifications &amp; photo</button></div><div class="ref-badge-panel" aria-hidden="true"><div class="ref-product-badge"><span class="ref-badge-brand">AREVA<small>PAINTS</small></span><strong>'+p[0].replace(/^Areva\\s+/i,'')+'</strong></div></div></article>'}).join("")||'<div class="ref-catalog-empty"><h3>New products are on the way</h3><p>Contact our team for guidance on this product category.</p><a class="btn btn-main" href="#contact">Enquire now</a></div>';
+  renderTiles();
+}`,
+  );
+  const categoryIds = JSON.stringify([
+    "interior",
+    "exterior",
+    "waterproofing",
+    "tile-adhesives",
+    "sealants",
+    "putty-primers",
+    "textures",
+    "chemicals",
+  ]);
+  html = html.replace(
+    /function pick\(i, scroll\)\{[^\n]*\}/,
+    () => `window.arevaProductCategories=cats.map((c,i)=>({id:${categoryIds}[i],name:c[0],description:c[2]}));
+window.arevaSetProductCategory=(i)=>{sel.c=i;renderGrid();};
+function pick(i, scroll){if(window.arevaOpenCategory){window.arevaOpenCategory(i);return;}window.arevaSetProductCategory(i);}`,
+  );
+  html = html.replace('if(t.closest(".slide")) location.hash="#products";', "");
   html = html.replace(
     '<div><b>Page sections</b><ul id="dSec">',
     '<div><b>Product specifications</b><ul id="dSec">',
+  );
+  html = html.replace(
+    '<span class="tag" id="dCat">',
+    '<img id="refProductPhoto" class="ref-product-photo" alt="" hidden><span class="tag" id="dCat">',
+  );
+  html = html.replace(
+    "cur=i; const p=P[i], c=cats[p[1]];",
+    () => `cur=i; const p=P[i], c=cats[p[1]];
+  const photo=document.getElementById("refProductPhoto"),decode=v=>{const field=document.createElement("textarea");field.innerHTML=v;return field.value;};
+  photo.hidden=!p[4];if(p[4]){photo.src=decode(p[4]);photo.alt=decode(p[0]);}`,
   );
   // Show the containing view before the established actions scroll to their targets.
   html = html.replace(
