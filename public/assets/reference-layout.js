@@ -30,6 +30,54 @@
   };
   let current = "";
   let currentCategory = null;
+  let productFlipTimer = null;
+  let productPhotoSide = false;
+  const productMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  function setProductPhotoSide(showPhoto) {
+    productPhotoSide = showPhoto;
+    main.querySelectorAll(".ref-flip-badge").forEach((badge) => {
+      badge.classList.toggle(
+        "is-flipped",
+        showPhoto && badge.classList.contains("ref-photo-ready"),
+      );
+    });
+  }
+  function updatePhoto(image) {
+    const badge = image.closest(".ref-flip-badge");
+    if (!badge || !image.complete) return;
+    const ready = image.naturalWidth > 0;
+    badge.classList.toggle("ref-photo-ready", ready);
+    badge.classList.toggle("is-flipped", ready && productPhotoSide);
+  }
+  function syncProductFlip() {
+    clearInterval(productFlipTimer);
+    productFlipTimer = null;
+    setProductPhotoSide(false);
+    main.querySelectorAll(".ref-flip-photo").forEach(updatePhoto);
+    if (current !== "products" || document.hidden || productMotion.matches)
+      return;
+    productFlipTimer = setInterval(
+      () => setProductPhotoSide(!productPhotoSide),
+      1000,
+    );
+  }
+  for (const eventName of ["load", "error"]) {
+    main.addEventListener(
+      eventName,
+      (event) => {
+        if (
+          event.target instanceof HTMLImageElement &&
+          event.target.matches(".ref-flip-photo")
+        )
+          updatePhoto(event.target);
+      },
+      true,
+    );
+  }
+  document.addEventListener("visibilitychange", syncProductFlip);
+  productMotion.addEventListener("change", syncProductFlip);
+  window.addEventListener("pagehide", () => clearInterval(productFlipTimer));
+  window.addEventListener("pageshow", syncProductFlip);
   const categories = window.arevaProductCategories || [];
   const categoryCopy = {
     interior:
@@ -98,6 +146,7 @@
       if (camera && !camera.hidden) document.getElementById("stopcam")?.click();
     }
     current = view;
+    syncProductFlip();
     views.forEach((node) => {
       node.hidden = node.dataset.refView !== view;
     });

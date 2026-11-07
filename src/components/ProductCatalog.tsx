@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Product } from '../types';
 import { CATEGORIES, PRODUCTS as DEFAULT_PRODUCTS } from '../data/paintsData';
 import { ArrowLeft, ArrowUpRight, Eye, Image as ImageIcon, Info, MessageSquare, Search, Sparkles, X } from 'lucide-react';
+import { ProductFlipBadge } from './ProductFlipBadge';
 import '../product-category.css';
 
 interface ProductCatalogProps {
@@ -140,7 +141,6 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
               ['DRYING TIME', product.specs.dryingTime],
               ['APPLICATION', product.specs.applicationMethod],
             ].filter(([, value]) => value);
-            const productName = product.name.replace(/^Areva\s+/i, '');
             return (
               <article className="pc-product-row" key={product.id}>
                 <div className="pc-details">
@@ -159,12 +159,13 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                   </div>
                 </div>
                 <div className="pc-product-visual">
-                  <button className="pc-name-badge" type="button" onClick={() => onViewProductDetails(product)} aria-label={`View ${product.name} photo and specifications`}>
-                    <span className="pc-badge-brand">AREVA<span>PAINTS</span></span>
-                    <span className="pc-badge-line" aria-hidden="true" />
-                    <span className="pc-badge-name">{productName}</span>
-                    {product.sheen && <span className="pc-badge-finish">{product.sheen}</span>}
-                  </button>
+                  <ProductFlipBadge
+                    key={JSON.stringify([product.id, product.image, selectedCategory, searchQuery, sortBy])}
+                    name={product.name}
+                    image={product.image}
+                    sheen={product.sheen}
+                    onOpen={() => onViewProductDetails(product)}
+                  />
                   <button className="pc-photo-link" type="button" onClick={() => onViewProductDetails(product)}><ImageIcon aria-hidden="true" />View product photo <ArrowUpRight aria-hidden="true" /></button>
                 </div>
               </article>
