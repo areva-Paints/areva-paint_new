@@ -1,3 +1,5 @@
+import { DreamsHero } from './DreamsHero';
+import '../../public/assets/dreams-hero.css';
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useEffect } from 'react';
 import { Eye, ArrowRight, Sparkles, CheckCircle2, ChevronRight, Layers, Palette, Camera } from 'lucide-react';
@@ -72,6 +74,8 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
   ];
 
   return (
+    <>
+    <DreamsHero />
     <section className="relative overflow-hidden bg-gradient-to-b from-stone-50 via-white to-stone-50 pt-8 pb-16 lg:pt-14 lg:pb-24 border-b border-stone-200/80">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
@@ -265,5 +269,6 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
 
       </div>
     </section>
+    </>
   );
 };

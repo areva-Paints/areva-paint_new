@@ -1,0 +1,53 @@
+/* Shared homepage hero: live type and links over an original campaign backdrop. */
+.dreams-hero { position: relative; isolation: isolate; overflow: hidden; min-height: 590px; height: clamp(590px, 41vw, 720px); padding: 0; background: #280638; color: #fff; }
+.dreams-hero-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; z-index: -1; }
+.dreams-hero-copy { position: relative; z-index: 1; width: 42%; box-sizing: border-box; padding: clamp(38px, 3.8vw, 68px) 0 48px clamp(28px, 5vw, 100px); }
+.dreams-hero .dreams-hero-eyebrow { margin: 0 0 17px; color: #ebd5ff; font: 600 12px/1.5 Arial, sans-serif; letter-spacing: .23em; }
+.dreams-hero #dreams-hero-title { margin: 0; max-width: none; font: 600 clamp(76px, 6.6vw, 116px)/.85 Georgia, 'Times New Roman', serif; letter-spacing: -.055em; color: #fff; }
+.dreams-hero #dreams-hero-title span { color: #ffcf19; background: linear-gradient(90deg, #ffe51b 5%, #ffb916 50%, #ff6f5a 90%); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.dreams-hero-rule { display: block; width: 38px; height: 3px; background: #ffdf3d; margin-top: 19px; }
+.dreams-hero .dreams-hero-intro { max-width: 330px; margin: 15px 20px 0 0; color: #f6ecff; font: 400 clamp(14px, 1.1vw, 17px)/1.55 Arial, sans-serif; }
+.dreams-hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 23px; }
+.dreams-hero-actions a { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 44px; box-sizing: border-box; padding: 11px 19px; border-radius: 28px; font: 700 12px/1.5 Arial, sans-serif; text-decoration: none; transition: background .2s, transform .2s; }
+.dreams-hero-actions .dreams-hero-primary { background: #fff; color: #4a116c; border: 1px solid #fff; }
+.dreams-hero-actions .dreams-hero-primary:hover { background: #fff1c1; transform: translateY(-2px); }
+.dreams-hero-actions .dreams-hero-secondary { border: 1px solid #e6c9ffb3; background: #260e4e55; color: #fff; }
+.dreams-hero-actions .dreams-hero-secondary:hover { background: #ffffff20; transform: translateY(-2px); }
+.dreams-hero-actions a:focus-visible { outline: 3px solid #ffe44a; outline-offset: 5px; }
+.dreams-hero-play { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #481265; font-size: 10px; }
+.dreams-hero-brand { position: absolute; z-index: 1; top: 29%; left: 42.2%; width: 14%; text-align: center; }
+.dreams-hero-brand img { display: block; width: min(190px, 94%); height: auto; margin: 0 auto; padding: 0; box-sizing: border-box; background: transparent; }
+.dreams-hero-brand p { margin: 17px -10px 0; color: #efe1ff; font: 500 10px/1.6 Arial, sans-serif; letter-spacing: .14em; }
+.dreams-hero-brand p span { color: #92ee46; margin: 0 5px; }
+.ref-campaign-section { padding: 36px 0; background: #fbf8fd; border-bottom: 1px solid #e8dfee; }
+.ref-campaign-section > .wrap { display: grid; grid-template-columns: .7fr 1.3fr; gap: 40px; align-items: center; }
+.ref-campaign-heading h2 { color: #361052; margin: 12px 0; font-size: 32px; }
+.ref-campaign-heading p { color: #68606f; max-width: 330px; font-size: 14px; line-height: 1.7; }
+.ref-campaign-heading .ref-eyebrow { color: #6a3b86; }
+.ref-campaign-section .ref-campaign .slider { aspect-ratio: 16/9; max-height: 340px; border-radius: 18px; }
+@media (max-width:1100px) and (min-width:769px) {
+  .dreams-hero { min-height: 570px; height: 570px; }
+  .dreams-hero-copy { padding-left: 28px; padding-top: 42px; }
+  .dreams-hero #dreams-hero-title { font-size: 79px; }
+  .dreams-hero .dreams-hero-intro { font-size: 14px; }
+  .dreams-hero-actions { gap: 9px; }
+  .dreams-hero-actions a { padding-inline: 14px; }
+  .dreams-hero-brand p { letter-spacing: .05em; font-size: 9px; }
+}
+@media (max-width:768px) {
+  .dreams-hero { display: flex; flex-direction: column; height: auto; min-height: 0; background: radial-gradient(ellipse at 0 0, #800c93, transparent 70%), #280638; }
+  .dreams-hero-copy { width: 100%; padding: 38px 24px 30px; }
+  .dreams-hero #dreams-hero-title { font-size: clamp(70px, 13vw, 96px); line-height: .87; }
+  .dreams-hero .dreams-hero-intro { max-width: 390px; }
+  .dreams-hero-art { position: relative; inset: auto; order: 2; z-index: 0; width: 100%; height: 260px; object-position: right center; }
+  .dreams-hero-brand { top: auto; left: 0; bottom: 0; width: 132px; height: 260px; box-sizing: border-box; padding: 22px 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(160deg, #340653, #24063f 80%, #302074); border-left: 2px solid #2fd5ef; border-right: 1px solid #e24bd9; }
+  .dreams-hero-brand img { width: 100%; max-width: 114px; padding: 0; }
+  .dreams-hero-brand p { display: block; white-space: nowrap; margin: 14px -6px 0; font-size: 8px; letter-spacing: .05em; }
+  .dreams-hero-brand p span { margin: 0 3px; }
+  .ref-campaign-section > .wrap { grid-template-columns: 1fr; gap: 20px; }
+  .ref-campaign-heading p { max-width: none; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .dreams-hero-actions a { transition: none; }
+  .dreams-hero-actions a:hover { transform: none !important; }
+}

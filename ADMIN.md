@@ -95,3 +95,7 @@ Both calculators offer a 0–30% safety allowance, defaulting to the existing 10
 Use **Admin → Gallery → Ads → Add ad** to add a campaign. Choose **Digital** or **Social media**, enter a title and add an image, an HTTPS video/post/campaign link, or both. Description is optional. Creative images use the existing JPEG/PNG/WebP upload limit of **25 MB**; up to 100 ads can be saved. **Save ad to website** saves directly; **Apply to workspace** and the footer's **Save changes** can be used to stage edits. Deletion is staged until saving.
 
 Customers find these under **Gallery → Ads**, with **All**, **Digital** and **Social media** filters. Image creatives open in a full preview; configured video/post links open in a new tab. New or edited ads appear first. Existing projects, landing images and product data are preserved, including when an older admin client saves content without the Ads field. Run `node --import tsx --test tests/gallery-ads.test.mjs` to check validation, publication, safe rendering, compatibility and persistence.
+
+## Homepage campaign hero
+
+The opening homepage hero uses a shared live heading and working Products/Colour Visualizer links over a locally served, compressed room-and-paint background. The admin-managed landing carousel appears directly below it under **Latest from Areva**. Uploading or reordering Landing images changes that carousel; it does not replace the designed opening hero. The same opening hero appears in React Studio, followed by its existing room-preview and shade controls.
