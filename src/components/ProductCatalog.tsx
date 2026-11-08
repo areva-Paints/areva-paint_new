@@ -14,19 +14,6 @@ interface ProductCatalogProps {
   onRequestQuoteForProduct: (product: Product) => void;
 }
 
-function CategoryImage({ image }: { image: string }) {
-  const [failed, setFailed] = useState(false);
-  return (
-    <span className="pc-category-image" aria-hidden="true">
-      {image && !failed ? (
-        <img src={image} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
-      ) : (
-        <span className="pc-category-image-fallback"><ImageIcon aria-hidden="true" /><span>Product photo coming soon</span></span>
-      )}
-    </span>
-  );
-}
-
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   selectedColorHex,
   selectedColorName,
@@ -127,16 +114,12 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           </div>
           <div className="pc-category-grid">
             {CATEGORIES.map((category) => {
-              const count = products.filter((product) => product.categoryId === category.id).length;
-              const image = products.find((product) => product.categoryId === category.id && product.image?.trim())?.image || '';
               return (
                 <button className="pc-category-card" type="button" key={category.id} onClick={() => openCategory(category.id)}>
-                  <CategoryImage key={image} image={image} />
+                  <span className="pc-category-icon" aria-hidden="true">{category.icon}</span>
                   <span className="pc-category-card-body">
-                    <span className="pc-category-count">{count} {count === 1 ? 'product' : 'products'}</span>
                     <span className="pc-category-title">{category.name}</span>
                     <span className="pc-category-description">{category.description}</span>
-                    <span className="pc-category-link">Explore range <ArrowUpRight aria-hidden="true" /></span>
                   </span>
                 </button>
               );

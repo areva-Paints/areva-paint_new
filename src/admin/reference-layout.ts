@@ -43,19 +43,16 @@ export function referenceLayout(html: string, content: SiteContent) {
       statsStart,
     );
     const stats = original.slice(statsStart).replace(/<\/div>\s*$/, "");
-    const solutions = CATEGORIES.map((category) => {
-      const image = content.products.find(
-        (p) => p.categoryId === category.id,
-      )?.image;
-      return `<a class="ref-solution" href="#products/${category.id}" aria-label="Explore ${escapeHtml(category.name)}">${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy">` : '<span class="ref-solution-art" aria-hidden="true">✦</span>'}<span><b>${escapeHtml(category.name)} <i aria-hidden="true">↗</i></b><small>${escapeHtml(category.description)}</small></span></a>`;
-    }).join("");
+    const solutions = CATEGORIES.map((category) =>
+      `<a class="ref-solution" href="#products/${category.id}" aria-label="Explore ${escapeHtml(category.name)}"><span class="ref-solution-icon" aria-hidden="true">${category.icon}</span><span class="ref-solution-copy"><b>${escapeHtml(category.name)}</b><small>${escapeHtml(category.description)}</small></span></a>`,
+    ).join("");
     const home = `<section id="home" class="ref-home" data-ref-view="home">
       <div class="ref-hero"><div class="wrap ref-hero-grid"><div class="ref-hero-copy"><span class="ref-eyebrow">AREVA PAINTS · PAINT YOUR DREAMS</span>
         <h1>Paint Your<br><em>Dreams.</em></h1><p>Thoughtful colour. Beautiful finishes. Discover paints and protective coatings for every space you call your own.</p>
         <div class="ref-hero-actions"><a class="btn btn-main" href="#products">Explore products <span aria-hidden="true">→</span></a><a class="btn btn-ghost" href="#visualizer">Find a colour</a></div>
       </div><div class="ref-campaign">${carousel}</div></div></div>
       <div class="ref-benefits"><div class="wrap"><a href="#visualizer"><span aria-hidden="true">◉</span>Colour visualizer</a><a href="#products"><span aria-hidden="true">✦</span>Specialist coatings</a><a href="#calculator"><span aria-hidden="true">▧</span>Paint calculator</a><a href="#services"><span aria-hidden="true">◇</span>Expert guidance</a><a href="#portals"><span aria-hidden="true">⌖</span>Dealer network</a></div></div>
-      <div class="wrap ref-solutions" id="solutions"><span class="ref-eyebrow">MADE FOR EVERY SPACE</span><h2>Solutions for every surface</h2><p class="lead">Explore the right finish, from your first coat to the final detail.</p><div class="ref-solution-grid">${solutions}</div><a class="btn btn-line ref-view-all" href="#products/all">View all products <span aria-hidden="true">→</span></a></div>
+      <div class="ref-solutions-band" id="solutions"><div class="wrap ref-solutions"><span class="ref-eyebrow">MADE FOR EVERY SPACE</span><h2>Solutions for every surface</h2><p class="lead">Explore the right finish, from your first coat to the final detail.</p><div class="ref-solution-grid">${solutions}</div><a class="btn btn-line ref-view-all" href="#products/all">View all products <span aria-hidden="true">→</span></a></div></div>
       <div class="wrap ref-home-stats">${stats}</div>
     </section>\n`;
     html = html.slice(0, start) + home + html.slice(end);

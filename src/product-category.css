@@ -3,29 +3,25 @@
 .areva-reference-site .pc-hub-cta:hover { background: #ffffff18; color: #fff; }
 .areva-reference-site #products.pc-catalog { padding: 0 0 72px; background: #f7f7f9; color: #242730; scroll-margin-top: 90px; }
 .areva-reference-site #products.pc-catalog .pc-container { width: min(1160px, 92%); margin-inline: auto; }
-.areva-reference-site #products.pc-catalog .pc-overview { padding-top: 64px; padding-bottom: 0; scroll-margin-top: 100px; }
+.areva-reference-site #products.pc-catalog .pc-overview { width: 100%; padding: 54px max(4%, calc((100% - 1160px) / 2)); scroll-margin-top: 100px; background: linear-gradient(110deg, #32183f 0%, #51365f 55%, #7a6380 100%); border-top: 2px solid #e9b33c; }
 .areva-reference-site #products.pc-catalog .pc-overview-heading { max-width: 760px; margin-bottom: 32px; }
 .areva-reference-site #products.pc-catalog .pc-eyebrow { display: flex; align-items: center; gap: 8px; color: #5c1c81; font-size: 11px; line-height: 1.6; font-weight: 700; letter-spacing: .16em; }
 .areva-reference-site #products.pc-catalog .pc-eyebrow svg { width: 15px; height: 15px; }
-.areva-reference-site #products.pc-catalog .pc-overview-heading h2 { margin: 12px 0 16px; color: #361052; font: 400 clamp(32px, 4vw, 46px)/1.15 Georgia, serif; }
+.areva-reference-site #products.pc-catalog .pc-overview-heading h2 { margin: 12px 0 16px; color: #fff; font: 400 clamp(32px, 4vw, 46px)/1.15 Georgia, serif; }
 .areva-reference-site #products.pc-catalog .pc-overview-heading h2::after { content: none; }
-.areva-reference-site #products.pc-catalog .pc-overview-heading p { color: #68636f; font-size: 15px; line-height: 1.75; }
+.areva-reference-site #products.pc-catalog .pc-overview-heading p { color: #ece2f0; font-size: 15px; line-height: 1.75; }
 .areva-reference-site #products.pc-catalog .pc-category-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
-.areva-reference-site #products.pc-catalog .pc-category-card { display: flex; flex-direction: column; min-width: 0; padding: 0; border: 1px solid #e3dce8; border-radius: 16px; overflow: hidden; background: #fff; text-align: left; font: inherit; color: #242730; cursor: pointer; box-shadow: 0 6px 20px #36105208; transition: transform .2s, box-shadow .2s; }
-.areva-reference-site #products.pc-catalog .pc-category-card:hover { transform: translateY(-4px); box-shadow: 0 12px 26px #36105216; }
+.areva-reference-site #products.pc-catalog .pc-category-card { display: flex; flex-direction: column; min-width: 0; padding: 24px; border: 1px solid #e5dccd; border-radius: 28px; background: #f7f7f9; text-align: left; font: inherit; color: #361052; cursor: pointer; box-shadow: 0 6px 20px #180c2010; transition: transform .2s, box-shadow .2s; }
+.areva-reference-site #products.pc-catalog .pc-category-card:hover { transform: translateY(-4px); background: #fff; box-shadow: 0 12px 26px #180c2030; }
+.areva-reference-site #products.pc-catalog .pc-category-card:focus-visible { outline: 3px solid #f2c454; outline-offset: 4px; }
+.areva-reference-site #products.pc-catalog .pc-overview .pc-eyebrow { color: #ead099; }
 .areva-reference-site #products.pc-catalog .pc-all-products-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; padding: 11px 17px; border-radius: 24px; background: #e9b33c; color: #361052; font-size: 12px; font-weight: 700; text-decoration: none; }
 .areva-reference-site #products.pc-catalog .pc-all-products-link:hover { background: #f4c665; }
 .areva-reference-site #products.pc-catalog .pc-all-products-link svg { width: 16px; height: 16px; }
-.areva-reference-site #products.pc-catalog .pc-category-image { display: block; width: 100%; height: 175px; background: #eeebf1; }
-.areva-reference-site #products.pc-catalog .pc-category-image > img { display: block; width: 100%; height: 100%; padding: 12px; object-fit: contain; }
-.areva-reference-site #products.pc-catalog .pc-category-image-fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 100%; padding: 18px; color: #7c6a86; text-align: center; font-size: 11px; line-height: 1.5; }
-.areva-reference-site #products.pc-catalog .pc-category-image-fallback > svg { width: 30px; height: 30px; }
-.areva-reference-site #products.pc-catalog .pc-category-card-body { display: flex; flex-direction: column; flex: 1; padding: 20px; }
-.areva-reference-site #products.pc-catalog .pc-category-count { color: #68636f; font-size: 10px; font-weight: 700; }
-.areva-reference-site #products.pc-catalog .pc-category-title { margin-top: 6px; color: #361052; font-size: 17px; line-height: 1.4; font-weight: 700; }
-.areva-reference-site #products.pc-catalog .pc-category-description { flex: 1; margin-top: 9px; color: #68636f; font-size: 12px; line-height: 1.7; }
-.areva-reference-site #products.pc-catalog .pc-category-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 22px; padding-top: 14px; border-top: 1px solid #eee8f2; color: #5c1c81; font-size: 12px; font-weight: 700; }
-.areva-reference-site #products.pc-catalog .pc-category-link svg { width: 17px; height: 17px; }
+.areva-reference-site #products.pc-catalog .pc-category-icon { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; border: 1px solid #e3dce8; border-radius: 50%; background: #fff; font-size: 27px; line-height: 1; margin-bottom: 16px; }
+.areva-reference-site #products.pc-catalog .pc-category-card-body { display: flex; flex-direction: column; gap: 6px; }
+.areva-reference-site #products.pc-catalog .pc-category-title { color: #361052; font-size: 17px; line-height: 1.35; font-weight: 700; }
+.areva-reference-site #products.pc-catalog .pc-category-description { color: #56346b; font-size: 13px; line-height: 1.65; }
 .areva-reference-site #products.pc-catalog .pc-category-banner { padding: 46px 0 54px; color: #fff; background: linear-gradient(110deg, #2a0c41, #542071 65%, #8d699e); }
 .areva-reference-site #products.pc-catalog .pc-breadcrumb { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; color: #e5d8ee; font-size: 12px; }
 .areva-reference-site #products.pc-catalog .pc-breadcrumb button { padding: 0; border: 0; background: transparent; color: #fff; font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
@@ -101,8 +97,7 @@
   .areva-reference-site #products.pc-catalog { padding-bottom: 48px; }
   .areva-reference-site #products.pc-catalog .pc-overview { padding-top: 40px; }
   .areva-reference-site #products.pc-catalog .pc-category-grid { gap: 14px; }
-  .areva-reference-site #products.pc-catalog .pc-category-image { height: 140px; }
-  .areva-reference-site #products.pc-catalog .pc-category-card-body { padding: 16px; }
+  .areva-reference-site #products.pc-catalog .pc-category-card { padding: 20px; border-radius: 24px; }
   .areva-reference-site #products.pc-catalog .pc-category-title { font-size: 15px; }
   .areva-reference-site #products.pc-catalog .pc-category-banner { padding: 30px 0 36px; }
   .areva-reference-site #products.pc-catalog .pc-category-banner h1 { font-size: clamp(35px, 9vw, 48px); }
@@ -128,4 +123,8 @@
   .areva-reference-site #products.pc-catalog .pc-category-card { transition: none; }
   .areva-reference-site #products.pc-catalog .pc-category-card:hover { transform: none; }
   .areva-reference-site #products.pc-catalog .pc-flip-inner { transition: none; }
+}
+
+@media (max-width:480px) {
+  .areva-reference-site #products.pc-catalog .pc-category-grid { grid-template-columns: 1fr; }
 }
