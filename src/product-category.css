@@ -11,8 +11,8 @@
 .areva-reference-site #products.pc-catalog .pc-overview-heading h2::after { content: none; }
 .areva-reference-site #products.pc-catalog .pc-overview-heading p { color: #ece2f0; font-size: 15px; line-height: 1.75; }
 .areva-reference-site #products.pc-catalog .pc-category-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
-.areva-reference-site #products.pc-catalog .pc-category-card { display: flex; flex-direction: column; min-width: 0; padding: 24px; border: 1px solid #e5dccd; border-radius: 28px; background: #f7f7f9; text-align: left; font: inherit; color: #361052; cursor: pointer; box-shadow: 0 6px 20px #180c2010; transition: transform .2s, box-shadow .2s; }
-.areva-reference-site #products.pc-catalog .pc-category-card:hover { transform: translateY(-4px); background: #fff; box-shadow: 0 12px 26px #180c2030; }
+.areva-reference-site #products.pc-catalog .pc-category-card { display: flex; flex-direction: column; min-width: 0; padding: 24px; border: 1px solid #ffffff99; border-radius: 28px; background: linear-gradient(140deg, var(--solution-bg), var(--solution-end)); text-align: left; font: inherit; color: #361052; cursor: pointer; box-shadow: 0 6px 20px #180c2010; transition: transform .2s, box-shadow .2s; }
+.areva-reference-site #products.pc-catalog .pc-category-card:hover { transform: translateY(-4px); box-shadow: 0 12px 26px #180c2040; }
 .areva-reference-site #products.pc-catalog .pc-category-card:focus-visible { outline: 3px solid #f2c454; outline-offset: 4px; }
 .areva-reference-site #products.pc-catalog .pc-overview .pc-eyebrow { color: #ead099; }
 .areva-reference-site #products.pc-catalog .pc-all-products-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; padding: 11px 17px; border-radius: 24px; background: #e9b33c; color: #361052; font-size: 12px; font-weight: 700; text-decoration: none; }
@@ -128,3 +128,16 @@
 @media (max-width:480px) {
   .areva-reference-site #products.pc-catalog .pc-category-grid { grid-template-columns: 1fr; }
 }
+
+/* Category colours and highlighted headings. */
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(1) { --solution-bg: #e3d4ff; --solution-end: #f4edff; --solution-accent: #592d90; }
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(2) { --solution-bg: #ffd9b6; --solution-end: #fff0e1; --solution-accent: #87390e; }
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(3) { --solution-bg: #bbeaff; --solution-end: #e9f8ff; --solution-accent: #095576; }
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(4) { --solution-bg: #ffced2; --solution-end: #fff0f1; --solution-accent: #922d3e; }
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(5) { --solution-bg: #bceee0; --solution-end: #e9fbf4; --solution-accent: #165e4e; }
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(6) { --solution-bg: #d1deff; --solution-end: #edf2ff; --solution-accent: #304f91; }
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(7) { --solution-bg: #ffd1e9; --solution-end: #fff0f8; --solution-accent: #8b2b61; }
+.areva-reference-site #products.pc-catalog .pc-category-card:nth-child(8) { --solution-bg: #ffe4a3; --solution-end: #fff7df; --solution-accent: #75500b; }
+.areva-reference-site #products.pc-catalog .pc-category-title { display: block; padding: 8px 10px; border-left: 4px solid var(--solution-accent); border-radius: 8px; background: #ffffffc9; color: var(--solution-accent); font-weight: 800; }
+.areva-reference-site #products.pc-catalog .pc-category-description { color: #35283f; font-weight: 500; }
+.areva-reference-site #products.pc-catalog .pc-category-icon { border-color: var(--solution-accent); box-shadow: 0 3px 10px #30184010; }
