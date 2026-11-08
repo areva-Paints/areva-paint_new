@@ -18,7 +18,7 @@ export function legacyPage() {
   );
   const c = readContent();
   html = html.replace("<!-- PROJECT_GALLERY -->", () =>
-    renderProjectGallery(c.galleryProjects),
+    renderProjectGallery(c.galleryProjects, c.galleryAds),
   );
   const cats = [
     "interior",
@@ -99,11 +99,13 @@ export function legacyPage() {
   );
   html = html.replace(
     'let activeState="All";',
-    () => `ST.splice(0,ST.length,'All',...new Set(DEALERS.map(d=>d.state)));\nlet activeState="All";`,
+    () =>
+      `ST.splice(0,ST.length,'All',...new Set(DEALERS.map(d=>d.state)));\nlet activeState="All";`,
   );
   html = html.replace(
     "const save=()=>",
-    () => `C.splice(0,C.length,...${json(c.colours.map((s) => [esc(s.name), esc(s.code), s.hex]))});\nconst save=()=>`,
+    () =>
+      `C.splice(0,C.length,...${json(c.colours.map((s) => [esc(s.name), esc(s.code), s.hex]))});\nconst save=()=>`,
   );
   html = html.replace(
     'paint(C[5][2], C[5][0]+" ("+C[5][1]+")")',

@@ -123,12 +123,13 @@ export const HeroSlider: React.FC<HeroSliderProps> = ({
                 <span>Visualizer Studio</span>
               </button>
 
-              <button
+              <a
+                href="#solutions"
                 onClick={onExploreProducts}
-                className="inline-flex items-center justify-center gap-2 px-5 py-4 text-xs font-semibold text-stone-600 hover:text-stone-950 hover:bg-stone-100 rounded-full transition-all whitespace-nowrap"
+                className="pc-hub-cta inline-flex items-center justify-center gap-2 px-5 py-4 text-xs font-semibold text-stone-600 hover:text-stone-950 hover:bg-stone-100 rounded-full transition-all whitespace-nowrap"
               >
-                <span>Formulations →</span>
-              </button>
+                <span>Explore products →</span>
+              </a>
             </div>
 
             {/* Interactive Live Swatch Bar */}

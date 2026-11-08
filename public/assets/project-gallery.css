@@ -134,14 +134,49 @@
 .pg-thumbnail[aria-pressed="true"] { border-color: var(--pg-accent); background: var(--pg-hover-soft); }
 .pg-thumbnail:hover { border-color: var(--pg-hover-line); }
 .pg-thumbnail img { display: block; width: 100%; height: 100%; border-radius: 5px; object-fit: cover; }
+.ga-tabs { display: inline-flex; gap: 6px; margin-bottom: 30px; padding: 6px; border: 1px solid var(--pg-line); border-radius: 17px; background: var(--pg-paper); }
+.ga-tab, .ga-filter { appearance: none; border: 1px solid transparent; background: transparent; color: var(--pg-muted); font: inherit; font-size: 14px; line-height: 1.5; font-weight: 650; cursor: pointer; }
+.ga-tab { min-width: 112px; padding: 12px 24px; border-radius: 12px; }
+.ga-tab[aria-selected="true"] { background: var(--pg-deep); color: var(--pg-on-deep); box-shadow: 0 3px 12px var(--pg-shadow-low); }
+.ga-tab:hover:not([aria-selected="true"]), .ga-filter:hover:not([aria-pressed="true"]) { color: var(--pg-deep); background: var(--pg-hover-soft); }
+.ga-tab:focus-visible, .ga-filter:focus-visible, .ga-panel:focus-visible, .ga-link:focus-visible { outline: 3px solid var(--pg-focus); outline-offset: 4px; }
+.ga-intro { margin: 0 0 18px; color: var(--pg-muted); font-size: 15px; line-height: 1.7; }
+.ga-count { margin: -8px 0 18px; color: var(--pg-muted); font-size: 12px; line-height: 1.6; }
+.ga-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+.ga-filter { padding: 9px 18px; border-color: var(--pg-line); border-radius: 24px; background: var(--pg-paper); }
+.ga-filter[aria-pressed="true"] { border-color: var(--pg-deep); background: var(--pg-deep); color: var(--pg-on-deep); }
+.ga-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+.ga-card { min-width: 0; overflow: hidden; border: 1px solid var(--pg-line); border-radius: 20px; background: var(--pg-paper); box-shadow: 0 5px 18px var(--pg-shadow-low); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.ga-card:hover { transform: translateY(-4px); border-color: var(--pg-hover); box-shadow: 0 14px 28px var(--pg-shadow-hover); }
+.ga-card-action { display: flex; flex-direction: column; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; background: transparent; color: var(--pg-ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.ga-card-action:focus-visible { outline: 3px solid var(--pg-focus); outline-offset: -5px; }
+.ga-cover { display: block; position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; background: var(--pg-cover); }
+.ga-cover > img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.ga-link-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; width: 100%; height: 100%; padding: 24px; background: linear-gradient(145deg, var(--pg-page), var(--pg-hover-soft)); color: var(--pg-deep); font-size: 15px; font-weight: 650; }
+.ga-link-placeholder > svg { width: 42px; height: 42px; }
+.ga-card-body { display: flex; flex-direction: column; flex: 1; width: 100%; gap: 10px; padding: 22px; }
+.ga-channel { color: var(--pg-accent); font-size: 11px; line-height: 1.5; font-weight: 750; letter-spacing: .07em; }
+.ga-card-title { margin: 0; color: var(--pg-ink); font-size: 20px; line-height: 1.35; font-weight: 750; overflow-wrap: anywhere; }
+.ga-description { margin: 0; color: var(--pg-muted); font-size: 14px; line-height: 1.7; white-space: pre-line; overflow-wrap: anywhere; }
+.ga-card-body .ga-description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ga-view { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; margin-top: auto; border-top: 1px solid var(--pg-divider); color: var(--pg-deep); font-size: 13px; line-height: 1.5; font-weight: 700; }
+.ga-view svg { width: 19px; height: 19px; }
+.ga-preview { width: min(900px, calc(100vw - 40px)); }
+.ga-preview-frame { background: var(--pg-stage); }
+.ga-preview-image, .ga-preview-frame > .pg-image-fallback { display: block; width: 100%; height: min(60dvh, 620px); min-height: 220px; object-fit: contain; }
+.ga-preview-frame > .pg-image-fallback { display: flex; }
+.ga-preview-body { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding: 24px 28px; }
+.ga-link { display: inline-flex; align-items: center; gap: 10px; padding: 11px 19px; border: 1px solid var(--pg-deep); border-radius: 12px; background: var(--pg-deep); color: var(--pg-on-deep); font-size: 14px; line-height: 1.5; font-weight: 650; text-decoration: none; }
+.ga-link:hover { opacity: .9; }
+.ga-link svg { width: 17px; height: 17px; }
 @media (max-width: 900px) {
-  .pg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  .pg-grid, .ga-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 }
 @media (max-width: 600px) {
   .pg-section { padding: 48px 0; scroll-margin-top: 95px; }
   .pg-heading { margin-bottom: 24px; }
   .pg-intro { font-size: 14px; }
-  .pg-grid { grid-template-columns: 1fr; gap: 20px; }
+  .pg-grid, .ga-grid { grid-template-columns: 1fr; gap: 20px; }
   .pg-card-body { padding: 20px; }
   .pg-dialog { width: calc(100vw - 20px); max-height: calc(100dvh - 20px); border-radius: 18px; }
   .pg-album-heading { gap: 16px; padding: 20px 18px 16px; }
@@ -154,8 +189,16 @@
   .pg-caption { padding: 12px 18px; font-size: 13px; }
   .pg-album-footer { padding: 17px 18px 13px; }
   .pg-thumbnails { padding: 0 18px 20px; gap: 8px; }
+  .ga-tabs { margin-bottom: 24px; }
+  .ga-tab { min-width: 100px; padding: 11px 22px; }
+  .ga-filters { gap: 7px; }
+  .ga-filter { padding: 8px 15px; font-size: 13px; }
+  .ga-card-body { padding: 20px; }
+  .ga-preview { width: calc(100vw - 20px); }
+  .ga-preview-image, .ga-preview-frame > .pg-image-fallback { height: 48dvh; min-height: 180px; }
+  .ga-preview-body { padding: 20px 18px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pg-card, .pg-cover > img { transition: none; }
-  .pg-card:hover, .pg-card:hover .pg-cover > img { transform: none; }
+  .pg-card, .pg-cover > img, .ga-card { transition: none; }
+  .pg-card:hover, .pg-card:hover .pg-cover > img, .ga-card:hover { transform: none; }
 }

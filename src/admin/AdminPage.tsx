@@ -1,4 +1,5 @@
 import { ProjectGalleryManager } from "./ProjectGalleryManager";
+import { GalleryAdsManager } from "./GalleryAdsManager";
 import { ImagePreview, checkImage } from "./ImagePreview";
 import { ColourManager } from "./ColourManager";
 import React, { useEffect, useRef, useState } from "react";
@@ -39,7 +40,7 @@ const sections = [
     label: "Gallery",
     icon: ImagePlus,
     description:
-      "Share your latest project photos, grouped into project albums.",
+      "Share project albums, digital ads and social media campaigns.",
   },
   {
     id: "colours" as Tab,
@@ -120,6 +121,9 @@ export function AdminPage() {
     [dirty, setDirty] = useState(false),
     [busy, setBusy] = useState(false),
     [uploading, setUploading] = useState(false);
+  const [galleryView, setGalleryView] = useState<"projects" | "ads">(
+    "projects",
+  );
   const [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [editor, setEditor] = useState<Product | Dealer | LandingImage | null>(
@@ -506,7 +510,10 @@ export function AdminPage() {
                 {content
                   ? s.id === "coverage"
                     ? content.products.length
-                    : content[s.id].length
+                    : s.id === "galleryProjects"
+                      ? content.galleryProjects.length +
+                        (content.galleryAds?.length || 0)
+                      : content[s.id].length
                   : 0}
               </span>
             </button>
@@ -614,13 +621,100 @@ export function AdminPage() {
             </div>
           )}
           {tab === "galleryProjects" && content ? (
-            <ProjectGalleryManager
-              content={content}
-              onChange={update}
-              onPublish={persist}
-              onBusy={setUploading}
-              publishError={error}
-            />
+            <>
+              <div
+                className="adm-gallery-tabs"
+                role="tablist"
+                aria-label="Gallery content"
+                onKeyDown={(event) => {
+                  if (
+                    busy ||
+                    uploading ||
+                    !["ArrowLeft", "ArrowRight", "Home", "End"].includes(
+                      event.key,
+                    )
+                  )
+                    return;
+                  event.preventDefault();
+                  const nextView =
+                    event.key === "Home"
+                      ? "projects"
+                      : event.key === "End"
+                        ? "ads"
+                        : galleryView === "projects"
+                          ? "ads"
+                          : "projects";
+                  setGalleryView(nextView);
+                  setError("");
+                  document
+                    .getElementById("adm-gallery-" + nextView + "-tab")
+                    ?.focus();
+                }}
+              >
+                <button
+                  type="button"
+                  id="adm-gallery-projects-tab"
+                  role="tab"
+                  tabIndex={galleryView === "projects" ? 0 : -1}
+                  aria-selected={galleryView === "projects"}
+                  aria-controls="adm-gallery-projects-panel"
+                  disabled={uploading || busy}
+                  onClick={() => {
+                    setGalleryView("projects");
+                    setError("");
+                  }}
+                >
+                  Projects <span>{content.galleryProjects.length}</span>
+                </button>
+                <button
+                  type="button"
+                  id="adm-gallery-ads-tab"
+                  role="tab"
+                  tabIndex={galleryView === "ads" ? 0 : -1}
+                  aria-selected={galleryView === "ads"}
+                  aria-controls="adm-gallery-ads-panel"
+                  disabled={uploading || busy}
+                  onClick={() => {
+                    setGalleryView("ads");
+                    setError("");
+                  }}
+                >
+                  Ads <span>{content.galleryAds?.length || 0}</span>
+                </button>
+              </div>
+              <div
+                id="adm-gallery-projects-panel"
+                role="tabpanel"
+                aria-labelledby="adm-gallery-projects-tab"
+                hidden={galleryView !== "projects"}
+              >
+                {galleryView === "projects" && (
+                  <ProjectGalleryManager
+                    content={content}
+                    onChange={update}
+                    onPublish={persist}
+                    onBusy={setUploading}
+                    publishError={error}
+                  />
+                )}
+              </div>
+              <div
+                id="adm-gallery-ads-panel"
+                role="tabpanel"
+                aria-labelledby="adm-gallery-ads-tab"
+                hidden={galleryView !== "ads"}
+              >
+                {galleryView === "ads" && (
+                  <GalleryAdsManager
+                    content={content}
+                    onChange={update}
+                    onPublish={persist}
+                    onBusy={setUploading}
+                    publishError={error}
+                  />
+                )}
+              </div>
+            </>
           ) : tab === "colours" && content ? (
             <ColourManager
               content={content}

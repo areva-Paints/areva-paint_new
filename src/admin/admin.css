@@ -1252,6 +1252,120 @@
 .adm-project-manager > .adm-gallery:empty {
   padding: 0;
 }
+.adm-gallery-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 22px;
+}
+.adm-gallery-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 19px;
+  border: 1px solid #e5dcee;
+  border-radius: 11px;
+  background: #fff;
+  color: #756284;
+  font-weight: 600;
+}
+.adm-gallery-tabs > button[aria-selected="true"] {
+  color: #633991;
+  border-color: #d8c7eb;
+  background: #eee6f8;
+}
+.adm-gallery-tabs > button > span {
+  border-radius: 6px;
+  background: #f4eff9;
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.adm-ads-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(160px, 210px);
+  align-items: start;
+  gap: 14px 20px;
+  padding: 20px 24px 0;
+}
+.adm-ads-tools > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 11px;
+}
+.adm-ad-link-cover {
+  width: 100%;
+  height: 100%;
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: #7d6195;
+  background: #f4eef9;
+}
+.adm-ad-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 12px;
+  color: #6e4298 !important;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: underline !important;
+}
+.adm-ads-manager .adm-gallery-copy h3 {
+  overflow-wrap: anywhere;
+}
+.adm-ads-manager .adm-gallery-copy > p {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.adm-ads-manager > .adm-gallery:empty {
+  padding: 0;
+}
+.adm-ad-dialog {
+  width: min(700px, calc(100vw - 28px));
+}
+.adm-ad-upload-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.adm-ad-upload-row h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.adm-ad-image-preview {
+  height: 240px;
+  border: 1px solid #e8def0;
+  border-radius: 12px;
+  background: #f8f5fb;
+  overflow: hidden;
+}
+.adm-ad-image-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.adm-ad-remove-image {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #e6dced;
+  border-radius: 8px;
+  background: #fff;
+  color: #79598f;
+  padding: 7px 10px;
+  font-size: 11px !important;
+}
 @media (max-width: 760px) {
   .adm-project-tools {
     padding: 16px 16px 0;
@@ -1264,5 +1378,15 @@
   }
   .adm-project-dialog .adm-dialog-footer {
     flex-wrap: wrap;
+  }
+  .adm-ads-tools {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px 16px 0;
+  }
+  .adm-ad-dialog .adm-dialog-footer {
+    flex-wrap: wrap;
+  }
+  .adm-ad-image-preview {
+    height: 190px;
   }
 }

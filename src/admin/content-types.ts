@@ -35,7 +35,18 @@ export interface GalleryProject {
   createdAt: string;
   updatedAt: string;
 }
+export interface GalleryAd {
+  id: string;
+  title: string;
+  channel: "digital" | "social";
+  image: string;
+  description: string;
+  link: string;
+  createdAt: string;
+  updatedAt: string;
+}
 export interface SiteContent {
+  galleryAds: GalleryAd[];
   galleryProjects: GalleryProject[];
   colours: ColorShade[];
   shadeCards: ShadeCard[];

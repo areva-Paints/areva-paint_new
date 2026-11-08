@@ -203,7 +203,8 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
 .ref-solutions { padding-top: 55px; padding-bottom: 20px; }
 .ref-solutions .ref-eyebrow { color: var(--brand-muted); margin-bottom: 12px; }
 .ref-solution-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; }
-.ref-solution { display: flex; flex-direction: column; padding: 0; text-align: left; border: 1px solid var(--brand-line); background: #fff; border-radius: 16px; overflow: hidden; color: var(--brand-ink); font: inherit; cursor: pointer; box-shadow: 0 6px 20px #36105208; transition: transform .2s; }
+.ref-solution { display: flex; flex-direction: column; padding: 0; text-align: left; text-decoration: none; border: 1px solid var(--brand-line); background: #fff; border-radius: 16px; overflow: hidden; color: var(--brand-ink); font: inherit; cursor: pointer; box-shadow: 0 6px 20px #36105208; transition: transform .2s; }
+.ref-view-all { margin-top: 24px; }
 .ref-solution:hover { transform: translateY(-4px); }
 .ref-solution img { display: block; width: 100%; height: 160px; object-fit: contain; background: #efedf1; }
 .ref-solution-art { min-height: 160px; display: grid; place-items: center; background: #e3d6eb; font-size: 50px; }

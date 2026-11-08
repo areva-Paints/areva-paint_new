@@ -16,6 +16,10 @@ export function resolveContentImages(content: SiteContent): SiteContent {
     path.startsWith("/") ? contentUrl(path) : path;
   return {
     ...content,
+    galleryAds: (content.galleryAds ?? []).map((ad) => ({
+      ...ad,
+      image: resolve(ad.image),
+    })),
     galleryProjects: (content.galleryProjects ?? []).map((project) => ({
       ...project,
       photos: project.photos.map((photo) => ({

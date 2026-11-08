@@ -6,13 +6,16 @@
   if (!section || !projectData || section.dataset.pgReady) return;
   section.dataset.pgReady = "true";
 
-  let projects;
-  try {
-    projects = JSON.parse(projectData.textContent || "[]");
-  } catch {
-    return;
-  }
-  if (!Array.isArray(projects)) return;
+  const readData = (node) => {
+    try {
+      const data = JSON.parse(node?.textContent || "[]");
+      return Array.isArray(data) ? data : [];
+    } catch {
+      return [];
+    }
+  };
+  const projects = readData(projectData);
+  const ads = readData(document.getElementById("ga-ad-data"));
 
   const element = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -37,11 +40,136 @@
     if (image.complete) update();
   };
 
-  section.querySelectorAll(".pg-cover").forEach((cover) => {
+  const tabs = Array.from(section.querySelectorAll(".ga-tab[data-ga-tab]"));
+  const selectTab = (selected, focus = false) => {
+    tabs.forEach((tab) => {
+      const active = tab === selected;
+      tab.setAttribute("aria-selected", String(active));
+      tab.tabIndex = active ? 0 : -1;
+    });
+    section.querySelectorAll("[data-ga-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.gaPanel !== selected.dataset.gaTab;
+    });
+    if (focus) selected.focus();
+  };
+  tabs.forEach((tab, index) => {
+    tab.addEventListener("click", () => selectTab(tab));
+    tab.addEventListener("keydown", (event) => {
+      let target;
+      if (event.key === "ArrowLeft") target = (index + tabs.length - 1) % tabs.length;
+      else if (event.key === "ArrowRight") target = (index + 1) % tabs.length;
+      else if (event.key === "Home") target = 0;
+      else if (event.key === "End") target = tabs.length - 1;
+      if (target !== undefined) {
+        event.preventDefault();
+        selectTab(tabs[target], true);
+      }
+    });
+  });
+
+  const filters = Array.from(section.querySelectorAll(".ga-filter[data-ga-filter]"));
+  const adCards = Array.from(section.querySelectorAll(".ga-card[data-ga-channel]"));
+  const emptyAds = section.querySelector("[data-ga-empty]");
+  filters.forEach((filter) => {
+    filter.addEventListener("click", () => {
+      const channel = filter.dataset.gaFilter;
+      filters.forEach((item) => item.setAttribute("aria-pressed", String(item === filter)));
+      let visible = 0;
+      adCards.forEach((card) => {
+        card.hidden = channel !== "all" && card.dataset.gaChannel !== channel;
+        if (!card.hidden) visible += 1;
+      });
+      const count = section.querySelector("[data-ga-count]");
+      if (count) count.textContent = `${visible} ${visible === 1 ? "ad" : "ads"}`;
+      if (emptyAds) {
+        emptyAds.hidden = visible > 0;
+        emptyAds.querySelector("[data-ga-empty-title]").textContent = adCards.length
+          ? "No ads in this category" : "No ads yet";
+        emptyAds.querySelector("[data-ga-empty-copy]").textContent = adCards.length
+          ? "Try another category to see more ads."
+          : "Our latest digital and social media ads will appear here.";
+      }
+    });
+  });
+
+  section.querySelectorAll(".pg-cover, .ga-cover").forEach((cover) => {
     const image = cover.querySelector("img");
     const fallback = cover.querySelector(".pg-image-fallback");
     if (image && fallback) observeImage(image, fallback);
   });
+
+  if (ads.some((ad) => ad.image)) {
+    const preview = element("dialog", "pg-dialog ga-preview");
+    preview.setAttribute("aria-labelledby", "ga-preview-title");
+    const content = element("div", "pg-album");
+    const heading = element("div", "pg-album-heading");
+    const headingText = element("div");
+    const channel = element("p", "pg-kicker");
+    const title = element("h2", "pg-album-title");
+    title.id = "ga-preview-title";
+    const close = button("pg-close", "Close ad preview", "×");
+    close.autofocus = true;
+    headingText.append(channel, title);
+    heading.append(headingText, close);
+    const frame = element("div", "ga-preview-frame");
+    const image = element("img", "ga-preview-image");
+    image.decoding = "async";
+    const fallback = element("span", "pg-image-fallback", "Image unavailable");
+    fallback.hidden = true;
+    fallback.setAttribute("role", "img");
+    fallback.setAttribute("aria-label", "Ad image unavailable");
+    observeImage(image, fallback);
+    frame.append(image, fallback);
+    const body = element("div", "ga-preview-body");
+    const description = element("p", "ga-description");
+    const link = element("a", "ga-link", "Open ad ↗");
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.setAttribute("aria-label", "Open ad in a new tab");
+    body.append(description, link);
+    content.append(heading, frame, body);
+    preview.append(content);
+    document.body.append(preview);
+    let opener = null;
+    let previousOverflow = "";
+    section.addEventListener("click", (event) => {
+      if (!(event.target instanceof Element)) return;
+      const source = event.target.closest("button[data-ga-open]");
+      if (!source || !section.contains(source)) return;
+      const ad = ads[Number(source.dataset.gaOpen)];
+      if (!ad?.image) return;
+      opener = source;
+      channel.textContent = ad.channel === "social" ? "SOCIAL MEDIA" : "DIGITAL";
+      title.textContent = ad.title;
+      image.hidden = false;
+      fallback.hidden = true;
+      image.alt = ad.title;
+      image.src = ad.image;
+      description.textContent = ad.description || "";
+      description.hidden = !ad.description;
+      let safeLink = "";
+      try {
+        const url = new URL(ad.link);
+        if (url.protocol === "https:") safeLink = url.href;
+      } catch { /* An optional absent link has no action. */ }
+      link.hidden = !safeLink;
+      if (safeLink) link.href = safeLink;
+      else link.removeAttribute("href");
+      body.hidden = !ad.description && !safeLink;
+      previousOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      preview.showModal();
+    });
+    close.addEventListener("click", () => preview.close());
+    preview.addEventListener("click", (event) => {
+      if (event.target === preview) preview.close();
+    });
+    preview.addEventListener("close", () => {
+      document.body.style.overflow = previousOverflow;
+      opener?.focus({ preventScroll: true });
+    });
+  }
+
   if (!projects.length) return;
 
   const dialog = element("dialog", "pg-dialog");

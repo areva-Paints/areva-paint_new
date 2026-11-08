@@ -143,15 +143,17 @@
     const category = index === null ? null : categories[index];
     const products = document.getElementById("products");
     products.classList.toggle("ref-category-page", Boolean(category));
-    document.getElementById("refCategoryOverview").hidden = Boolean(category);
     const banner = products.querySelector(".ref-page-banner");
-    banner.querySelector("h1").textContent =
-      category?.name || "Find your perfect finish";
+    banner.querySelector("h1").textContent = category?.name || "All products";
     banner.querySelector(".ref-eyebrow").textContent =
-      "HOME / PRODUCTS" + (category ? " / " + category.name.toUpperCase() : "");
+      "HOME / PRODUCTS / " +
+      (category ? category.name.toUpperCase() : "ALL PRODUCTS");
     banner.querySelector("p").textContent = category
       ? categoryCopy[category.id] || category.description
-      : "Explore every category, compare the details and choose the right coating for your space.";
+      : "Browse the complete Areva collection and compare finishes, coverage and product specifications.";
+    document.getElementById("listTitle").textContent = category
+      ? "Our " + category.name
+      : "All products";
     const intro = document.getElementById("refCategoryIntro");
     intro.hidden = !category;
     intro.textContent = category
@@ -161,14 +163,22 @@
       : "";
   }
   function navigate(id, options = {}, updateHistory = true) {
-    const categoryPath = id.startsWith("products/");
+    const allProductsPath = id === "products/all";
+    const categoryPath = id.startsWith("products/") && !allProductsPath;
     const matchedCategory = categoryPath
       ? categories.findIndex((c) => c.id === id.slice("products/".length))
       : -1;
     const unknownCategory = categoryPath && matchedCategory === -1;
+    const hubPath = id === "products" || id === "solutions" || unknownCategory;
     const target =
       document.getElementById(
-        categoryPath ? "products" : id === "top" ? "home" : id,
+        hubPath
+          ? "solutions"
+          : categoryPath || allProductsPath
+            ? "products"
+            : id === "top"
+              ? "home"
+              : id,
       ) || document.getElementById("home");
     const view = target.closest("[data-ref-view]")?.dataset.refView || "home";
     if (view === "products")
@@ -192,7 +202,8 @@
       node.hidden = node.dataset.refView !== view;
     });
     document.querySelectorAll("[data-ref-nav]").forEach((link) => {
-      const active = link.dataset.refNav === view;
+      const active =
+        link.dataset.refNav === (target.id === "solutions" ? "products" : view);
       link.classList.toggle("active", active);
       if (active) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");
@@ -201,10 +212,12 @@
       .querySelectorAll(".ref-more[open]")
       .forEach((menu) => menu.removeAttribute("open"));
     const route =
-      view === "products" && currentCategory !== null
-        ? "products/" + categories[currentCategory].id
+      view === "products"
+        ? currentCategory !== null
+          ? "products/" + categories[currentCategory].id
+          : "products/all"
         : target.id;
-    if (unknownCategory) history.replaceState(null, "", "#products");
+    if (unknownCategory) history.replaceState(null, "", "#solutions");
     else if (updateHistory && location.hash !== "#" + route)
       history.pushState(null, "", "#" + route);
     requestAnimationFrame(() => {
@@ -229,7 +242,7 @@
     navigate(
       Number.isInteger(index) && categories[index]
         ? "products/" + categories[index].id
-        : "products",
+        : "solutions",
     );
   document.addEventListener("click", (event) => {
     if (

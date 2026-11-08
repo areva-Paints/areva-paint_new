@@ -1,4 +1,5 @@
 import type { SiteContent } from "./content-types";
+import { CATEGORIES } from "../data/paintsData";
 
 const escapeHtml = (value: string) =>
   value.replace(
@@ -42,31 +43,19 @@ export function referenceLayout(html: string, content: SiteContent) {
       statsStart,
     );
     const stats = original.slice(statsStart).replace(/<\/div>\s*$/, "");
-    const solutions = [
-      ["interior", "Interior Paints", "Premium finishes for living spaces", 0],
-      ["exterior", "Exterior Paints", "Finishes for the world outside", 1],
-      [
-        "waterproofing",
-        "Waterproofing",
-        "Protection for roofs and surfaces",
-        2,
-      ],
-      ["textures", "Textures & Finishes", "Add character to your walls", 6],
-    ]
-      .map(([category, title, description, index]) => {
-        const image = content.products.find(
-          (p) => p.categoryId === category,
-        )?.image;
-        return `<button class="ref-solution" data-cat="${index}" type="button">${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy">` : '<span class="ref-solution-art" aria-hidden="true">✦</span>'}<span><b>${title} <i aria-hidden="true">↗</i></b><small>${description}</small></span></button>`;
-      })
-      .join("");
+    const solutions = CATEGORIES.map((category) => {
+      const image = content.products.find(
+        (p) => p.categoryId === category.id,
+      )?.image;
+      return `<a class="ref-solution" href="#products/${category.id}" aria-label="Explore ${escapeHtml(category.name)}">${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy">` : '<span class="ref-solution-art" aria-hidden="true">✦</span>'}<span><b>${escapeHtml(category.name)} <i aria-hidden="true">↗</i></b><small>${escapeHtml(category.description)}</small></span></a>`;
+    }).join("");
     const home = `<section id="home" class="ref-home" data-ref-view="home">
       <div class="ref-hero"><div class="wrap ref-hero-grid"><div class="ref-hero-copy"><span class="ref-eyebrow">AREVA PAINTS · PAINT YOUR DREAMS</span>
         <h1>Paint Your<br><em>Dreams.</em></h1><p>Thoughtful colour. Beautiful finishes. Discover paints and protective coatings for every space you call your own.</p>
         <div class="ref-hero-actions"><a class="btn btn-main" href="#products">Explore products <span aria-hidden="true">→</span></a><a class="btn btn-ghost" href="#visualizer">Find a colour</a></div>
       </div><div class="ref-campaign">${carousel}</div></div></div>
       <div class="ref-benefits"><div class="wrap"><a href="#visualizer"><span aria-hidden="true">◉</span>Colour visualizer</a><a href="#products"><span aria-hidden="true">✦</span>Specialist coatings</a><a href="#calculator"><span aria-hidden="true">▧</span>Paint calculator</a><a href="#services"><span aria-hidden="true">◇</span>Expert guidance</a><a href="#portals"><span aria-hidden="true">⌖</span>Dealer network</a></div></div>
-      <div class="wrap ref-solutions"><span class="ref-eyebrow">MADE FOR EVERY SPACE</span><h2>Solutions for every surface</h2><p class="lead">Explore the right finish, from your first coat to the final detail.</p><div class="ref-solution-grid">${solutions}</div></div>
+      <div class="wrap ref-solutions" id="solutions"><span class="ref-eyebrow">MADE FOR EVERY SPACE</span><h2>Solutions for every surface</h2><p class="lead">Explore the right finish, from your first coat to the final detail.</p><div class="ref-solution-grid">${solutions}</div><a class="btn btn-line ref-view-all" href="#products/all">View all products <span aria-hidden="true">→</span></a></div>
       <div class="wrap ref-home-stats">${stats}</div>
     </section>\n`;
     html = html.slice(0, start) + home + html.slice(end);
@@ -125,13 +114,10 @@ export function referenceLayout(html: string, content: SiteContent) {
     () => `const REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
   );
   html = html.replace(
-    "<h2>Products for every surface</h2>",
-    '<div id="refCategoryOverview"><h2>Products for every surface</h2>',
+    /<h2>Products for every surface<\/h2>[\s\S]*?<div class="tiles" id="tiles"><\/div>/,
+    "",
   );
-  html = html.replace(
-    '<div class="tiles" id="tiles"></div>',
-    '<div class="tiles" id="tiles"></div></div>',
-  );
+  html = html.replace(/function renderTiles\(\)\{[\s\S]*?\n\}/, "");
   html = html.replace(
     '<div class="grid" id="grid"',
     '<p class="lead ref-category-intro" id="refCategoryIntro" hidden></p><div class="grid" id="grid"',
@@ -144,22 +130,18 @@ export function referenceLayout(html: string, content: SiteContent) {
   $("#showAll").hidden=sel.c===null;
   $("#showAll").textContent="All product types";
   $("#grid").innerHTML=list.map(([p,i])=>{const c=cats[p[1]];return '<article class="card ref-category-product"><div class="product-copy"><span class="tag">'+c[0]+'</span><h4>'+p[0]+'</h4><p>'+p[2]+'</p>'+(REFERENCE_PRODUCT_SPEC_HTML[i]||'')+'<button class="btn btn-line" data-p="'+i+'">View specifications &amp; photo</button></div><div class="ref-badge-panel"><button type="button" class="ref-product-badge ref-flip-badge" data-product-flip data-product-name="'+p[0]+'" aria-label="Show product photo for '+p[0]+'" aria-pressed="false"'+(p[4]?'':' disabled')+'><span class="ref-flip-inner" aria-hidden="true"><span class="ref-flip-face ref-flip-front"><span class="ref-badge-brand">AREVA<small>PAINTS</small></span><strong>'+p[0].replace(/^Areva\\s+/i,'')+'</strong></span>'+(p[4]?'<span class="ref-flip-face ref-flip-back"><img class="ref-flip-photo" src="'+p[4]+'" alt="" loading="lazy" decoding="async"></span>':'')+'</span></button></div></article>'}).join("")||'<div class="ref-catalog-empty"><h3>New products are on the way</h3><p>Contact our team for guidance on this product category.</p><a class="btn btn-main" href="#contact">Enquire now</a></div>';
-  renderTiles();
 }`,
   );
-  const categoryIds = JSON.stringify([
-    "interior",
-    "exterior",
-    "waterproofing",
-    "tile-adhesives",
-    "sealants",
-    "putty-primers",
-    "textures",
-    "chemicals",
-  ]);
+  const categoryData = JSON.stringify(
+    CATEGORIES.map((category) => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
+    })),
+  );
   html = html.replace(
     /function pick\(i, scroll\)\{[^\n]*\}/,
-    () => `window.arevaProductCategories=cats.map((c,i)=>({id:${categoryIds}[i],name:c[0],description:c[2]}));
+    () => `window.arevaProductCategories=${categoryData};
 window.arevaSetProductCategory=(i)=>{sel.c=i;renderGrid();};
 function pick(i, scroll){if(window.arevaOpenCategory){window.arevaOpenCategory(i);return;}window.arevaSetProductCategory(i);}`,
   );

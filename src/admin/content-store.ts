@@ -20,6 +20,7 @@ export function defaults(): SiteContent {
   return {
     revision: 0,
     galleryProjects: [],
+    galleryAds: [],
     colours: COLOR_SHADES,
     shadeCards: [],
     products: seed.products.map((p) => {
@@ -70,6 +71,7 @@ export function readContent(): SiteContent {
   return {
     ...content,
     galleryProjects: content.galleryProjects ?? [],
+    galleryAds: content.galleryAds ?? [],
     colours: content.colours ?? COLOR_SHADES,
     shadeCards: content.shadeCards ?? [],
   };

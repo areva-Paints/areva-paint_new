@@ -14,6 +14,19 @@ interface ProductCatalogProps {
   onRequestQuoteForProduct: (product: Product) => void;
 }
 
+function CategoryImage({ image }: { image: string }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="pc-category-image" aria-hidden="true">
+      {image && !failed ? (
+        <img src={image} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      ) : (
+        <span className="pc-category-image-fallback"><ImageIcon aria-hidden="true" /><span>Product photo coming soon</span></span>
+      )}
+    </span>
+  );
+}
+
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   selectedColorHex,
   selectedColorName,
@@ -26,33 +39,54 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'featured' | 'coverage' | 'name'>('featured');
   const sectionRef = useRef<HTMLElement>(null);
+  const hubRef = useRef<HTMLElement>(null);
+  const rangeRef = useRef<HTMLDivElement>(null);
   const categoryHeading = useRef<HTMLHeadingElement>(null);
   const overviewHeading = useRef<HTMLHeadingElement>(null);
+  const rangeHeading = useRef<HTMLHeadingElement>(null);
   const focusAfterChange = useRef(false);
+  const destinationAfterChange = useRef<'hub' | 'range'>('hub');
   const activeCategory = CATEGORIES.find((category) => category.id === selectedCategory);
 
-  // A plain Products navigation link always returns to the category overview.
+  function focusOverview(destination: 'hub' | 'range') {
+    const heading = destination === 'range' ? rangeHeading.current : overviewHeading.current;
+    const target = destination === 'range' ? rangeRef.current : hubRef.current;
+    heading?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
+  // Every Products entry points to the same hub; the explicit all link skips to its list.
   useEffect(() => {
     const resetFromNavigation = (event: MouseEvent) => {
       if (!(event.target instanceof Element) || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      const link = event.target.closest('a[href="#products"]');
+      const link = event.target.closest('a[href="#solutions"], a[href="#products"], a[href="#products/all"]');
       if (link && link.getAttribute('target') !== '_blank') {
-        focusAfterChange.current = true;
-        setSelectedCategory('all');
+        event.preventDefault();
+        const destination = link.getAttribute('href') === '#products/all' ? 'range' : 'hub';
+        destinationAfterChange.current = destination;
+        if (selectedCategory === 'all') requestAnimationFrame(() => focusOverview(destination));
+        else {
+          focusAfterChange.current = true;
+          setSelectedCategory('all');
+        }
       }
     };
     document.addEventListener('click', resetFromNavigation);
     return () => document.removeEventListener('click', resetFromNavigation);
-  }, []);
+  }, [selectedCategory]);
 
   useEffect(() => {
     if (!focusAfterChange.current) return;
     focusAfterChange.current = false;
-    (selectedCategory === 'all' ? overviewHeading.current : categoryHeading.current)?.focus({ preventScroll: true });
-    sectionRef.current?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    if (selectedCategory === 'all') focusOverview(destinationAfterChange.current);
+    else {
+      categoryHeading.current?.focus({ preventScroll: true });
+      sectionRef.current?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    }
   }, [selectedCategory]);
 
   function openCategory(categoryId: string) {
+    destinationAfterChange.current = 'hub';
     focusAfterChange.current = true;
     setSelectedCategory(categoryId);
   }
@@ -84,33 +118,38 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           </div>
         </div>
       ) : (
-        <div className="pc-container pc-overview">
+        <section id="solutions" className="pc-container pc-overview" ref={hubRef} aria-labelledby="pc-solutions-heading">
           <div className="pc-overview-heading">
             <span className="pc-eyebrow"><Sparkles aria-hidden="true" />PRODUCTS FOR EVERY SURFACE</span>
-            <h2 ref={overviewHeading} tabIndex={-1}>Find your perfect finish</h2>
-            <p>Explore our paint and coating ranges, compare specifications and find the right solution for your space.</p>
+            <h2 id="pc-solutions-heading" ref={overviewHeading} tabIndex={-1}>Solutions for every surface</h2>
+            <p>Choose a category to explore the right paints, protective coatings and finishes for your space.</p>
+            <a className="pc-all-products-link" href="#products/all">View all products <ArrowUpRight aria-hidden="true" /></a>
           </div>
           <div className="pc-category-grid">
             {CATEGORIES.map((category) => {
               const count = products.filter((product) => product.categoryId === category.id).length;
+              const image = products.find((product) => product.categoryId === category.id && product.image?.trim())?.image || '';
               return (
                 <button className="pc-category-card" type="button" key={category.id} onClick={() => openCategory(category.id)}>
-                  <span className="pc-category-card-top"><span className="pc-category-icon" aria-hidden="true">{category.icon}</span><span className="pc-category-count">{count} {count === 1 ? 'product' : 'products'}</span></span>
-                  <span className="pc-category-title">{category.name}</span>
-                  <span className="pc-category-description">{category.description}</span>
-                  <span className="pc-category-link">Explore range <ArrowUpRight aria-hidden="true" /></span>
+                  <CategoryImage key={image} image={image} />
+                  <span className="pc-category-card-body">
+                    <span className="pc-category-count">{count} {count === 1 ? 'product' : 'products'}</span>
+                    <span className="pc-category-title">{category.name}</span>
+                    <span className="pc-category-description">{category.description}</span>
+                    <span className="pc-category-link">Explore range <ArrowUpRight aria-hidden="true" /></span>
+                  </span>
                 </button>
               );
             })}
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="pc-container pc-range">
+      <div className="pc-container pc-range" ref={rangeRef}>
         {activeCategory && <button className="pc-back" type="button" onClick={() => openCategory('all')}><ArrowLeft aria-hidden="true" />Back to all categories</button>}
         <div className="pc-toolbar">
           <div className="pc-results-heading">
-            <h2>{activeCategory ? `${activeCategory.name} collection` : 'All coatings & formulations'}</h2>
+            <h2 ref={rangeHeading} tabIndex={-1}>{activeCategory ? `${activeCategory.name} collection` : 'All coatings & formulations'}</h2>
             <p className="pc-result-count" role="status">{filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'}{query ? ` matching “${searchQuery.trim()}”` : ' available'}</p>
           </div>
           <div className="pc-search-sort">

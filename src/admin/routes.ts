@@ -108,6 +108,20 @@ function validate(c: SiteContent) {
   const ids = (items: { id: string }[]) =>
     items.every((x) => nonempty(x.id, 100) && /^[\w-]+$/.test(x.id)) &&
     new Set(items.map((x) => x.id)).size === items.length;
+  const webLink = (v: string) => {
+    if (!text(v, 2048) || !/^https:\/\/[^\s<>"']+$/i.test(v)) return false;
+    try {
+      const url = new URL(v);
+      return (
+        url.protocol === "https:" &&
+        Boolean(url.hostname) &&
+        !url.username &&
+        !url.password
+      );
+    } catch {
+      return false;
+    }
+  };
   if (
     !c ||
     !Array.isArray(c.products) ||
@@ -157,6 +171,30 @@ function validate(c: SiteContent) {
           "Project photos need a valid image; captions are optional.",
         );
     }
+  }
+  if (
+    !Array.isArray(c.galleryAds) ||
+    c.galleryAds.length > 100 ||
+    !ids(c.galleryAds)
+  )
+    throw Error("Keep up to 100 ads, each with a unique identifier.");
+  for (const ad of c.galleryAds) {
+    ad.image ??= "";
+    ad.description ??= "";
+    ad.link ??= "";
+    if (
+      !nonempty(ad.title, 150) ||
+      !["digital", "social"].includes(ad.channel) ||
+      !text(ad.description, 2000) ||
+      !text(ad.image, 2048) ||
+      !text(ad.link, 2048) ||
+      (!ad.image && !ad.link) ||
+      (ad.image && !image(ad.image)) ||
+      (ad.link && !webLink(ad.link))
+    )
+      throw Error(
+        "Each ad needs a title, Digital or Social media channel, and an image or HTTPS video/post link. Description is optional.",
+      );
   }
   const families = new Set(COLOR_SHADES.map((c) => c.family));
   const codes = new Set<string>();
@@ -292,6 +330,7 @@ function validate(c: SiteContent) {
     ...c.landingImages,
     ...c.products,
     ...c.galleryProjects.flatMap((p) => p.photos),
+    ...c.galleryAds,
   ]) {
     if (
       image.image.startsWith("/uploads/") &&
@@ -310,6 +349,7 @@ contentRouter.put("/admin/content", (req, res) => {
     const current = readContent(),
       c = req.body as SiteContent;
     c.galleryProjects ??= current.galleryProjects;
+    c.galleryAds ??= current.galleryAds;
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);
@@ -356,6 +396,33 @@ contentRouter.put("/admin/content", (req, res) => {
     });
     const next = {
       galleryProjects,
+      galleryAds: c.galleryAds.map((ad) => {
+        const previous = current.galleryAds.find((p) => p.id === ad.id);
+        const fields = {
+          id: ad.id,
+          title: ad.title.trim(),
+          channel: ad.channel,
+          image: ad.image,
+          description: ad.description,
+          link: ad.link,
+        };
+        const unchanged =
+          previous &&
+          JSON.stringify(fields) ===
+            JSON.stringify({
+              id: previous.id,
+              title: previous.title,
+              channel: previous.channel,
+              image: previous.image,
+              description: previous.description,
+              link: previous.link,
+            });
+        return {
+          ...fields,
+          createdAt: previous?.createdAt || now,
+          updatedAt: unchanged ? previous.updatedAt : now,
+        };
+      }),
       colours: c.colours,
       shadeCards: c.shadeCards,
       products: c.products,
