@@ -28,12 +28,7 @@ import type { Dealer, LandingImage, SiteContent } from "./content-types";
 import "./admin.css";
 
 type Tab =
-  | "landingImages"
-  | "products"
-  | "dealers"
-  | "coverage"
-  | "colours"
-  | "galleryProjects";
+  "landingImages" | "products" | "dealers" | "colours" | "galleryProjects";
 const sections = [
   {
     id: "galleryProjects" as Tab,
@@ -61,19 +56,13 @@ const sections = [
     label: "Products",
     icon: Package,
     description:
-      "Keep your product photography, descriptions and specifications up to date.",
+      "Manage product photos, descriptions, coverage and calculator settings.",
   },
   {
     id: "dealers" as Tab,
     label: "Authorised dealers",
     icon: MapPin,
     description: "Help customers find a trusted stockist close to home.",
-  },
-  {
-    id: "coverage" as Tab,
-    label: "Paint coverage",
-    icon: Droplets,
-    description: "Manage the coverage values used in your paint calculator.",
   },
 ];
 async function request(url: string, options: RequestInit = {}) {
@@ -288,7 +277,7 @@ export function AdminPage() {
         setUploading(false);
       }
     }
-    const key = tab === "coverage" ? "products" : tab;
+    const key = tab;
     const items = content[key] as (Product | Dealer | LandingImage)[];
     const entry =
       "image" in editor ? { ...editor, image: editor.image.trim() } : editor;
@@ -307,7 +296,7 @@ export function AdminPage() {
   }
   function remove(id: string) {
     if (!content || tab === "colours" || tab === "galleryProjects") return;
-    const key = tab === "coverage" ? "products" : tab;
+    const key = tab;
     if (key === "products" && content.products.length === 1) {
       setError("Keep at least one product for the paint calculator.");
       return;
@@ -474,9 +463,7 @@ export function AdminPage() {
   const items = content
     ? tab === "colours" || tab === "galleryProjects"
       ? []
-      : tab === "coverage"
-        ? content.products
-        : content[tab]
+      : content[tab]
     : [];
   const filtered = items.filter((i) =>
     JSON.stringify(i).toLowerCase().includes(search.toLowerCase()),
@@ -508,12 +495,10 @@ export function AdminPage() {
               {s.label}
               <span>
                 {content
-                  ? s.id === "coverage"
-                    ? content.products.length
-                    : s.id === "galleryProjects"
-                      ? content.galleryProjects.length +
-                        (content.galleryAds?.length || 0)
-                      : content[s.id].length
+                  ? s.id === "galleryProjects"
+                    ? content.galleryProjects.length +
+                      (content.galleryAds?.length || 0)
+                    : content[s.id].length
                   : 0}
               </span>
             </button>
@@ -726,18 +711,16 @@ export function AdminPage() {
               <div className="adm-panel-toolbar">
                 <div>
                   <h2>
-                    {tab === "coverage"
-                      ? "Coverage specifications"
-                      : tab === "landingImages"
-                        ? "Homepage gallery"
-                        : tab === "products"
-                          ? "Product catalog"
-                          : "Dealer directory"}
+                    {tab === "landingImages"
+                      ? "Homepage gallery"
+                      : tab === "products"
+                        ? "Product catalog"
+                        : "Dealer directory"}
                   </h2>
                   <small>
                     {items.length} {items.length === 1 ? "entry" : "entries"} ·{" "}
-                    {tab === "coverage"
-                      ? "Coverage per litre or kilogram, per coat"
+                    {tab === "products"
+                      ? "Coverage settings also update the paint calculator"
                       : "Manage what customers see on your website"}
                   </small>
                 </div>
@@ -818,15 +801,7 @@ export function AdminPage() {
                       <tr>
                         {(tab === "dealers"
                           ? ["Dealer", "Location", "Contact", ""]
-                          : tab === "coverage"
-                            ? [
-                                "Product",
-                                "Category",
-                                "Coverage / coat",
-                                "Coats",
-                                "",
-                              ]
-                            : ["Product", "Category", "Coverage / coat", ""]
+                          : ["Product", "Category", "Coverage / coat", ""]
                         ).map((h, i) => (
                           <th key={i}>{h}</th>
                         ))}
@@ -848,11 +823,7 @@ export function AdminPage() {
                                     {"name" in item ? item.name : ""}
                                   </strong>
                                   <small>
-                                    {tab === "dealers"
-                                      ? d.address
-                                      : tab === "coverage"
-                                        ? p.sheen
-                                        : p.tagline}
+                                    {tab === "dealers" ? d.address : p.tagline}
                                   </small>
                                 </div>
                               </div>
@@ -880,9 +851,6 @@ export function AdminPage() {
                                       : ""}
                                   </span>
                                 </td>
-                                {tab === "coverage" && (
-                                  <td>{p.recommendedCoats}</td>
-                                )}
                               </>
                             )}
                             <td>
@@ -939,8 +907,8 @@ export function AdminPage() {
             <p>
               {tab === "landingImages"
                 ? "Images appear in this order in the homepage carousel. With no custom images, the original homepage slides remain."
-                : tab === "coverage"
-                  ? "One source of truth: these values update the product list and paint calculator together. Estimates include the selected coats and a 10% safety buffer."
+                : tab === "products"
+                  ? "Edit a product to set its coverage, material unit, area calculation and recommended coats. These settings also update the paint calculator."
                   : "Changes stay in this workspace until you select Save changes."}
             </p>
           </div>
@@ -981,9 +949,7 @@ export function AdminPage() {
                   ? "Landing image"
                   : tab === "dealers"
                     ? "Authorised dealer"
-                    : tab === "coverage"
-                      ? "Paint coverage"
-                      : "Product details"}
+                    : "Product details"}
               </h2>
             </div>
             <button
@@ -1056,7 +1022,7 @@ export function AdminPage() {
                   </>
                 ) : (
                   <>
-                    {tab !== "coverage" && imageEditor}
+                    {imageEditor}
                     {input("name", "Product name")}
                     <div className="adm-form-grid">
                       <Field label="Category">
@@ -1141,37 +1107,26 @@ export function AdminPage() {
                         />
                       </Field>
                     </div>
-                    {tab !== "coverage" && (
-                      <>
-                        {input(
-                          "tagline",
-                          "Short product tagline",
-                          "text",
-                          false,
-                        )}
-                        <Field label="Product description">
-                          <textarea
-                            required
-                            rows={4}
-                            maxLength={3000}
-                            value={(editor as Product).description}
-                            onChange={(e) =>
-                              patch("description", e.target.value)
-                            }
-                          />
-                        </Field>
-                        <label className="adm-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={!!(editor as Product).featured}
-                            onChange={(e) =>
-                              patch("featured", e.target.checked)
-                            }
-                          />
-                          Feature this product in the catalog
-                        </label>
-                      </>
-                    )}
+                    <>
+                      {input("tagline", "Short product tagline", "text", false)}
+                      <Field label="Product description">
+                        <textarea
+                          required
+                          rows={4}
+                          maxLength={3000}
+                          value={(editor as Product).description}
+                          onChange={(e) => patch("description", e.target.value)}
+                        />
+                      </Field>
+                      <label className="adm-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={!!(editor as Product).featured}
+                          onChange={(e) => patch("featured", e.target.checked)}
+                        />
+                        Feature this product in the catalog
+                      </label>
+                    </>
                     <div className="adm-coverage-preview">
                       <Droplets size={21} />
                       <div>

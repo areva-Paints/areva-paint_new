@@ -1,15 +1,18 @@
 # Website administration
 
-Open `/admin` to manage the website. The admin interface has four sections:
+Open `/admin` to manage the website. The admin interface has five sections:
 
 | Section            | What you can manage                                                                            | Public result                     |
 | ------------------ | ---------------------------------------------------------------------------------------------- | --------------------------------- |
 | Landing images     | Upload JPEG/PNG/WebP images, set captions and subtitles, reorder or remove slides              | Homepage carousel and React hero  |
-| Products           | Add/edit/remove products, images, categories, descriptions, short taglines and featured status | Catalog and product detail views  |
+| Products           | Products, images, descriptions, coverage per coat, material units and recommended coats        | Catalog, product details and calculator |
 | Authorised dealers | Business name, phone, full address, city, state, PIN and service badges                        | Dealer search and enquiry routing |
-| Paint coverage     | Product coverage per coat, litres/kilograms, recommended coats and wall/floor calculations     | Product list and calculator       |
+| Gallery            | Project albums and digital/social media ads                                                   | Public Gallery tabs               |
+| Colours & shade cards | Searchable colours and PDF shade cards                                                     | Colour library and visualizers    |
 
 Edits first go into the browser workspace. Select **Apply to workspace** in the editor, then **Save changes** to update the public website. Existing visitors see updated content after reloading; the React site also refreshes its data on window focus. Simultaneous saves use revision checks to prevent silent overwrites. The final product cannot be deleted because the calculator needs one product. An empty custom gallery restores the original landing slides.
+
+Coverage is managed in **Products → Edit**, alongside the product details. Coverage per coat, material units, area calculation and recommended coats feed the same product list and public paint calculator. There is no separate Paint coverage tab.
 
 ## Start and sign in
 
