@@ -1,3 +1,11 @@
+import {
+  adminLogin,
+  adminLogout,
+  requireAdmin,
+  currentUser,
+  usersRouter,
+  publicAccountRouter,
+} from "./accounts";
 import express from "express";
 import fs from "node:fs";
 import path from "node:path";
@@ -20,15 +28,6 @@ import {
 } from "./activity-types";
 
 export const contentRouter = express.Router();
-const sessions = new Map<string, { until: number; username: string }>();
-const attempts = new Map<string, { count: number; until: number }>();
-const hash = (v: string) => crypto.createHash("sha256").update(v).digest();
-const cookieToken = (req: express.Request) =>
-  req.headers.cookie
-    ?.split(";")
-    .map((c) => c.trim())
-    .find((c) => c.startsWith("areva_admin="))
-    ?.slice(12) || "";
 contentRouter.use("/admin", (_req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   next();
@@ -44,62 +43,12 @@ contentRouter.use("/admin", (req, res, next) => {
       .json({ error: "Cross-origin requests are not allowed." });
   next();
 });
-contentRouter.post("/admin/login", (req, res) => {
-  const testLogin =
-    process.env.ADMIN_TEST_LOGIN === "true" && !process.env.ADMIN_PASSWORD;
-  const password =
-    process.env.ADMIN_PASSWORD || (testLogin ? "ArevaTest2026!" : "");
-  const username = process.env.ADMIN_USERNAME || "admin";
-  if (!password || password.length < 12)
-    return res.status(503).json({
-      error:
-        "Set ADMIN_PASSWORD on the server to at least 12 characters, then restart to enable administration.",
-    });
-  const key = req.ip || "local",
-    now = Date.now(),
-    a = attempts.get(key);
-  if (a && a.until > now && a.count >= 8)
-    return res
-      .status(429)
-      .json({ error: "Too many attempts. Try again in 15 minutes." });
-  if (
-    typeof req.body.password !== "string" ||
-    typeof (req.body.username ?? "admin") !== "string" ||
-    !crypto.timingSafeEqual(
-      hash(req.body.username ?? "admin"),
-      hash(username),
-    ) ||
-    !crypto.timingSafeEqual(hash(req.body.password), hash(password))
-  ) {
-    attempts.set(key, {
-      count: a && a.until > now ? a.count + 1 : 1,
-      until: a && a.until > now ? a.until : now + 900000,
-    });
-    return res.status(401).json({ error: "Incorrect username or password." });
-  }
-  attempts.delete(key);
-  for (const [token, session] of sessions)
-    if (session.until < now) sessions.delete(token);
-  const token = crypto.randomBytes(32).toString("hex");
-  recordActivity(activityEvent(username, "signed_in", "account", "Signed in"));
-  sessions.set(token, { until: now + 8 * 3600000, username });
-  res
-    .cookie("areva_admin", token, {
-      httpOnly: true,
-      sameSite: "strict",
-      secure: req.secure,
-      maxAge: 8 * 3600000,
-      path: "/",
-    })
-    .json({ success: true });
-});
-contentRouter.use("/admin", (req, res, next) => {
-  if ((sessions.get(cookieToken(req))?.until || 0) < Date.now())
-    return res.status(401).json({ error: "Please sign in." });
-  next();
-});
-const adminActor = (req: express.Request) =>
-  sessions.get(cookieToken(req))!.username;
+contentRouter.use("/auth", publicAccountRouter);
+contentRouter.post("/admin/login", adminLogin);
+contentRouter.post("/admin/logout", adminLogout);
+contentRouter.use("/admin", requireAdmin);
+contentRouter.use("/admin/users", usersRouter);
+const adminActor = (req: express.Request) => currentUser(req)!.username;
 contentRouter.get("/admin/history", (req, res) => {
   const selectedTab = ACTIVITY_TABS.find(
     (tab) => tab.id === (req.query.tab || "all"),
@@ -159,16 +108,9 @@ contentRouter.get("/admin/history", (req, res) => {
     lastPublishedAt,
   });
 });
-contentRouter.get("/admin/session", (_req, res) =>
-  res.json({ authenticated: true }),
+contentRouter.get("/admin/session", (req, res) =>
+  res.json({ authenticated: true, user: currentUser(req) }),
 );
-contentRouter.post("/admin/logout", (req, res) => {
-  recordActivity(
-    activityEvent(adminActor(req), "signed_out", "account", "Signed out"),
-  );
-  sessions.delete(cookieToken(req));
-  res.clearCookie("areva_admin", { path: "/" }).json({ success: true });
-});
 contentRouter.get("/content", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json(readContent());

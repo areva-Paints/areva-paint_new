@@ -10,6 +10,7 @@ export const ACTIVITY_SECTIONS = {
   uploads: "Uploads",
   website: "Website",
   account: "Admin account",
+  users: "Users",
 } as const;
 export type ActivitySection = keyof typeof ACTIVITY_SECTIONS;
 

@@ -341,3 +341,8 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
 .ref-solution b { display: block; padding: 8px 10px; border-left: 4px solid var(--solution-accent); border-radius: 8px; background: #ffffffc9; color: var(--solution-accent); font-weight: 800; }
 .ref-solution small { color: #35283f; font-weight: 500; }
 .ref-solution-icon { border-color: var(--solution-accent); box-shadow: 0 3px 10px #30184010; }
+/* Public account login uses server-created accounts; account creation stays in /admin. */
+#account-error { color: #a13849; font-size: 13px; line-height: 1.6; }
+#account-error:empty { display: none; }
+#roles .chip { cursor: pointer; }
+#roles .chip[aria-pressed="true"] { background: #361052; color: #fff; border-color: #361052; }

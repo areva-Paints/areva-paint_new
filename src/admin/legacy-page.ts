@@ -143,5 +143,24 @@ export function legacyPage() {
       (_match, start, end) => `${start}${slides}</div>\n${end}`,
     );
   }
+  // Replace the template's demo-only sign-in with the real account flow.
+  html = html.replace(
+    /<dialog id="lg">[\s\S]*?<\/dialog>/,
+    () =>
+      `<dialog id="lg" aria-labelledby="account-signin-title"><button class="close" id="lx" aria-label="Close sign in">×</button><div class="bd" style="padding-top:2.6rem"><h3 id="account-signin-title">Sign in</h3><div class="chips" id="roles"></div><p id="account-error" role="alert"></p><form id="lf" style="box-shadow:none;border:0;padding:0"><label>Email or username<input name="username" type="text" required maxlength="160" autocomplete="username"></label><label>Password<input name="password" type="password" required maxlength="128" autocomplete="current-password"></label><button class="btn btn-main" type="submit">Sign in</button></form><div id="dash"></div><p class="note">Use the account created by your administrator. Only admins can create users.</p></div></dialog>`,
+  );
+  html = html.replace(
+    /let role="Customer",signed=false;[\s\S]*?\$\("#lx"\)\.onclick=\(\)=>\$\("#lg"\)\.close\(\);/,
+    "",
+  );
+  html = html.replace(
+    /else if\(d\.r\)\{if\(d\.r==="Admin"\)[^\n]+/,
+    "else if(d.r){window.arevaOpenAccount?.(d.r)}});",
+  );
+  html = html.replace(
+    "</body>",
+    '<script src="/assets/account-access.js" defer></script></body>',
+  );
+  html = html.replace("\nroles();\n", "\n");
   return referenceLayout(html, c);
 }

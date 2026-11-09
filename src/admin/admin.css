@@ -1429,3 +1429,13 @@
 .adm-history-scope { margin: 0; padding: 18px 20px 0; color: #6b507e; font-size: 12px; line-height: 1.6; }
 .adm-history-filters-simple { grid-template-columns: 2fr 1fr; }
 @media (max-width:700px) { .adm-history-tabs { display: grid; grid-template-columns: 1fr 1fr; } .adm-history-tabs button { min-width: 0; white-space: normal; line-height: 1.5; } .adm-history-filters-simple { grid-template-columns: 1fr; } }
+
+.adm-topbar-actions { display: flex; align-items: center; gap: 18px; }
+.adm-topbar-actions > button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border: 1px solid #dbcee8; background: #fff; color: #68467f; border-radius: 9px; cursor: pointer; }
+.adm-users-search { display: grid; gap: 8px; margin: 0 20px 20px; font-size: 12px; color: #68467f; }
+.adm-users-search input, .adm-user-fields input, .adm-user-fields select { padding: 11px 12px; border: 1px solid #ded2e8; border-radius: 9px; width: 100%; min-width: 0; box-sizing: border-box; font: inherit; color: #31203f; background: #fff; }
+.adm-users table { min-width: 760px; }
+.adm-user-fields { display: grid; gap: 18px; padding: 0; border: 0; min-width: 0; }
+.adm-user-fields label { display: grid; gap: 8px; color: #664f7a; font-size: 13px; }
+.adm-user-fields small { color: #9986a8; line-height: 1.5; font-size: 11px; }
+@media (max-width:700px) { .adm-topbar-actions { gap: 8px; } .adm-topbar-actions > a { display: none; } }

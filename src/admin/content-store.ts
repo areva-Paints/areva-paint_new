@@ -1,3 +1,4 @@
+import type { StoredUser } from "./user-types";
 import fs from "node:fs";
 import path from "node:path";
 import { PRODUCTS, CATEGORIES, COLOR_SHADES } from "../data/paintsData";
@@ -68,9 +69,11 @@ export function defaults(): SiteContent {
 export function readContent(): SiteContent {
   const file = path.join(dataDir, "content.json");
   if (!fs.existsSync(file)) return defaults();
-  const { adminHistory: _privateHistory, ...content } = JSON.parse(
-    fs.readFileSync(file, "utf8"),
-  );
+  const {
+    adminHistory: _privateHistory,
+    users: _privateUsers,
+    ...content
+  } = JSON.parse(fs.readFileSync(file, "utf8"));
   return {
     ...content,
     galleryProjects: content.galleryProjects ?? [],
@@ -92,6 +95,7 @@ export function readActivity(): ActivityStore {
 export function saveContent(
   content: SiteContent,
   events: ActivityEvent[] = [],
+  users: StoredUser[] = readUsers(),
 ) {
   const history = readActivity();
   const adminHistory: ActivityStore = {
@@ -102,7 +106,7 @@ export function saveContent(
   const file = path.join(dataDir, "content.json");
   fs.writeFileSync(
     file + ".tmp",
-    JSON.stringify({ ...content, adminHistory }, null, 2),
+    JSON.stringify({ ...content, adminHistory, users }, null, 2),
     {
       mode: 0o600,
     },
@@ -112,4 +116,13 @@ export function saveContent(
 
 export function recordActivity(event: ActivityEvent) {
   saveContent(readContent(), [event]);
+}
+
+export function readUsers(): StoredUser[] {
+  const file = path.join(dataDir, "content.json");
+  if (!fs.existsSync(file)) return [];
+  return JSON.parse(fs.readFileSync(file, "utf8")).users ?? [];
+}
+export function saveUsers(users: StoredUser[], events: ActivityEvent[]) {
+  saveContent(readContent(), events, users);
 }

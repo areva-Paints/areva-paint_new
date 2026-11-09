@@ -1,6 +1,6 @@
 # Website administration
 
-Open `/admin` to manage the website. The admin interface has six sections:
+Open `/admin` to manage the website. The admin interface has seven sections:
 
 | Section            | What you can manage                                                                            | Public result                     |
 | ------------------ | ---------------------------------------------------------------------------------------------- | --------------------------------- |
@@ -10,6 +10,7 @@ Open `/admin` to manage the website. The admin interface has six sections:
 | Gallery            | Project albums and digital/social media ads                                                   | Public Gallery tabs               |
 | Colours & shade cards | Searchable colours and PDF shade cards                                                     | Colour library and visualizers    |
 | Activity history | Private saved-action history, upload names and update dates | Admin only |
+| Users | Create Admin, Customer, Architect and Builder accounts; disable/enable and reset passwords | Admin only |
 
 Edits first go into the browser workspace. Select **Apply to workspace** in the editor, then **Save changes** to update the public website. Existing visitors see updated content after reloading; the React site also refreshes its data on window focus. Simultaneous saves use revision checks to prevent silent overwrites. The final product cannot be deleted because the calculator needs one product. An empty custom gallery restores the original landing slides.
 
@@ -18,12 +19,12 @@ Coverage is managed in **Products → Edit**, alongside the product details. Cov
 ## Start and sign in
 
 1. Use Node.js 24 and install dependencies with `npm install --package-lock=false`.
-2. Set `ADMIN_PASSWORD` in the server environment or an ignored `.env` file to a unique password of at least 12 characters. Never commit a real password. Without it, admin sign-in is disabled; the public website remains available.
+2. Set `ADMIN_PASSWORD` in the server environment or an ignored `.env` file to a unique password of at least 12 characters. Never commit a real password. Without it, the server-configured admin login is disabled. Existing created admin accounts can still sign in; if none exist, administration stays disabled.
 3. Run `npm run dev`, then open `/admin`. Sign in with username `admin` (or your `ADMIN_USERNAME`) and the configured password.
 
 Authentication uses an HttpOnly, SameSite=Strict cookie, eight-hour sessions and a login attempt limit. Sessions expire when the server restarts. Use HTTPS when deployed publicly. Render is detected automatically through its platform-provided `RENDER=true` variable and trusts one proxy hop. On other hosts, if HTTPS terminates at a trusted reverse proxy, configure Express proxy trust via `TRUST_PROXY_HOPS` (for example `1` for exactly one trusted proxy) so secure cookies and origin checks use the correct protocol. Do not enable proxy trust on a server directly accessible by untrusted clients.
 
-A public demo login is available only when explicitly enabled with `ADMIN_TEST_LOGIN=true` and no `ADMIN_PASSWORD` is configured. Normal administration requires a unique configured password. This provides a single shared admin account; individual staff accounts and password recovery are not implemented.
+A public demo login is available only when explicitly enabled with `ADMIN_TEST_LOGIN=true` and no `ADMIN_PASSWORD` is configured. Normal administration requires a unique configured password. This remains the server-configured recovery/admin account. Additional individual accounts are managed in Users; password recovery is performed by an admin reset rather than an email recovery service.
 
 ## Storage and deployment
 
@@ -104,10 +105,32 @@ The opening homepage hero uses a shared live heading and working Products/Colour
 
 ## Admin-only update dates and history
 
-Open **Activity history** to review successful sign-ins/sign-outs, image/PDF uploads, saved additions, edits, deletions, reordering and website saves. Choose **Gallery**, **Colours & shade cards**, **Landing images**, **Products** or **Authorised dealers** to see only that area’s history. Gallery includes projects, photos and ads; Colours & shade cards includes colour and PDF events. **All activity** also includes account events, general uploads and website-save summaries. Search by entry, filename or admin username, filter by action and browse pages within the selected tab. Gallery and Colours offer an extra activity-type filter. Switching tabs resets the filters and returns to the first page. Each event shows its exact local date/time and relative age (for example **3 days ago**), the shared admin account, changed field names and the website revision where applicable. Passwords, session tokens and complete before/after customer records are not logged.
+Open **Activity history** to review successful sign-ins/sign-outs, image/PDF uploads, saved additions, edits, deletions, reordering and website saves. Choose **Gallery**, **Colours & shade cards**, **Landing images**, **Products** or **Authorised dealers** to see only that area’s history. Gallery includes projects, photos and ads; Colours & shade cards includes colour and PDF events. **All activity** also includes account events, general uploads and website-save summaries. Search by entry, filename or admin username, filter by action and browse pages within the selected tab. Gallery and Colours offer an extra activity-type filter. Switching tabs resets the filters and returns to the first page. Each event shows its exact local date/time and relative age (for example **3 days ago**), the signed-in admin username, changed field names and the website revision where applicable. Passwords, session tokens and complete before/after customer records are not logged.
 
 Content cards/rows show **Updated … ago**. Hover the age for an exact timestamp. Gallery dates already known before this feature remain usable; other older entries show **Not tracked yet** until a meaningful saved change occurs. Tracking starts on deployment/use; past actions cannot be reconstructed. Unsaved drafts and failed validation/conflict attempts are not recorded as changes. Uploading logs a file event immediately; a separate saved entry is required to publish it.
 
 History is generated by the server and stored in a private `adminHistory` area of `CONTENT_DATA_DIR/content.json`. Content and its save-history events are written together with the existing atomic rename. Public content/HTML and even the admin content payload omit that private area; only authenticated **GET /api/admin/history** returns it. There is no UI/API for editing or clearing history. Operator filesystem access can still alter the file, so this is operational history, not a tamper-proof compliance log.
 
-The same persistent disk/backup requirements apply. Keep the entire content file when backing up; a future PostgreSQL migration must preserve history separately from public CMS data. The history is not silently trimmed. It follows the current single-process JSON store model. The account is shared, so usernames cannot distinguish individual staff members using the same credentials. Run `node --import tsx --test tests/admin-history.test.mjs` for privacy, change detection, filtering, revision conflicts and restart checks.
+The same persistent disk/backup requirements apply. Keep the entire content file when backing up; a future PostgreSQL migration must preserve history separately from public CMS data. The history is not silently trimmed. It follows the current single-process JSON store model. Separate created admin accounts are identified by their own username. If several people share the same credentials, history cannot distinguish those people. Run `node --import tsx --test tests/admin-history.test.mjs` for privacy, change detection, filtering, revision conflicts and restart checks.
+
+
+## Users, roles and logout
+
+A **Logout** button appears in the top bar and sidebar. It invalidates the current admin session and clears its cookie; unsaved content prompts before leaving. **Users → Create user** is available only after admin sign-in. Enter full name, unique username, optional email, role and an initial password of 12–128 characters. Share credentials privately. Only admins can create accounts; there is no public registration endpoint.
+
+| Role | Sign-in location | Permissions |
+| --- | --- | --- |
+| Admin | Admin tab or `/admin` | Manage website content, history and all created users |
+| Customer | Public Customer tab | Sign in to own account; no admin access |
+| Architect | Public Architect tab | Sign in to own account; no admin access |
+| Builder | Public Builder tab | Sign in to own account; no admin access |
+
+Created accounts can use their username or optional email, case-insensitively. The selected public account type must match the stored role. The Admin tab opens the dedicated admin portal. Public sign-in now checks real server credentials instead of the template's demo login. This does not add order fulfilment, saved cross-device project data or payments to the public account welcome screen.
+
+Created accounts are stored privately in the existing content file, with a separate random salt and scrypt-derived password hash. Passwords cannot be viewed after creation and are never returned by user-list/session APIs. Content saves, uploads and history preserve these private records. No user list, hashes or salts are included in public content. The user limit is 200 created accounts, in addition to the existing server-configured admin. This feature uses the current JSON store; it does not connect PostgreSQL.
+
+Admins can disable/enable accounts and reset passwords. These actions invalidate existing sessions immediately; re-enabling does not revive old sessions. You cannot disable your own account or the last active admin. The server-configured admin stays reserved and read-only in Users: change its credentials in server settings. A created admin who resets their own password is returned to sign-in. Sessions expire after eight hours or server restart. User creation and account-management changes are recorded in private Activity history under Users, with the actual acting admin username.
+
+Both the HTML site and React Studio support account sign-in/logout. In a split Static Site/backend deployment, sign-in opens the backend site at top level so browser restrictions on third-party cookies do not turn login into a false success. Administration remains on the backend. Viewing the enquiry list (`GET /api/enquiries`) now also requires an admin session; public enquiry submission is unchanged.
+
+Back up the entire content file and keep its persistent disk. Existing created accounts survive restarts/redeployments only when that storage survives. Future PostgreSQL migration must include private user credentials/roles and session-revocation versions, alongside the separate activity events. Run `node --import tsx --test tests/users.test.mjs` for authorization, role separation, password storage, collision checks, session revocation, privacy and restart checks.

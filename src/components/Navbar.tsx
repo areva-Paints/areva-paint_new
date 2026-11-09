@@ -1,5 +1,20 @@
-import React, { useState } from 'react';
-import { Eye, Calculator, Menu, X, Sparkles, Phone, MapPin, MessageSquare, Camera, Download, FileCode, Layers, QrCode } from 'lucide-react';
+import { AccountAccess } from "./AccountAccess";
+import React, { useState } from "react";
+import {
+  Eye,
+  Calculator,
+  Menu,
+  X,
+  Sparkles,
+  Phone,
+  MapPin,
+  MessageSquare,
+  Camera,
+  Download,
+  FileCode,
+  Layers,
+  QrCode,
+} from "lucide-react";
 
 interface NavbarProps {
   onOpenVisualizer: () => void;
@@ -35,14 +50,13 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Sleek, Modern, Architectural Top Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/80 transition-all duration-200 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4 lg:gap-8">
-          
           {/* Brand Logo: Clean Luxury Wordmark */}
           <a
             href="#top"
             className="flex items-center gap-3 shrink-0 group focus:outline-none rounded-xl"
             aria-label="Areva Paints Home"
           >
-            <div className="w-10 h-10 rounded-xl bg-stone-950 text-white flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-stone-950 text-white flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
               {/* Minimalist 3-droplet mark */}
               <div className="flex items-center gap-1">
                 <span className="w-1.5 h-3.5 rounded-full bg-amber-500 transform -rotate-12"></span>
@@ -52,10 +66,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
 
             <div className="flex flex-col">
-              <span className="font-display font-extrabold text-2xl tracking-tight text-stone-950 leading-none">
-                AREVA<span className="text-amber-700 font-semibold ml-1.5 text-xl">PAINTS</span>
+              <span className="font-display font-extrabold text-lg sm:text-2xl tracking-tight text-stone-950 leading-none">
+                AREVA
+                <span className="text-amber-700 font-semibold ml-1.5 text-sm sm:text-xl">
+                  PAINTS
+                </span>
               </span>
-              <span className="text-[10px] tracking-widest uppercase text-stone-500 font-semibold mt-1">
+              <span className="hidden sm:block text-[10px] tracking-widest uppercase text-stone-500 font-semibold mt-1">
                 Architectural Wall Coatings
               </span>
             </div>
@@ -66,7 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <a
               href="#solutions"
               className={`hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1 ${
-                activeSection === 'products' ? 'text-amber-800 font-bold' : ''
+                activeSection === "products" ? "text-amber-800 font-bold" : ""
               }`}
             >
               Products
@@ -76,20 +93,29 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={(e) => {
                 e.preventDefault();
                 onOpenVisualizer();
-                document.getElementById('visualizer')?.scrollIntoView({ behavior: 'smooth' });
+                document
+                  .getElementById("visualizer")
+                  ?.scrollIntoView({ behavior: "smooth" });
               }}
               className="hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1 flex items-center gap-1.5 text-amber-800"
             >
               <Eye className="w-4 h-4 text-amber-600" />
               <span>Visualizer Studio</span>
             </a>
-            <a href="#gallery" className="hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1">Gallery</a>
+            <a
+              href="#gallery"
+              className="hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1"
+            >
+              Gallery
+            </a>
             <a
               href="#calculator"
               onClick={(e) => {
                 e.preventDefault();
                 onOpenCalculator();
-                document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth' });
+                document
+                  .getElementById("calculator")
+                  ?.scrollIntoView({ behavior: "smooth" });
               }}
               className="hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1 flex items-center gap-1.5"
             >
@@ -105,7 +131,8 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
 
           {/* Right Action Zone - Clean, Spacious Luxury CTA */}
-          <div className="flex items-center gap-4 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <AccountAccess />
             <button
               onClick={onOpenEnquiry}
               className="hidden sm:inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-white bg-stone-950 hover:bg-amber-800 rounded-full transition-all shadow-sm active:scale-95 whitespace-nowrap"
@@ -120,7 +147,11 @@ export const Navbar: React.FC<NavbarProps> = ({
               className="xl:hidden p-2 text-stone-700 hover:text-stone-950 rounded-xl hover:bg-stone-100 focus:outline-none"
               aria-label="Toggle navigation menu"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -136,13 +167,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }}
                 className={`w-full text-left px-3.5 py-2.5 rounded-xl text-base font-bold flex items-center justify-between shadow-xs border ${
                   isAttachedViewActive
-                    ? 'bg-amber-600 text-white border-amber-700'
-                    : 'bg-emerald-50 text-emerald-950 border-emerald-300 hover:bg-emerald-100'
+                    ? "bg-amber-600 text-white border-amber-700"
+                    : "bg-emerald-50 text-emerald-950 border-emerald-300 hover:bg-emerald-100"
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <FileCode className="w-5 h-5 text-emerald-700" />
-                  <span>{isAttachedViewActive ? 'Return to React Studio' : '📄 View Attached HTML Page'}</span>
+                  <span>
+                    {isAttachedViewActive
+                      ? "Return to React Studio"
+                      : "📄 View Attached HTML Page"}
+                  </span>
                 </div>
                 <span className="text-[10px] uppercase font-bold tracking-wider bg-emerald-600 text-white px-2 py-0.5 rounded-full">
                   Attached File
@@ -161,7 +196,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <Download className="w-5 h-5 text-stone-950" />
                   <span>Download Full Project Code</span>
                 </div>
-                <span className="text-[10px] uppercase font-bold tracking-wider bg-stone-950 text-white px-2 py-0.5 rounded-full">ZIP</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider bg-stone-950 text-white px-2 py-0.5 rounded-full">
+                  ZIP
+                </span>
               </button>
             )}
 
@@ -177,7 +214,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <Camera className="w-5 h-5 text-amber-700 animate-pulse" />
                   <span>Point 1: WebXR Live AR Camera</span>
                 </div>
-                <span className="text-[10px] uppercase font-bold tracking-wider bg-amber-600 text-white px-2 py-0.5 rounded-full">Active</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider bg-amber-600 text-white px-2 py-0.5 rounded-full">
+                  Active
+                </span>
               </button>
             )}
 
@@ -193,7 +232,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <Layers className="w-5 h-5 text-amber-700" />
                   <span>Point 2: Peel & Stick Swatch Packs</span>
                 </div>
-                <span className="text-[10px] uppercase font-bold tracking-wider bg-emerald-600 text-white px-2 py-0.5 rounded-full">Active</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                  Active
+                </span>
               </button>
             )}
 
@@ -209,7 +250,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <QrCode className="w-5 h-5 text-amber-700" />
                   <span>Point 3: Contractor Loyalty Club</span>
                 </div>
-                <span className="text-[10px] uppercase font-bold tracking-wider bg-amber-600 text-white px-2 py-0.5 rounded-full">Active</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider bg-amber-600 text-white px-2 py-0.5 rounded-full">
+                  Active
+                </span>
               </button>
             )}
 
@@ -225,20 +268,30 @@ export const Navbar: React.FC<NavbarProps> = ({
               onClick={() => {
                 setMobileMenuOpen(false);
                 onOpenVisualizer();
-                document.getElementById('visualizer')?.scrollIntoView({ behavior: 'smooth' });
+                document
+                  .getElementById("visualizer")
+                  ?.scrollIntoView({ behavior: "smooth" });
               }}
               className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-800 hover:bg-stone-100 flex items-center justify-between"
             >
               <span>Visualizer Studio</span>
               <Eye className="w-4 h-4" />
             </a>
-            <a href="#gallery" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-900 hover:bg-stone-100">Gallery</a>
+            <a
+              href="#gallery"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-900 hover:bg-stone-100"
+            >
+              Gallery
+            </a>
             <a
               href="#calculator"
               onClick={() => {
                 setMobileMenuOpen(false);
                 onOpenCalculator();
-                document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth' });
+                document
+                  .getElementById("calculator")
+                  ?.scrollIntoView({ behavior: "smooth" });
               }}
               className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-900 hover:bg-stone-100"
             >
@@ -284,7 +337,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           className="flex flex-col items-center justify-center flex-1 py-1 text-stone-600 hover:text-stone-950 active:scale-95 transition-transform"
         >
           <span className="text-sm">🎨</span>
-          <span className="text-[10px] font-semibold tracking-tight mt-0.5">Products</span>
+          <span className="text-[10px] font-semibold tracking-tight mt-0.5">
+            Products
+          </span>
         </a>
 
         {onOpenLiveAR && (
@@ -293,14 +348,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex flex-col items-center justify-center flex-1 py-1 text-amber-800 hover:text-amber-950 active:scale-95 transition-transform font-bold"
           >
             <Camera className="w-4 h-4 text-amber-700 animate-pulse" />
-            <span className="text-[10px] tracking-tight mt-0.5 font-bold">Live AR</span>
+            <span className="text-[10px] tracking-tight mt-0.5 font-bold">
+              Live AR
+            </span>
           </button>
         )}
 
         <button
           onClick={() => {
             onOpenVisualizer();
-            document.getElementById('visualizer')?.scrollIntoView({ behavior: 'smooth' });
+            document
+              .getElementById("visualizer")
+              ?.scrollIntoView({ behavior: "smooth" });
           }}
           className="flex flex-col items-center justify-center flex-1 py-1 text-stone-700 hover:text-stone-950 active:scale-95 transition-transform font-medium"
         >
@@ -311,7 +370,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           onClick={() => {
             onOpenCalculator();
-            document.getElementById('calculator')?.scrollIntoView({ behavior: 'smooth' });
+            document
+              .getElementById("calculator")
+              ?.scrollIntoView({ behavior: "smooth" });
           }}
           className="flex flex-col items-center justify-center flex-1 py-1 text-stone-600 hover:text-stone-950 active:scale-95 transition-transform font-medium"
         >

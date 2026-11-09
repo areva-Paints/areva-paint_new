@@ -1,3 +1,4 @@
+import { requireAdmin } from './src/admin/accounts';
 import 'dotenv/config';
 import { contentRouter, uploads } from './src/admin/routes';
 import { readContent } from './src/admin/content-store';
@@ -290,7 +291,7 @@ app.post('/api/enquiries', (req: Request, res: Response) => {
 });
 
 // 8. Enquiries List Endpoint (For Verification & Admin)
-app.get('/api/enquiries', (_req: Request, res: Response) => {
+app.get('/api/enquiries', requireAdmin, (_req: Request, res: Response) => {
   res.json({
     enquiries: enquiriesStore,
     total: enquiriesStore.length,

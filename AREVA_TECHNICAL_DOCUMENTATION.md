@@ -884,3 +884,30 @@ The 15-table PostgreSQL proposal above predates history and remains unconnected 
 ### Activity history tabs — 9 November 2026
 
 Activity history has All activity, Gallery, Colours & shade cards, Landing images, Products and Authorised dealers tabs. The shared `ACTIVITY_TABS` definition maps Gallery to project/photo/ad sections and Colours to colour/PDF sections. `GET /api/admin/history?tab=gallery` applies this group before the existing section, action, search and pagination filters. Omitting tab retains the old API behaviour; an unknown tab returns HTTP 400. Switching tabs resets filters and page; tab controls support keyboard arrows, Home and End. This changes only the private history view, not stored events or public content.
+
+
+## 16. Individual accounts and logout addendum — 9 November 2026
+
+The new account implementation supersedes the baseline's shared-account-only and demo-public-sign-in descriptions. `UsersManager.tsx` provides admin-only account creation, search, password resets and disable/enable controls. `user-types.ts` defines Admin, Customer, Architect and Builder roles. Top-bar and sidebar Logout controls revoke the admin session. `AccountAccess.tsx` and `public/assets/account-access.js` provide real role-aware public login/logout; `legacy-page.ts` removes the original fake sign-in handlers from the served template without rewriting the original HTML asset.
+
+`src/admin/accounts.ts` owns authentication, user-management endpoints and session checks. The environment-configured admin remains a read-only recovery account; created admins can authenticate independently even if the environment password is later unset. Created passwords require 12–128 characters and use Node scrypt (64-byte derived keys, random 16-byte salts). No plaintext password is persisted, logged or returned. Usernames/emails are case-insensitively unique across both identifiers and the reserved environment username. Conflicts are rechecked after asynchronous hashing. Roles are fixed at creation; a role-change PATCH is rejected. There is no public self-registration or email reset service.
+
+| Endpoint | Access / purpose |
+| --- | --- |
+| POST `/api/admin/login` | Environment admin or created active Admin credentials |
+| GET `/api/admin/session` | Validated admin identity; safe public account fields only |
+| POST `/api/admin/logout` | Origin-checked, idempotent cookie clearing and session revocation |
+| GET / POST `/api/admin/users` | Admin only; list safe fields / create account |
+| PATCH `/api/admin/users/:id` | Admin only; active flag and/or new password |
+| POST `/api/auth/login` | Customer, Architect or Builder credentials; optional selected role must match |
+| GET `/api/auth/session` | Current non-admin account only |
+| POST `/api/auth/logout` | Origin-checked public-account logout |
+| GET `/api/enquiries` | Now admin-only; supersedes the baseline's unprotected-read observation |
+
+Admin and public sessions use separate HttpOnly SameSite=Strict cookies (`areva_admin` / `areva_user`) and random 32-byte tokens in memory, with eight-hour expiry. Every protected request rechecks the current stored role, active flag and credential version. Password resets and disabling/enabling increment that version; old sessions stay invalid. Admin self-disabling and removing the last active admin are blocked. Environment credentials cannot be edited through the user API. Login limits apply across both login endpoints, with attempts counted before expensive asynchronous hashing. Server-side checks enforce all permissions independently of visible controls.
+
+Private user records live in `users` inside `CONTENT_DATA_DIR/content.json`, alongside private adminHistory and public CMS content. `readContent()` strips both private areas. `saveUsers()` atomically writes accounts with their history events, and ordinary content/history saves preserve the latest account records. Fields are id, username, email, name, role, active, createdAt, updatedAt, passwordHash, passwordSalt and passwordVersion. The environment admin is synthesized from server settings, not stored as a password record. Role-management events are available under the Users history section in All activity.
+
+The same persistent-disk and single-process limitations apply. This does not implement a PostgreSQL connector. The earlier 15-table SQL proposal must be extended with a private users table and activity-events storage when migration is implemented. New public-account authentication does not make the existing sample-order/payment/loyalty demos into backend business systems. Split-origin deployments use a top-level backend sign-in page to allow first-party session cookies.
+
+`tests/users.test.mjs` covers access denial for anonymous/non-admin requests, role/cookie separation, hashed storage, safe responses, duplicate identifiers/concurrent creation, password reset and disable revocation, old-client content saves, origin checks, audit actors, and restart persistence with the bootstrap password removed. Browser checks cover the actual creation/login/logout controls and responsive layouts.

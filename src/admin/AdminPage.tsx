@@ -1,3 +1,5 @@
+import { UsersManager } from "./UsersManager";
+import type { AccountUser } from "./user-types";
 import {
   ActivityContext,
   ActivityClockProvider,
@@ -12,6 +14,7 @@ import { ImagePreview, checkImage } from "./ImagePreview";
 import { ColourManager } from "./ColourManager";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Users,
   History,
   ArrowLeft,
   Check,
@@ -42,8 +45,16 @@ type Tab =
   | "dealers"
   | "colours"
   | "galleryProjects"
-  | "history";
+  | "history"
+  | "users";
 const sections = [
+  {
+    id: "users" as Tab,
+    label: "Users",
+    icon: Users,
+    description:
+      "Create admin, customer, architect and builder accounts. Only admins can manage users.",
+  },
   {
     id: "history" as Tab,
     label: "Activity history",
@@ -131,6 +142,7 @@ export function AdminPage() {
     [dirty, setDirty] = useState(false),
     [busy, setBusy] = useState(false),
     [uploading, setUploading] = useState(false);
+  const [currentAdmin, setCurrentAdmin] = useState<AccountUser | null>(null);
   const [activity, setActivity] = useState<ActivitySummary | null>(null);
   const [activityError, setActivityError] = useState("");
   async function refreshActivity() {
@@ -158,7 +170,11 @@ export function AdminPage() {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const section = sections.find((s) => s.id === tab)!;
   async function load() {
-    const c = await request("/api/admin/content");
+    const [c, session] = await Promise.all([
+      request("/api/admin/content"),
+      request("/api/admin/session"),
+    ]);
+    setCurrentAdmin(session.user);
     setContent(c);
     setAuthenticated(true);
   }
@@ -232,6 +248,24 @@ export function AdminPage() {
       setBusy(false);
     }
   }
+  async function logout() {
+    if (busy || uploading) return;
+    if (dirty && !confirm("Discard unsaved changes and log out?")) return;
+    try {
+      await request("/api/admin/logout", { method: "POST" });
+      setAuthenticated(false);
+      setDirty(false);
+      setContent(null);
+      setActivity(null);
+      setCurrentAdmin(null);
+      setEditor(null);
+      setPassword("");
+      setError("");
+      setNotice("");
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
   async function save() {
     if (content) await persist(content);
   }
@@ -296,7 +330,8 @@ export function AdminPage() {
       busy ||
       tab === "colours" ||
       tab === "galleryProjects" ||
-      tab === "history"
+      tab === "history" ||
+      tab === "users"
     )
       return;
     const publish =
@@ -336,7 +371,8 @@ export function AdminPage() {
       !content ||
       tab === "colours" ||
       tab === "galleryProjects" ||
-      tab === "history"
+      tab === "history" ||
+      tab === "users"
     )
       return;
     const key = tab;
@@ -504,7 +540,10 @@ export function AdminPage() {
       </div>
     );
   const items = content
-    ? tab === "colours" || tab === "galleryProjects" || tab === "history"
+    ? tab === "colours" ||
+      tab === "galleryProjects" ||
+      tab === "history" ||
+      tab === "users"
       ? []
       : content[tab]
     : [];
@@ -513,7 +552,7 @@ export function AdminPage() {
       ? ["galleryProjects", "galleryAds", "galleryPhotos"]
       : tab === "colours"
         ? ["colours", "shadeCards"]
-        : tab === "history"
+        : tab === "history" || tab === "users"
           ? []
           : [tab];
   const sectionUpdatedAt = sectionKeys
@@ -551,12 +590,14 @@ export function AdminPage() {
               {s.label}
               <span>
                 {content
-                  ? s.id === "history"
-                    ? activity?.totalEvents || 0
-                    : s.id === "galleryProjects"
-                      ? content.galleryProjects.length +
-                        (content.galleryAds?.length || 0)
-                      : content[s.id].length
+                  ? s.id === "users"
+                    ? null
+                    : s.id === "history"
+                      ? activity?.totalEvents || 0
+                      : s.id === "galleryProjects"
+                        ? content.galleryProjects.length +
+                          (content.galleryAds?.length || 0)
+                        : content[s.id].length
                   : 0}
               </span>
             </button>
@@ -567,23 +608,9 @@ export function AdminPage() {
             <ExternalLink size={17} />
             View website
           </a>
-          <button
-            onClick={async () => {
-              if (dirty && !confirm("Discard unsaved changes and sign out?"))
-                return;
-              try {
-                await request("/api/admin/logout", { method: "POST" });
-                setAuthenticated(false);
-                setDirty(false);
-                setContent(null);
-                setActivity(null);
-              } catch (e) {
-                setError((e as Error).message);
-              }
-            }}
-          >
+          <button onClick={logout}>
             <LogOut size={17} />
-            Sign out
+            Logout
           </button>
           <small>
             <ShieldCheck size={14} />
@@ -598,9 +625,14 @@ export function AdminPage() {
             Website administration<span className="adm-slash">/</span>
             <b>{section.label}</b>
           </span>
-          <a href="/" target="_blank" rel="noreferrer">
-            View live website <ExternalLink size={14} />
-          </a>
+          <div className="adm-topbar-actions">
+            <a href="/" target="_blank" rel="noreferrer">
+              View live website <ExternalLink size={14} />
+            </a>
+            <button onClick={logout} disabled={busy || uploading}>
+              <LogOut size={15} /> Logout
+            </button>
+          </div>
         </header>
         <main className="adm-content" inert={busy}>
           <div className="adm-page-heading">
@@ -611,7 +643,8 @@ export function AdminPage() {
             </div>
             {tab !== "colours" &&
               tab !== "galleryProjects" &&
-              tab !== "history" && (
+              tab !== "history" &&
+              tab !== "users" && (
                 <button className="adm-primary" onClick={add}>
                   <Plus size={17} />
                   Add{" "}
@@ -666,7 +699,7 @@ export function AdminPage() {
               {error}
             </div>
           )}
-          {tab !== "history" && (
+          {tab !== "history" && tab !== "users" && (
             <div className="adm-activity-summary" role="status">
               {activityError ||
                 (sectionUpdatedAt ? (
@@ -679,7 +712,12 @@ export function AdminPage() {
                 ))}
             </div>
           )}
-          {tab === "history" ? (
+          {tab === "users" ? (
+            <UsersManager
+              currentUser={currentAdmin}
+              onChange={() => void refreshActivity()}
+            />
+          ) : tab === "history" ? (
             <ActivityHistory refreshKey={activity?.totalEvents || 0} />
           ) : tab === "galleryProjects" && content ? (
             <>
@@ -983,7 +1021,7 @@ export function AdminPage() {
           <div className="adm-tip">
             <ShieldCheck size={18} />
             <p>
-              {tab === "history"
+              {tab === "history" || tab === "users"
                 ? "Activity is recorded automatically after successful actions. This history is visible only to signed-in admins."
                 : tab === "landingImages"
                   ? "Images appear in this order in the homepage carousel. With no custom images, the original homepage slides remain."
