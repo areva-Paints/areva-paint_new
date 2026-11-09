@@ -857,3 +857,25 @@ INSERT INTO categories (id, name, icon, description, accent_color, position) VAL
   ('chemicals', 'Construction Chemicals', '🏗️', 'Fast-curing road repair mortars, bonding agents and crystalline admixtures.', '#1b6fd1', 7);
 COMMIT;
 ```
+
+
+## 15. Admin activity history addendum — 9 November 2026
+
+The admin now includes a private Activity history section and per-entry update ages. The original architecture review above remains a baseline; this addendum describes the new history implementation.
+
+| Source | Responsibility |
+| --- | --- |
+| `src/admin/activity-types.ts` | Shared event/section/action and paginated response types |
+| `src/admin/activity.ts` | Server-generated event IDs, timestamps, meaningful field diffs and content/photo/order events |
+| `src/admin/ActivityHistory.tsx` | Private searchable/filterable history, pagination, relative dates and one shared minute clock |
+| `src/admin/content-store.ts` | Atomic content-plus-history persistence and public/private separation |
+| `src/admin/routes.ts` | Protected `GET /api/admin/history`, session-bound actor, login/logout and upload recording |
+| `tests/admin-history.test.mjs` | Privacy, metadata spoof resistance, meaningful changes, filter/pagination and restart regression |
+
+Events contain id, at, actor, action, section, entityId, label, changed field names and optional revision/file URL/byte count. Actions are created, updated, deleted, reordered, uploaded, published, signed_in and signed_out. File display names are bounded and never used as disk paths. The session captures the configured username at sign-in. Passwords and session tokens are excluded.
+
+Private events live under `adminHistory` inside the persisted JSON document. `readContent()` strips this area before public rendering, public APIs and admin content editing. Valid content saves append their events in the same atomic file replacement; failed validations/conflicts do not create content-change events. Separate successful uploads and authentication events preserve the content revision. There is no history-edit/delete endpoint. No retention trimming is implemented; the current store remains intended for one process with persistent disk, not a high-volume distributed audit service.
+
+The history endpoint uses no-store caching, requires an admin session, and accepts section, action, search, page and pageSize filters; page size is capped at 50. It returns a page plus latest entry/section timestamps. Relative dates refresh every minute and exact times use the viewer's locale/timezone. Older unknown dates are labelled untracked; existing gallery dates may be shown. The shared admin account is not individual staff identity. Unsaved drafts and historical events before tracking began cannot be reconstructed.
+
+The 15-table PostgreSQL proposal above predates history and remains unconnected to the app. When implementing that migration, include a private activity-events table (or separate private history storage), import the existing event IDs/timestamps and commit content changes and audit events in one database transaction. Never return private audit events in the public SiteContent response. This feature does not execute SQL or change database deployment.

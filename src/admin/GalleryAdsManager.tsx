@@ -1,3 +1,4 @@
+import { AdminUpdated } from "./ActivityHistory";
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
   ExternalLink,
@@ -110,7 +111,11 @@ export function GalleryAdsManager({
       const response = await fetch("/api/admin/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({
+          data,
+          originalName: file.name,
+          section: "galleryAds",
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw Error(result.error || "Image upload failed.");
@@ -255,6 +260,11 @@ export function GalleryAdsManager({
             </div>
             <div className="adm-gallery-copy">
               <h3>{ad.title}</h3>
+              <AdminUpdated
+                section="galleryAds"
+                id={ad.id}
+                fallback={ad.updatedAt}
+              />
               <p>
                 {ad.description ||
                   (ad.link ? "Video, post or campaign link" : "Image ad")}

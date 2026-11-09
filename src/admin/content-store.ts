@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { PRODUCTS, CATEGORIES, COLOR_SHADES } from "../data/paintsData";
 import seed from "./legacy-seed.json";
+import type { ActivityEvent, ActivityStore } from "./activity-types";
 import type { SiteContent } from "./content-types";
 export const dataDir = path.resolve(
   process.env.CONTENT_DATA_DIR || ".local/content",
@@ -67,7 +68,9 @@ export function defaults(): SiteContent {
 export function readContent(): SiteContent {
   const file = path.join(dataDir, "content.json");
   if (!fs.existsSync(file)) return defaults();
-  const content = JSON.parse(fs.readFileSync(file, "utf8"));
+  const { adminHistory: _privateHistory, ...content } = JSON.parse(
+    fs.readFileSync(file, "utf8"),
+  );
   return {
     ...content,
     galleryProjects: content.galleryProjects ?? [],
@@ -76,11 +79,37 @@ export function readContent(): SiteContent {
     shadeCards: content.shadeCards ?? [],
   };
 }
-export function saveContent(content: SiteContent) {
+export function readActivity(): ActivityStore {
+  const file = path.join(dataDir, "content.json");
+  if (!fs.existsSync(file)) return { startedAt: null, events: [] };
+  return (
+    JSON.parse(fs.readFileSync(file, "utf8")).adminHistory ?? {
+      startedAt: null,
+      events: [],
+    }
+  );
+}
+export function saveContent(
+  content: SiteContent,
+  events: ActivityEvent[] = [],
+) {
+  const history = readActivity();
+  const adminHistory: ActivityStore = {
+    startedAt: history.startedAt || events[0]?.at || null,
+    events: [...history.events, ...events],
+  };
   fs.mkdirSync(dataDir, { recursive: true });
   const file = path.join(dataDir, "content.json");
-  fs.writeFileSync(file + ".tmp", JSON.stringify(content, null, 2), {
-    mode: 0o600,
-  });
+  fs.writeFileSync(
+    file + ".tmp",
+    JSON.stringify({ ...content, adminHistory }, null, 2),
+    {
+      mode: 0o600,
+    },
+  );
   fs.renameSync(file + ".tmp", file);
+}
+
+export function recordActivity(event: ActivityEvent) {
+  saveContent(readContent(), [event]);
 }

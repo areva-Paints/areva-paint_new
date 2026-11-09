@@ -1,9 +1,18 @@
+import {
+  ActivityContext,
+  ActivityClockProvider,
+  ActivityHistory,
+  ActivityTime,
+  AdminUpdated,
+} from "./ActivityHistory";
+import type { ActivitySummary, ActivitySection } from "./activity-types";
 import { ProjectGalleryManager } from "./ProjectGalleryManager";
 import { GalleryAdsManager } from "./GalleryAdsManager";
 import { ImagePreview, checkImage } from "./ImagePreview";
 import { ColourManager } from "./ColourManager";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  History,
   ArrowLeft,
   Check,
   ImagePlus,
@@ -28,8 +37,20 @@ import type { Dealer, LandingImage, SiteContent } from "./content-types";
 import "./admin.css";
 
 type Tab =
-  "landingImages" | "products" | "dealers" | "colours" | "galleryProjects";
+  | "landingImages"
+  | "products"
+  | "dealers"
+  | "colours"
+  | "galleryProjects"
+  | "history";
 const sections = [
+  {
+    id: "history" as Tab,
+    label: "Activity history",
+    icon: History,
+    description:
+      "Review saved changes, uploads and update dates. Only visible to admins.",
+  },
   {
     id: "galleryProjects" as Tab,
     label: "Gallery",
@@ -110,6 +131,21 @@ export function AdminPage() {
     [dirty, setDirty] = useState(false),
     [busy, setBusy] = useState(false),
     [uploading, setUploading] = useState(false);
+  const [activity, setActivity] = useState<ActivitySummary | null>(null);
+  const [activityError, setActivityError] = useState("");
+  async function refreshActivity() {
+    try {
+      setActivity(await request("/api/admin/history?pageSize=1"));
+      setActivityError("");
+    } catch {
+      setActivityError(
+        "Update dates could not be loaded. Open Activity history to retry.",
+      );
+    }
+  }
+  useEffect(() => {
+    if (authenticated && !uploading) void refreshActivity();
+  }, [authenticated, uploading, content?.revision]);
   const [galleryView, setGalleryView] = useState<"projects" | "ads">(
     "projects",
   );
@@ -259,7 +295,8 @@ export function AdminPage() {
       uploading ||
       busy ||
       tab === "colours" ||
-      tab === "galleryProjects"
+      tab === "galleryProjects" ||
+      tab === "history"
     )
       return;
     const publish =
@@ -295,7 +332,13 @@ export function AdminPage() {
     }
   }
   function remove(id: string) {
-    if (!content || tab === "colours" || tab === "galleryProjects") return;
+    if (
+      !content ||
+      tab === "colours" ||
+      tab === "galleryProjects" ||
+      tab === "history"
+    )
+      return;
     const key = tab;
     if (key === "products" && content.products.length === 1) {
       setError("Keep at least one product for the paint calculator.");
@@ -329,7 +372,7 @@ export function AdminPage() {
       });
       const result = await request("/api/admin/upload", {
         method: "POST",
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({ data, originalName: file.name, section: tab }),
       });
       patch("image", result.url);
     } catch (e) {
@@ -461,14 +504,27 @@ export function AdminPage() {
       </div>
     );
   const items = content
-    ? tab === "colours" || tab === "galleryProjects"
+    ? tab === "colours" || tab === "galleryProjects" || tab === "history"
       ? []
       : content[tab]
     : [];
+  const sectionKeys: ActivitySection[] =
+    tab === "galleryProjects"
+      ? ["galleryProjects", "galleryAds", "galleryPhotos"]
+      : tab === "colours"
+        ? ["colours", "shadeCards"]
+        : tab === "history"
+          ? []
+          : [tab];
+  const sectionUpdatedAt = sectionKeys
+    .map((key) => activity?.lastSection[key])
+    .filter(Boolean)
+    .sort()
+    .at(-1);
   const filtered = items.filter((i) =>
     JSON.stringify(i).toLowerCase().includes(search.toLowerCase()),
   );
-  return (
+  const page = (
     <div className="adm-root">
       <aside className="adm-sidebar">
         <a className="adm-brand" href="/">
@@ -495,10 +551,12 @@ export function AdminPage() {
               {s.label}
               <span>
                 {content
-                  ? s.id === "galleryProjects"
-                    ? content.galleryProjects.length +
-                      (content.galleryAds?.length || 0)
-                    : content[s.id].length
+                  ? s.id === "history"
+                    ? activity?.totalEvents || 0
+                    : s.id === "galleryProjects"
+                      ? content.galleryProjects.length +
+                        (content.galleryAds?.length || 0)
+                      : content[s.id].length
                   : 0}
               </span>
             </button>
@@ -518,6 +576,7 @@ export function AdminPage() {
                 setAuthenticated(false);
                 setDirty(false);
                 setContent(null);
+                setActivity(null);
               } catch (e) {
                 setError((e as Error).message);
               }
@@ -550,17 +609,19 @@ export function AdminPage() {
               <h1>{section.label}</h1>
               <p>{section.description}</p>
             </div>
-            {tab !== "colours" && tab !== "galleryProjects" && (
-              <button className="adm-primary" onClick={add}>
-                <Plus size={17} />
-                Add{" "}
-                {tab === "landingImages"
-                  ? "image"
-                  : tab === "dealers"
-                    ? "dealer"
-                    : "product"}
-              </button>
-            )}
+            {tab !== "colours" &&
+              tab !== "galleryProjects" &&
+              tab !== "history" && (
+                <button className="adm-primary" onClick={add}>
+                  <Plus size={17} />
+                  Add{" "}
+                  {tab === "landingImages"
+                    ? "image"
+                    : tab === "dealers"
+                      ? "dealer"
+                      : "product"}
+                </button>
+              )}
           </div>
           <div className="adm-overview">
             {[
@@ -605,7 +666,22 @@ export function AdminPage() {
               {error}
             </div>
           )}
-          {tab === "galleryProjects" && content ? (
+          {tab !== "history" && (
+            <div className="adm-activity-summary" role="status">
+              {activityError ||
+                (sectionUpdatedAt ? (
+                  <>
+                    Last saved in this section:{" "}
+                    <ActivityTime value={sectionUpdatedAt} />
+                  </>
+                ) : (
+                  "Update tracking starts with your next saved change."
+                ))}
+            </div>
+          )}
+          {tab === "history" ? (
+            <ActivityHistory refreshKey={activity?.totalEvents || 0} />
+          ) : tab === "galleryProjects" && content ? (
             <>
               <div
                 className="adm-gallery-tabs"
@@ -750,6 +826,7 @@ export function AdminPage() {
                         <div className="adm-gallery-copy">
                           <h3>{l.label || "Landing image"}</h3>
                           <p>{l.roomType || "Homepage image"}</p>
+                          <AdminUpdated section="landingImages" id={l.id} />
                           <div className="adm-row-actions">
                             <button
                               onClick={() => {
@@ -825,6 +902,7 @@ export function AdminPage() {
                                   <small>
                                     {tab === "dealers" ? d.address : p.tagline}
                                   </small>
+                                  <AdminUpdated section={tab} id={item.id} />
                                 </div>
                               </div>
                             </td>
@@ -905,11 +983,13 @@ export function AdminPage() {
           <div className="adm-tip">
             <ShieldCheck size={18} />
             <p>
-              {tab === "landingImages"
-                ? "Images appear in this order in the homepage carousel. With no custom images, the original homepage slides remain."
-                : tab === "products"
-                  ? "Edit a product to set its coverage, material unit, area calculation and recommended coats. These settings also update the paint calculator."
-                  : "Changes stay in this workspace until you select Save changes."}
+              {tab === "history"
+                ? "Activity is recorded automatically after successful actions. This history is visible only to signed-in admins."
+                : tab === "landingImages"
+                  ? "Images appear in this order in the homepage carousel. With no custom images, the original homepage slides remain."
+                  : tab === "products"
+                    ? "Edit a product to set its coverage, material unit, area calculation and recommended coats. These settings also update the paint calculator."
+                    : "Changes stay in this workspace until you select Save changes."}
             </p>
           </div>
         </main>
@@ -1213,5 +1293,12 @@ export function AdminPage() {
         </form>
       </dialog>
     </div>
+  );
+  return (
+    <ActivityClockProvider>
+      <ActivityContext.Provider value={activity}>
+        {page}
+      </ActivityContext.Provider>
+    </ActivityClockProvider>
   );
 }

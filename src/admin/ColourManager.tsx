@@ -1,3 +1,4 @@
+import { AdminUpdated } from "./ActivityHistory";
 import React, { useId, useRef, useState } from "react";
 import {
   Plus,
@@ -145,7 +146,11 @@ export function ColourManager({
       const r = await fetch("/api/admin/pdf-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({
+          data,
+          originalName: file.name,
+          section: "shadeCards",
+        }),
       });
       const result = await r.json();
       if (!r.ok) throw Error(result.error || "PDF upload failed.");
@@ -232,6 +237,7 @@ export function ColourManager({
               />
               <div>
                 <strong>{c.name}</strong>
+                <AdminUpdated section="colours" id={c.code} />
                 <small>
                   {c.code} · {c.hex}
                 </small>
@@ -316,6 +322,7 @@ export function ColourManager({
                   })
                 }
               />
+              <AdminUpdated section="shadeCards" id={card.id} />
               <a href={card.url} download aria-label={"Download " + card.title}>
                 <Download size={17} />
               </a>

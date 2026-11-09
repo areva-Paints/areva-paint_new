@@ -1,3 +1,4 @@
+import { AdminUpdated } from "./ActivityHistory";
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
   Camera,
@@ -109,7 +110,11 @@ export function ProjectGalleryManager({
         const response = await fetch("/api/admin/upload", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ data }),
+          body: JSON.stringify({
+            data,
+            originalName: file.name,
+            section: "galleryProjects",
+          }),
         });
         const result = await response.json();
         if (!response.ok) throw Error(result.error || "Photo upload failed.");
@@ -228,6 +233,11 @@ export function ProjectGalleryManager({
             </div>
             <div className="adm-gallery-copy">
               <h3>{project.title}</h3>
+              <AdminUpdated
+                section="galleryProjects"
+                id={project.id}
+                fallback={project.updatedAt}
+              />
               <p>{project.location || "Project album"}</p>
               <div className="adm-row-actions">
                 <button
@@ -363,6 +373,10 @@ export function ProjectGalleryManager({
                         />
                         {index === 0 && <span>Cover photo</span>}
                       </div>
+                      <AdminUpdated
+                        section="galleryPhotos"
+                        id={draft.id + "/" + photo.id}
+                      />
                       <Field label={`Photo ${index + 1} caption (optional)`}>
                         <input
                           maxLength={300}

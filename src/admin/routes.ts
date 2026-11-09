@@ -2,12 +2,21 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { dataDir, readContent, saveContent } from "./content-store";
+import {
+  dataDir,
+  readContent,
+  saveContent,
+  readActivity,
+  recordActivity,
+} from "./content-store";
 import { CATEGORIES, COLOR_SHADES } from "../data/paintsData";
 import type { SiteContent } from "./content-types";
 
+import { activityEvent, contentActivity } from "./activity";
+import { ACTIVITY_SECTIONS, type ActivitySection } from "./activity-types";
+
 export const contentRouter = express.Router();
-const sessions = new Map<string, number>();
+const sessions = new Map<string, { until: number; username: string }>();
 const attempts = new Map<string, { count: number; until: number }>();
 const hash = (v: string) => crypto.createHash("sha256").update(v).digest();
 const cookieToken = (req: express.Request) =>
@@ -65,10 +74,11 @@ contentRouter.post("/admin/login", (req, res) => {
     return res.status(401).json({ error: "Incorrect username or password." });
   }
   attempts.delete(key);
-  for (const [token, until] of sessions)
-    if (until < now) sessions.delete(token);
+  for (const [token, session] of sessions)
+    if (session.until < now) sessions.delete(token);
   const token = crypto.randomBytes(32).toString("hex");
-  sessions.set(token, now + 8 * 3600000);
+  recordActivity(activityEvent(username, "signed_in", "account", "Signed in"));
+  sessions.set(token, { until: now + 8 * 3600000, username });
   res
     .cookie("areva_admin", token, {
       httpOnly: true,
@@ -80,14 +90,70 @@ contentRouter.post("/admin/login", (req, res) => {
     .json({ success: true });
 });
 contentRouter.use("/admin", (req, res, next) => {
-  if ((sessions.get(cookieToken(req)) || 0) < Date.now())
+  if ((sessions.get(cookieToken(req))?.until || 0) < Date.now())
     return res.status(401).json({ error: "Please sign in." });
   next();
+});
+const adminActor = (req: express.Request) =>
+  sessions.get(cookieToken(req))!.username;
+contentRouter.get("/admin/history", (req, res) => {
+  const history = readActivity();
+  const latest: Record<string, string> = {};
+  const lastSection: Record<string, string> = {};
+  let lastPublishedAt: string | null = null;
+  for (const event of history.events) {
+    if (event.action === "published") lastPublishedAt = event.at;
+    if (["created", "updated", "deleted", "reordered"].includes(event.action))
+      lastSection[event.section] = event.at;
+    if (event.entityId && ["created", "updated"].includes(event.action))
+      latest[event.section + ":" + event.entityId] = event.at;
+  }
+  const search =
+    typeof req.query.search === "string"
+      ? req.query.search.trim().toLowerCase().slice(0, 200)
+      : "";
+  const filtered = history.events
+    .filter(
+      (event) =>
+        (!req.query.section || event.section === req.query.section) &&
+        (!req.query.action || event.action === req.query.action) &&
+        (!search ||
+          [event.label, event.actor, event.fileUrl, ...event.fields]
+            .join(" ")
+            .toLowerCase()
+            .includes(search)),
+    )
+    .reverse();
+  const positive = (value: unknown, fallback: number) =>
+    typeof value === "string" &&
+    /^\d+$/.test(value) &&
+    Number.isSafeInteger(Number(value)) &&
+    Number(value) > 0
+      ? Number(value)
+      : fallback;
+  const pageSize = Math.min(50, positive(req.query.pageSize, 25));
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const page = Math.min(pages, positive(req.query.page, 1));
+  res.json({
+    events: filtered.slice((page - 1) * pageSize, page * pageSize),
+    total: filtered.length,
+    page,
+    pageSize,
+    pages,
+    startedAt: history.startedAt,
+    totalEvents: history.events.length,
+    latest,
+    lastSection,
+    lastPublishedAt,
+  });
 });
 contentRouter.get("/admin/session", (_req, res) =>
   res.json({ authenticated: true }),
 );
 contentRouter.post("/admin/logout", (req, res) => {
+  recordActivity(
+    activityEvent(adminActor(req), "signed_out", "account", "Signed out"),
+  );
   sessions.delete(cookieToken(req));
   res.clearCookie("areva_admin", { path: "/" }).json({ success: true });
 });
@@ -430,12 +496,47 @@ contentRouter.put("/admin/content", (req, res) => {
       landingImages: c.landingImages,
       revision: current.revision + 1,
     };
-    saveContent(next);
+    saveContent(next, contentActivity(current, next, adminActor(req)));
     res.json(next);
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
 });
+function uploadedActivity(
+  req: express.Request,
+  url: string,
+  bytes: number,
+  pdf = false,
+) {
+  const section: ActivitySection =
+    typeof req.body.section === "string" &&
+    Object.hasOwn(ACTIVITY_SECTIONS, req.body.section) &&
+    [
+      "landingImages",
+      "products",
+      "galleryProjects",
+      "galleryAds",
+      "shadeCards",
+    ].includes(req.body.section)
+      ? req.body.section
+      : "uploads";
+  const name =
+    typeof req.body.originalName === "string"
+      ? req.body.originalName
+          .replace(/[\x00-\x1f\x7f]/g, "")
+          .slice(0, 200)
+          .trim()
+      : "";
+  recordActivity(
+    activityEvent(
+      adminActor(req),
+      "uploaded",
+      section,
+      name || (pdf ? "PDF shade card uploaded" : "Image uploaded"),
+      { fileUrl: url, bytes },
+    ),
+  );
+}
 contentRouter.post("/admin/pdf-upload", (req, res) => {
   const match =
     typeof req.body.data === "string" &&
@@ -460,6 +561,12 @@ contentRouter.post("/admin/pdf-upload", (req, res) => {
   fs.mkdirSync(dir, { recursive: true });
   const name = crypto.randomUUID() + ".pdf";
   fs.writeFileSync(path.join(dir, name), bytes);
+  uploadedActivity(
+    req,
+    "/uploads/" + name,
+    bytes.length,
+    name.endsWith(".pdf"),
+  );
   res.status(201).json({ url: "/uploads/" + name });
 });
 contentRouter.post("/admin/upload", (req, res) => {
@@ -492,6 +599,12 @@ contentRouter.post("/admin/upload", (req, res) => {
   fs.mkdirSync(dir, { recursive: true });
   const name = crypto.randomUUID() + "." + match[1];
   fs.writeFileSync(path.join(dir, name), bytes);
+  uploadedActivity(
+    req,
+    "/uploads/" + name,
+    bytes.length,
+    name.endsWith(".pdf"),
+  );
   res.status(201).json({ url: "/uploads/" + name });
 });
 contentRouter.use("/content/legacy-image", (req, res) => {
