@@ -879,3 +879,8 @@ Private events live under `adminHistory` inside the persisted JSON document. `re
 The history endpoint uses no-store caching, requires an admin session, and accepts section, action, search, page and pageSize filters; page size is capped at 50. It returns a page plus latest entry/section timestamps. Relative dates refresh every minute and exact times use the viewer's locale/timezone. Older unknown dates are labelled untracked; existing gallery dates may be shown. The shared admin account is not individual staff identity. Unsaved drafts and historical events before tracking began cannot be reconstructed.
 
 The 15-table PostgreSQL proposal above predates history and remains unconnected to the app. When implementing that migration, include a private activity-events table (or separate private history storage), import the existing event IDs/timestamps and commit content changes and audit events in one database transaction. Never return private audit events in the public SiteContent response. This feature does not execute SQL or change database deployment.
+
+
+### Activity history tabs — 9 November 2026
+
+Activity history has All activity, Gallery, Colours & shade cards, Landing images, Products and Authorised dealers tabs. The shared `ACTIVITY_TABS` definition maps Gallery to project/photo/ad sections and Colours to colour/PDF sections. `GET /api/admin/history?tab=gallery` applies this group before the existing section, action, search and pagination filters. Omitting tab retains the old API behaviour; an unknown tab returns HTTP 400. Switching tabs resets filters and page; tab controls support keyboard arrows, Home and End. This changes only the private history view, not stored events or public content.

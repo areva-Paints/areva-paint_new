@@ -279,6 +279,47 @@ test("private admin activity persists, detects meaningful changes and never leak
     assert.equal(diskText.includes(password), false);
     assert.equal(diskText.includes(cookie.split("=")[1]), false);
     assert.ok(JSON.parse(diskText).adminHistory.events.length > 0);
+    // Grouping happens on the server before pagination, across all related sections.
+    const allEvents = await history("?pageSize=50");
+    const tabs = {
+      gallery: ["galleryProjects", "galleryPhotos", "galleryAds"],
+      colours: ["colours", "shadeCards"],
+      landingImages: ["landingImages"],
+      products: ["products"],
+      dealers: ["dealers"],
+    };
+    for (const [tab, sections] of Object.entries(tabs)) {
+      const expected = allEvents.events.filter((event) =>
+        sections.includes(event.section),
+      );
+      const group = await history("?tab=" + tab + "&pageSize=50");
+      assert.deepEqual(
+        group.events.map((event) => event.id),
+        expected.map((event) => event.id),
+        tab,
+      );
+      assert.equal(group.total, expected.length, tab);
+    }
+    const galleryPage = await history("?tab=gallery&pageSize=2&page=2");
+    const galleryAll = await history("?tab=gallery&pageSize=50");
+    assert.deepEqual(
+      galleryPage.events.map((event) => event.id),
+      galleryAll.events.slice(2, 4).map((event) => event.id),
+    );
+    const colourUploads = await history("?tab=colours&action=uploaded");
+    assert.equal(colourUploads.total, 1);
+    assert.equal(colourUploads.events[0].section, "shadeCards");
+    const projectPhotos = await history("?tab=gallery&section=galleryPhotos");
+    assert.ok(projectPhotos.events.length > 0);
+    assert.ok(
+      projectPhotos.events.every((event) => event.section === "galleryPhotos"),
+    );
+    assert.equal((await history("?tab=products&section=galleryAds")).total, 0);
+    assert.equal((await request("/api/admin/history?tab=invalid")).status, 400);
+    assert.deepEqual(
+      (await history("?tab=all&pageSize=50")).events,
+      allEvents.events,
+    );
     const historyBeforeRestart = await history("?pageSize=50");
     await request("/api/admin/logout", "POST", {});
     assert.equal((await request("/api/admin/history")).status, 401);

@@ -13,7 +13,11 @@ import { CATEGORIES, COLOR_SHADES } from "../data/paintsData";
 import type { SiteContent } from "./content-types";
 
 import { activityEvent, contentActivity } from "./activity";
-import { ACTIVITY_SECTIONS, type ActivitySection } from "./activity-types";
+import {
+  ACTIVITY_SECTIONS,
+  ACTIVITY_TABS,
+  type ActivitySection,
+} from "./activity-types";
 
 export const contentRouter = express.Router();
 const sessions = new Map<string, { until: number; username: string }>();
@@ -97,6 +101,13 @@ contentRouter.use("/admin", (req, res, next) => {
 const adminActor = (req: express.Request) =>
   sessions.get(cookieToken(req))!.username;
 contentRouter.get("/admin/history", (req, res) => {
+  const selectedTab = ACTIVITY_TABS.find(
+    (tab) => tab.id === (req.query.tab || "all"),
+  );
+  if (!selectedTab)
+    return res.status(400).json({ error: "Choose a valid history tab." });
+  const selectedSections: readonly ActivitySection[] | null =
+    selectedTab.sections;
   const history = readActivity();
   const latest: Record<string, string> = {};
   const lastSection: Record<string, string> = {};
@@ -115,6 +126,7 @@ contentRouter.get("/admin/history", (req, res) => {
   const filtered = history.events
     .filter(
       (event) =>
+        (!selectedSections || selectedSections.includes(event.section)) &&
         (!req.query.section || event.section === req.query.section) &&
         (!req.query.action || event.action === req.query.action) &&
         (!search ||

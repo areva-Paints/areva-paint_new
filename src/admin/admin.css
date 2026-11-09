@@ -1420,3 +1420,12 @@
   .adm-history tbody td:nth-child(3) { grid-column: 1 / -1; }
   .adm-history tbody td::before { content: attr(data-label); display: block; margin-bottom: 6px; color: #8d799d; font-size: 10px; font-weight: 600; }
 }
+
+/* Tabs group private history by the same areas as the admin workspace. */
+.adm-history-tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 20px 20px 0; }
+.adm-history-tabs button { padding: 11px 15px; border: 1px solid #e4daed; border-radius: 11px; background: #faf8fc; color: #705783; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.adm-history-tabs button[aria-selected="true"] { color: #fff; background: #6a43a0; border-color: #6a43a0; box-shadow: 0 4px 12px #6a43a025; }
+.adm-history-tabs button:focus-visible { outline: 3px solid #ba9bdf; outline-offset: 3px; }
+.adm-history-scope { margin: 0; padding: 18px 20px 0; color: #6b507e; font-size: 12px; line-height: 1.6; }
+.adm-history-filters-simple { grid-template-columns: 2fr 1fr; }
+@media (max-width:700px) { .adm-history-tabs { display: grid; grid-template-columns: 1fr 1fr; } .adm-history-tabs button { min-width: 0; white-space: normal; line-height: 1.5; } .adm-history-filters-simple { grid-template-columns: 1fr; } }

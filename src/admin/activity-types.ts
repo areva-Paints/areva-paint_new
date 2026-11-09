@@ -12,6 +12,25 @@ export const ACTIVITY_SECTIONS = {
   account: "Admin account",
 } as const;
 export type ActivitySection = keyof typeof ACTIVITY_SECTIONS;
+
+/** History tabs group related events before filtering and pagination. */
+export const ACTIVITY_TABS = [
+  { id: "all", label: "All activity", sections: null },
+  {
+    id: "gallery",
+    label: "Gallery",
+    sections: ["galleryProjects", "galleryPhotos", "galleryAds"],
+  },
+  {
+    id: "colours",
+    label: "Colours & shade cards",
+    sections: ["colours", "shadeCards"],
+  },
+  { id: "landingImages", label: "Landing images", sections: ["landingImages"] },
+  { id: "products", label: "Products", sections: ["products"] },
+  { id: "dealers", label: "Authorised dealers", sections: ["dealers"] },
+] as const;
+export type ActivityTab = (typeof ACTIVITY_TABS)[number]["id"];
 export type ActivityAction =
   | "created"
   | "updated"
