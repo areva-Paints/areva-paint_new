@@ -1,6 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DreamsHero } from "../components/DreamsHero";
+import { CategorySceneCard } from "../components/CategorySceneCard";
+import { CATEGORY_ART } from "../data/categoryArt";
 import type { SiteContent } from "./content-types";
 import { CATEGORIES } from "../data/paintsData";
 
@@ -15,7 +17,10 @@ const escapeHtml = (value: string) =>
 
 /** Apply the supplied corporate concept around the existing functional page. */
 export function referenceLayout(html: string, content: SiteContent) {
-  html = html.replace("</head>", '<link rel="stylesheet" href="/assets/dreams-hero.css"></head>');
+  html = html.replace(
+    "</head>",
+    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"></head>',
+  );
   const logo =
     html.match(/<a class="logo"[^>]*>(<img[^>]+>)<\/a>/)?.[1] || "Areva Paints";
   html = html.replace(
@@ -47,14 +52,15 @@ export function referenceLayout(html: string, content: SiteContent) {
       statsStart,
     );
     const stats = original.slice(statsStart).replace(/<\/div>\s*$/, "");
-    const solutions = CATEGORIES.map((category) =>
-      `<a class="ref-solution" href="#products/${category.id}" aria-label="Explore ${escapeHtml(category.name)}"><span class="ref-solution-icon" aria-hidden="true">${category.icon}</span><span class="ref-solution-copy"><b>${escapeHtml(category.name)}</b><small>${escapeHtml(category.description)}</small></span></a>`,
+    const solutions = CATEGORIES.map(
+      (category) =>
+        `<a class="ref-solution category-scene-card" href="#products/${category.id}" aria-label="Explore ${escapeHtml(category.name)}">${renderToStaticMarkup(createElement(CategorySceneCard, { category }))}</a>`,
     ).join("");
     const home = `<section id="home" class="ref-home" data-ref-view="home">
       ${renderToStaticMarkup(createElement(DreamsHero))}
       <section class="ref-campaign-section" aria-label="Latest from Areva"><div class="wrap"><div class="ref-campaign-heading"><span class="ref-eyebrow">COLOUR. COMMUNITY. POSSIBILITIES.</span><h2>Latest from Areva</h2><p>Discover our latest updates, collections and moments from the Areva family.</p></div><div class="ref-campaign">${carousel}</div></div></section>
       <div class="ref-benefits"><div class="wrap"><a href="#visualizer"><span aria-hidden="true">◉</span>Colour visualizer</a><a href="#products"><span aria-hidden="true">✦</span>Specialist coatings</a><a href="#calculator"><span aria-hidden="true">▧</span>Paint calculator</a><a href="#services"><span aria-hidden="true">◇</span>Expert guidance</a><a href="#portals"><span aria-hidden="true">⌖</span>Dealer network</a></div></div>
-      <div class="ref-solutions-band" id="solutions"><div class="wrap ref-solutions"><span class="ref-eyebrow">MADE FOR EVERY SPACE</span><h2>Solutions for every surface</h2><p class="lead">Explore the right finish, from your first coat to the final detail.</p><div class="ref-solution-grid">${solutions}</div><a class="btn btn-line ref-view-all" href="#products/all">View all products <span aria-hidden="true">→</span></a></div></div>
+      <div class="ref-solutions-band" id="solutions"><div class="wrap ref-solutions"><span class="ref-eyebrow">MADE FOR EVERY SPACE</span><h2>Solutions for every surface</h2><p class="lead">Explore the right finish, from your first coat to the final detail.</p><div class="category-scene-grid">${solutions}</div><a class="btn btn-line ref-view-all" href="#products/all">View all products <span aria-hidden="true">→</span></a></div></div>
       <div class="wrap ref-home-stats">${stats}</div>
     </section>\n`;
     html = html.slice(0, start) + home + html.slice(end);
@@ -83,7 +89,7 @@ export function referenceLayout(html: string, content: SiteContent) {
     html = html.replace(
       new RegExp(`(<section id="${id}"[^>]*>)`),
       () =>
-        `<section id="${id}" data-ref-view="${id}"><div class="ref-page-banner"><div class="wrap"><span class="ref-eyebrow">HOME / ${eyebrow.toUpperCase()}</span><h1>${title}</h1><p>${copy}</p></div></div>`,
+        `<section id="${id}" data-ref-view="${id}"><div class="ref-page-banner">${id === "products" ? '<img class="category-banner-art" data-ref-category-art hidden alt="" decoding="async">' : ""}<div class="wrap"><span class="ref-eyebrow">HOME / ${eyebrow.toUpperCase()}</span><h1>${title}</h1><p>${copy}</p></div></div>`,
     );
   }
   const specs = content.products.map((p) => {
@@ -136,6 +142,7 @@ export function referenceLayout(html: string, content: SiteContent) {
       id: category.id,
       name: category.name,
       description: category.description,
+      image: CATEGORY_ART[category.id].image,
     })),
   );
   html = html.replace(

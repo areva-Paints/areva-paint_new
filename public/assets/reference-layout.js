@@ -144,6 +144,10 @@
     const products = document.getElementById("products");
     products.classList.toggle("ref-category-page", Boolean(category));
     const banner = products.querySelector(".ref-page-banner");
+    const artwork = banner.querySelector("[data-ref-category-art]");
+    artwork.hidden = !category;
+    if (category) artwork.src = category.image;
+    else artwork.removeAttribute("src");
     banner.querySelector("h1").textContent = category?.name || "All products";
     banner.querySelector(".ref-eyebrow").textContent =
       "HOME / PRODUCTS / " +

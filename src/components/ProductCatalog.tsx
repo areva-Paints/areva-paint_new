@@ -4,7 +4,10 @@ import type { Product } from '../types';
 import { CATEGORIES, PRODUCTS as DEFAULT_PRODUCTS } from '../data/paintsData';
 import { ArrowLeft, ArrowUpRight, Eye, Image as ImageIcon, Info, MessageSquare, Search, Sparkles, X } from 'lucide-react';
 import { ProductFlipBadge } from './ProductFlipBadge';
+import { CategorySceneCard } from './CategorySceneCard';
+import { CATEGORY_ART } from '../data/categoryArt';
 import '../product-category.css';
+import '../../public/assets/category-scenes.css';
 
 interface ProductCatalogProps {
   selectedColorHex: string;
@@ -93,6 +96,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     <section id="products" className={`pc-catalog${activeCategory ? ' pc-category-view' : ''}`} ref={sectionRef}>
       {activeCategory ? (
         <div className="pc-category-banner">
+          <img className="category-banner-art" src={CATEGORY_ART[activeCategory.id].image} alt="" decoding="async" />
           <div className="pc-container">
             <nav className="pc-breadcrumb" aria-label="Product category breadcrumb">
               <button type="button" onClick={() => openCategory('all')}>Products</button>
@@ -112,15 +116,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
             <p>Choose a category to explore the right paints, protective coatings and finishes for your space.</p>
             <a className="pc-all-products-link" href="#products/all">View all products <ArrowUpRight aria-hidden="true" /></a>
           </div>
-          <div className="pc-category-grid">
+          <div className="category-scene-grid">
             {CATEGORIES.map((category) => {
               return (
-                <button className="pc-category-card" type="button" key={category.id} onClick={() => openCategory(category.id)}>
-                  <span className="pc-category-icon" aria-hidden="true">{category.icon}</span>
-                  <span className="pc-category-card-body">
-                    <span className="pc-category-title">{category.name}</span>
-                    <span className="pc-category-description">{category.description}</span>
-                  </span>
+                <button className="category-scene-card" type="button" key={category.id} aria-label={`Explore ${category.name}`} onClick={() => openCategory(category.id)}>
+                  <CategorySceneCard category={category} />
                 </button>
               );
             })}
