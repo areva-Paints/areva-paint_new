@@ -1,10 +1,10 @@
 # Areva Paints — Complete Technical Documentation
 
-**Reviewed:** 8 November 2026
+**Reviewed:** 11 November 2026
 
 **Repository:** https://github.com/areva-Paints/areva-paint_new
 
-**Application baseline:** `f799a89` — duplicate admin coverage tab removed
+**Application baseline:** GitHub `main` at `7d0656e` — illustrated cards for all eight product categories, individual accounts/logout and private activity history included
 
 **Scope:** frontend, backend, content storage, APIs, authentication, uploads, deployment, testing and proposed PostgreSQL database, including complete table definitions below.
 
@@ -26,6 +26,9 @@ This is a source-code review and technical handover, not a claim that every brow
 12. PostgreSQL column dictionary and relationships
 13. Complete PostgreSQL schema
 14. Category seed SQL
+15. Admin activity history implementation
+16. Individual accounts and logout implementation
+17. PostgreSQL review and upgrade SQL — 11 November 2026
 
 ## 1. Current implementation and technology stack
 
@@ -70,7 +73,7 @@ Versions below are the declared ranges in `package.json`, not a frozen installed
 | requestAnimationFrame / timers | Camera/game rendering, carousel behaviour, five-second product flips |
 | matchMedia / visibilitychange | Reduced-motion preferences and pausing hidden-tab animations |
 | Node fs/path | JSON storage, static assets and upload files |
-| Node crypto | Random session/upload IDs and timing-safe credential comparison |
+| Node crypto | Random session/upload IDs, salted scrypt password hashes and timing-safe credential comparison |
 | node:test / node:assert | Automated backend/import regression checks |
 
 No Next.js, React Router, Redux, Sequelize, Prisma or production PostgreSQL connector is used in the reviewed application.
@@ -128,10 +131,13 @@ This refresh mechanism is event/focus based. It is not WebSocket or server-push 
 | `public/assets/landing-theme.css` | Public violet/gold theme and coloured home-category cards |
 | `src/reference-theme.css` | Corporate theme for the React site |
 | `src/product-category.css` | React category cards, product rows and circular badges |
+| `src/components/CategorySceneCard.tsx`, `src/data/categoryArt.ts` | Shared illustrated category cards and their eight static image/colour palettes |
+| `public/assets/category-scenes.css` | Shared curved gold panels, responsive cards and category-header imagery |
+| `src/components/DreamsHero.tsx`, `public/assets/dreams-hero.css` | Brand hero, wordmark panel and static campaign artwork |
 | `src/index.css` | Tailwind import, global fonts, custom utilities and animations |
 | `index.html` | Root HTML, page metadata, Google Font links and app mount point |
 
-The current home has one **Solutions for every surface** category section. It uses eight compact icon cards, individual coloured backgrounds, highlighted headings and a plum-to-mauve section gradient. Desktop uses four columns, medium screens two, and narrow phones one.
+The current home has one **Solutions for every surface** category section. Its eight illustrated cards combine relevant room/surface photographs, live readable text, individual pale colour palettes, icons and curved gold borders on a plum-to-mauve section background. Desktop uses two columns; screens at 1000px or below use one. The main HTML site and React Studio share `CategorySceneCard`; category-page headers reuse each range's photograph. These decorative images are code configuration, while individual product photographs and landing campaigns remain admin-managed. They require no new PostgreSQL content table.
 
 The main Products link and Home use the same category hub (`#solutions`), avoiding duplicate category selectors. Public category routes are:
 
@@ -179,10 +185,12 @@ The implementation uses camera video and Canvas 2D colour/pixel processing. Alth
 
 ## 4. Admin portal and publishing workflow
 
-The admin has five sidebar sections:
+The admin has seven sidebar sections:
 
 | Section | Editable content |
 | --- | --- |
+| Activity history | Admin-only saved actions, uploads, dates, grouped tabs, filters and pagination |
+| Users | Admin-only creation of Admin/Customer/Architect/Builder accounts, reset passwords and disable/enable |
 | Landing images | Image, optional caption/subtitle/recommended product text, order and removal |
 | Products | Name, category, photo, descriptions, technical specs, pack sizes, coverage, units, area basis, coats and featured state |
 | Authorised dealers | Business/contact/location/PIN details and service badges |
@@ -197,6 +205,8 @@ The former Paint coverage tab was removed because it edited the same products. *
 - `ProjectGalleryManager.tsx`: project albums, multi-image uploads, cover/order and captions.
 - `GalleryAdsManager.tsx`: ad title/channel, image and/or campaign link, optional description, search and filter.
 - `ColourManager.tsx`: manual colours, shade cards and import review.
+- `ActivityHistory.tsx`, `activity.ts`, `activity-types.ts`: saved-event detection, private history and grouped tab definitions.
+- `UsersManager.tsx`, `accounts.ts`, `user-types.ts`: account administration, password hashing, role-aware sessions and logout.
 - `ImagePreview.tsx`: previews, image-load checks and unavailable states.
 - `colour-import.ts`: explicit row parser, code validation and import-preview errors.
 - `pdf-import.ts`: PDF.js browser worker reads selectable text, up to 50 pages.
@@ -211,7 +221,7 @@ The former Paint coverage tab was removed because it edited the same products. *
 5. Landing images, project albums and ads also offer direct save-to-website actions.
 6. The PUT sends the full content object. Server validation checks fields and references, then rejects stale revisions with HTTP 409.
 7. A successful save preserves gallery creation dates and only updates gallery modification dates when that entry changes; the global revision increases once.
-8. The server writes the JSON atomically; the admin announces the new revision to same-origin public tabs.
+8. The server writes public content and its private saved-history events atomically, preserving private user records; the admin announces the new revision to same-origin public tabs.
 
 Deleted list entries are removed from content on save. Uploaded files are not automatically garbage-collected when an entry is deleted.
 
@@ -235,7 +245,7 @@ PDF upload stores a reference file. PDF.js extracts selectable text for a previe
 | GET | `/api/dealers` | Optional state filter |
 | POST | `/api/calculator/estimate` | Dimensions, doors/windows, coats and product ID; returns estimated material and packaging |
 | POST | `/api/enquiries` | Topic, full name, phone, city, optional product/shade/message; adds an in-memory ticket |
-| GET | `/api/enquiries` | Current in-memory enquiry list; currently not protected by the admin router |
+| GET | `/api/enquiries` | Current in-memory enquiry list; requires an admin session |
 | GET | `/api/content/legacy-image/:index` | Extracts an existing embedded product image as a normal image response |
 | GET | `/uploads/<filename>` | Uploaded image or PDF; PDFs use download disposition |
 
@@ -243,15 +253,18 @@ PDF upload stores a reference file. PDF.js extracts selectable text for a previe
 
 | Method | Endpoint | Behaviour |
 | --- | --- | --- |
-| POST | `/api/admin/login` | Validate configured username/password, issue session cookie |
+| POST | `/api/admin/login` | Validate environment admin or a created active Admin account, issue session cookie |
 | GET | `/api/admin/session` | Confirm a valid current session |
 | POST | `/api/admin/logout` | Revoke session token and clear cookie |
 | GET | `/api/admin/content` | Read current workspace content |
 | PUT | `/api/admin/content` | Validate and save full content with revision check |
 | POST | `/api/admin/upload` | JSON data URL, JPEG/PNG/WebP upload; returns 201 and file URL |
 | POST | `/api/admin/pdf-upload` | JSON PDF data URL; returns 201 and file URL |
+| GET | `/api/admin/history` | Private events/summary; tab, section, action, search and pagination filters |
+| GET / POST | `/api/admin/users` | Admin-only safe account list / create account |
+| PATCH | `/api/admin/users/:id` | Admin-only active flag and/or password reset; no role editing |
 
-Login is public but rate limited. The remaining admin routes require the session cookie. Uploads use JSON/base64, not multipart/form-data or Multer.
+Login is public but rate limited; logout is idempotent and clears the appropriate cookie. All other admin routes require an active Admin session. Public accounts use `POST /api/auth/login`, `GET /api/auth/session` and `POST /api/auth/logout`, with a separate cookie and no access to administration. Uploads use JSON/base64, not multipart/form-data or Multer.
 
 ### Website and download endpoints
 
@@ -269,14 +282,15 @@ Later duplicate static handlers for attached-page aliases remain in `server.ts`;
 
 ## 6. Authentication and validation
 
-### Current admin authentication
+### Current accounts and authentication
 
-- One shared account configured by `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
-- A configured password must contain at least 12 characters; otherwise sign-in is disabled unless explicit test mode is enabled.
-- `ADMIN_TEST_LOGIN=true` enables the documented demo account only when no configured password is present. It is not a production account-management system.
-- Username/password comparisons use SHA-256 digests with Node's timing-safe comparison. This is comparison against environment credentials, not a user/password SQL table.
+- The recovery admin is configured by `ADMIN_USERNAME`/`ADMIN_PASSWORD`, alongside up to 200 privately stored created accounts. An active created admin can sign in even when the environment recovery password is unset.
+- A recovery password must have at least 12 characters. `ADMIN_TEST_LOGIN=true` supplies the documented temporary test credential only when no configured password is present; keep it disabled for production.
+- Only admins create users, with fixed roles `admin`, `customer`, `architect`, `builder`. Public Customer/Architect/Builder sign-in validates a real stored account and the selected role. There is no public self-registration.
+- Created passwords have 12–128 characters and use Node scrypt, a random 16-byte salt and a 64-byte derived key; salts/hashes are stored as HEX. Environment password comparisons use SHA-256 digests and timing-safe comparison without persisting that password.
+- Username/email identifiers are normalized and unique across both fields and the reserved environment username. Role changes through PATCH are rejected. Admins can reset passwords and disable/enable created accounts, with self-disable/last-admin checks.
 - Sessions use random 32-byte tokens, an in-memory token map and an 8-hour expiry.
-- Cookie name: `areva_admin`; HttpOnly, SameSite=Strict, Secure when Express recognizes HTTPS.
+- Separate cookies: `areva_admin` and `areva_user`; HttpOnly, SameSite=Strict, Secure when Express recognizes HTTPS. Protected requests recheck active status, role and `passwordVersion`; password reset and active-status changes revoke previous sessions. Logout deletes the token and clears its cookie.
 - Login attempts are limited after eight failures within a 15-minute window per detected client IP.
 - Session and login-attempt maps reset on server restart and are not shared between replicas.
 - Admin responses use `Cache-Control: no-store`. Mutating admin requests with an Origin header must match the externally detected server origin.
@@ -286,18 +300,20 @@ Later duplicate static handlers for attached-page aliases remain in `server.ts`;
 
 The admin server validates required text, category identifiers, colour codes/HEX/families, numeric bounds, image URLs, file existence and collection sizes. Newer gallery/colour fields are preserved when older clients omit them. HTML fields are escaped and embedded JSON escapes `<` to avoid terminating script blocks. Ad links require validated HTTPS URLs; external links use safe new-tab attributes.
 
-Global public CORS headers allow `*`; this does not replace the admin cookie/origin checks and does not enable cross-origin credentialed administration. The current code has no general staff roles, password reset or account-registration backend.
+Global public CORS headers allow `*`; this does not replace the cookie/origin checks and does not enable cross-origin credentialed administration. Admin-only account creation and password reset are implemented; email-based password recovery and public self-registration are not. `readContent()` excludes private users/history even from the admin editing payload.
 
 ## 7. Storage, uploads and persistence
 
 | Data | Current location | Persistence behaviour |
 | --- | --- | --- |
 | CMS content | `CONTENT_DATA_DIR/content.json` | Saved JSON, survives only if its disk survives |
+| Created accounts | Private `users` in the same JSON file | Includes salts/hashes/version; safe API responses omit credentials |
+| Admin history | Private `adminHistory` in the same JSON file | Event IDs/order/times and `startedAt`; saved atomically with related changes |
 | Default CMS values | `legacy-seed.json` + `paintsData.ts` | Used when no saved file exists; 18 products, 13 dealers, 24 colours in current defaults |
 | Uploaded files | `CONTENT_DATA_DIR/uploads/` | UUID filenames, retained separately from content |
 | Existing embedded images | Public HTML plus legacy-image endpoint | Existing assets remain available |
 | Enquiries | `enquiriesStore` in `server.ts` | Lost on restart; includes an existing sample ticket |
-| Admin sessions/attempts | Maps in `routes.ts` | Lost on restart |
+| Admin/public sessions and login attempts | Maps in `accounts.ts` | Lost on restart; eight-hour session expiry |
 | Favourite shades | Browser localStorage | Local to browser/origin, not a customer account |
 | Game/sample/reward UI state | React/client memory | No connected durable order/payment/reward store |
 
@@ -340,8 +356,8 @@ The React calculator and REST endpoint use a hard-coded 20/10/4/1 pack distribut
 | --- | --- |
 | `PORT` | Node listening port; default 3000 |
 | `NODE_ENV` | `production` serves dist; otherwise mounts Vite development middleware |
-| `ADMIN_USERNAME` | Shared admin name; default admin |
-| `ADMIN_PASSWORD` | Server-only shared admin password, at least 12 characters |
+| `ADMIN_USERNAME` | Recovery admin username; default admin; reserved against created identifiers |
+| `ADMIN_PASSWORD` | Server-only recovery admin password, at least 12 characters |
 | `ADMIN_TEST_LOGIN` | Explicit temporary demo login toggle; disabled in Render blueprint |
 | `CONTENT_DATA_DIR` | Persistent JSON and uploads directory |
 | `TRUST_PROXY_HOPS` | Explicit number of trusted reverse-proxy hops |
@@ -394,7 +410,7 @@ npm run build
 NODE_ENV=production npm start
 
 # Current regression checks; isolated temporary storage and test servers.
-node --import tsx --test tests/admin.test.mjs tests/colour-import.test.mjs tests/project-gallery.test.mjs tests/gallery-ads.test.mjs
+node --import tsx --test tests/admin.test.mjs tests/admin-history.test.mjs tests/users.test.mjs tests/colour-import.test.mjs tests/project-gallery.test.mjs tests/gallery-ads.test.mjs
 ```
 
 `npm start` runs TypeScript through tsx; it does not execute a separately compiled server binary. `npm run preview` is Vite's frontend preview and does not replace the Express backend. The TypeScript configuration uses ES2022, ESNext modules, bundler resolution and JSX; `strict` is not enabled in the reviewed tsconfig, so “lint passed” is not a strict-mode audit or ESLint result.
@@ -407,8 +423,10 @@ node --import tsx --test tests/admin.test.mjs tests/colour-import.test.mjs tests
 | `tests/colour-import.test.mjs` | Explicit name/code/HEX row parsing without inferred colours |
 | `tests/project-gallery.test.mjs` | Albums, photo validation, ordering, old-content compatibility and persistence |
 | `tests/gallery-ads.test.mjs` | Ads publication, validation, dates, escaping, older clients and restart persistence |
+| `tests/admin-history.test.mjs` | Private saved events, meaningful changes, grouped filters, conflicts and restart persistence |
+| `tests/users.test.mjs` | Admin-only user management, hashes, identifier races, role separation, revocation and persistence |
 | Local browser checks | Product/category navigation, uploads, gallery/ads, shared content origin, responsive layouts, coloured cards and retained product coverage/calculator behaviour |
-| SQL proposal check | Isolated PostgreSQL/PGlite execution and trial mapping of 18 default products, 13 dealers and 24 colours |
+| SQL proposal check | Isolated PostgreSQL/PGlite execution; default-content mapping plus fresh/upgrade paths, private users/identifiers/history and transactional rollback |
 
 These results concern the local code and isolated data used during changes. They do not certify the latest live database (none is connected), current Render deployment or every demo UI flow. A documentation-only update does not require regeneration of the frontend archives.
 
@@ -424,7 +442,9 @@ src/components/                    Public React UI, visualizers and demos
 src/admin/AdminPage.tsx             Admin workspace and editors
 src/admin/*Manager.tsx              Project/ads editors
 src/admin/ColourManager.tsx         Colour/PDF management
-src/admin/routes.ts                Admin auth, saving and uploads
+src/admin/routes.ts                Protected content/history APIs, saving and uploads
+src/admin/accounts.ts              Authentication, role checks and private user management
+src/admin/activity.ts              Saved-content event detection
 src/admin/content-store.ts         Current JSON persistence
 src/admin/content-types.ts         CMS shapes
 src/admin/legacy-page.ts           Dynamic public HTML content injection
@@ -443,6 +463,7 @@ index.html                         Metadata/fonts/root HTML
 ADMIN.md                           Admin operating instructions
 database/schema.sql                Proposed PostgreSQL tables
 database/seed-categories.sql        Proposed category inserts
+database/migrations/001-users-and-activity.sql  Upgrade from the original 15-table proposal
 docs/database-layout.md            Dedicated database guide
 tests/                             Current Node regression checks
 ```
@@ -457,13 +478,13 @@ The packaging script currently includes selected root files, src and public asse
 | Shared coverage editor | Implemented in Products; duplicate sidebar removed |
 | PostgreSQL | Schema and category seed prepared/tested; driver, repository, migration and deployment still required |
 | Enquiries | API exists but memory-only; SQL proposal provides persistence |
-| Enquiry list access | GET `/api/enquiries` is public in current code; protect it before using it as a staff/customer-data system |
+| Enquiry list access | GET `/api/enquiries` requires an admin session |
 | Submission confirmation | React enquiry UI can show a locally generated ticket even when the API fails; confirmation should be tied to confirmed server persistence |
-| Customer/architect/builder login | Public HTML role UI is not equivalent to server-backed customer accounts; only admin has implemented server session authentication |
+| Customer/architect/builder login | Real server-backed role-aware login/logout; business order/reward features remain separate demos |
 | Rewards/QR payouts | Simulated UI; requires actual account, scan verification, ledger and payment integration |
 | Swatch orders/shipping | Local demonstration flow; requires persistent orders, fulfilment and payment integration if offered commercially |
 | Camera/AR | Browser camera/canvas recolouring; simulated fallback exists; no verified WebXR tracking/AI segmentation |
-| PostgreSQL staff accounts | Not in the proposed tables; current shared admin credentials stay in environment settings |
+| PostgreSQL accounts/history | Included in the revised 18-table proposal; adapter/live import still required, recovery admin remains in server settings |
 | Multi-instance scale | JSON, sessions and enquiry memory require shared persistence and concurrency/session work before horizontal scaling |
 | Media backups | Back up files separately from SQL; existing disk/object storage remains necessary |
 | Calculator consistency | Unify UI/API allowance, packaging and floor-coat semantics if a single authoritative estimating service is required |
@@ -473,11 +494,15 @@ These are observations for technical handover. This document does not implement 
 
 ## 12. PostgreSQL column dictionary and relationships
 
-The following database guide is included in full so this document can be shared without opening another file. The executable schema and seed are also included after the guide.
+The following database guide is included in full so this document can be shared without opening another file. The executable schema, category seed and upgrade SQL are also included below.
+
+Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **18 tables**. This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
 
 Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries currently live in server memory and reset on restart.
 
 Use [schema.sql](database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
+
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. Back up and rehearse either route on staging first.
 
 ### Relationships
 
@@ -494,9 +519,10 @@ erDiagram
   products o|--o{ enquiries : requested
   colours o|--o{ enquiries : selected
   dealers o|--o{ enquiries : assigned
+  users ||--|{ user_login_identifiers : signs_in_with
 ```
 
-Landing images, PDF shade cards and ads are independent entries. `site_state` holds one revision number for the whole website. The schema permits creating parents before their children; the service must require at least one pack size per product and one photo per project before committing.
+Landing images, PDF shade cards and ads are independent entries. `site_state` holds one revision number for the whole website and the private history start date. Activity events keep actor/entity snapshots without foreign keys so deleted entries and the environment admin remain readable in history. The schema permits creating parents before their children; the service must require at least one pack size per product and one photo per project before committing.
 
 ### Main tables and their columns
 
@@ -510,6 +536,8 @@ Landing images, PDF shade cards and ads are independent entries. `site_state` ho
 | description | text | Card/category description |
 | accent_color | varchar(7) | Six-digit HEX colour |
 | position | integer | Preserve category order, starting at 0 |
+
+The latest illustrated cards and matching category-header photographs use `src/data/categoryArt.ts`, `CategorySceneCard.tsx` and `public/assets/category-scenes.css`. Their decorative image/ink/paper/tint values remain code configuration. No extra image table, duplicated product image or change to these category columns is needed. Category `accent_color` still maps to `CATEGORIES[].accentColor`; it is not the new card's entire visual palette. The brand hero is also a static asset/component; uploaded landing campaigns remain in `landing_images`.
 
 #### 2. products — one row per product
 
@@ -603,8 +631,11 @@ Ads use `digital` or `social`. At least an image or a link is required. The SQL 
 | id | smallint, PK | Always 1; only one row |
 | revision | bigint | Current content revision |
 | updated_at | timestamptz | Last successful website save |
+| history_started_at | timestamptz, nullable | Exact `adminHistory.startedAt`; NULL means history has not started |
 
-The existing admin saves a whole content workspace. A SQL implementation must lock this row with `SELECT ... FOR UPDATE`, compare the submitted revision, save all changed parent/child rows in **one transaction**, increment revision once, then commit. Return HTTP 409 for stale revisions as today. Replacing whole tables must not delete unchanged gallery records and reset their dates.
+The existing admin saves a whole content workspace. A SQL implementation must lock this row with `SELECT ... FOR UPDATE`, compare the submitted revision, save all changed parent/child rows and their activity events in **one transaction**, increment revision once, then commit. Return HTTP 409 for stale revisions as today. Replacing whole tables must not delete unchanged gallery records and reset their dates. Successful saves record a `published` event even when no content fields changed; this action means **Save changes**, not a GitHub push or deployment.
+
+Upload, admin sign-in/out and user-management events do **not** increment the content revision or change its last-save date. Set `history_started_at` to the first event's time only when previously NULL. Use the same row lock to serialize history append order and user changes across SQL-backed requests; user-cap/last-admin checks must happen inside that transaction. External credential hashing should finish before taking the lock, followed by rechecking the acting session and permissions. SQL integration must replace the synchronous JSON read/write flow with awaited database transactions rather than silently retaining stale in-memory snapshots.
 
 #### 15. enquiries — make enquiries persistent
 
@@ -623,32 +654,93 @@ The existing admin saves a whole content workspace. A SQL implementation must lo
 
 Existing requests send product and shade names rather than IDs. Keep these text snapshots; resolve optional FKs only when there is a reliable match. Deleted products, shades or dealers set enquiry FKs to NULL and retain the request details. Generate collision-resistant IDs (for example UUID strings); the current five-digit random ticket approach should be replaced when SQL persistence is wired in.
 
+#### 16. users — private created accounts
+
+| Column | SQL type | Current source / purpose |
+| --- | --- | --- |
+| id | varchar(100), PK | `users[].id`; preserve UUID strings; `environment-admin` is reserved |
+| username | varchar(80) | `username`; trimmed lowercase, 3–80 allowed characters |
+| email | varchar(160) | `email`; optional empty string, trimmed lowercase |
+| name | varchar(100) | Display/full name |
+| role | varchar(9) | `admin`, `customer`, `architect` or `builder` |
+| active | boolean | Whether sign-in is enabled |
+| password_hash | varchar(128) | `passwordHash`; 64-byte scrypt result encoded as 128 lowercase HEX characters |
+| password_salt | varchar(32) | `passwordSalt`; random 16-byte salt encoded as 32 lowercase HEX characters |
+| password_version | bigint | `passwordVersion`; starts at 1, increments on reset or active-status change |
+| created_at, updated_at | timestamptz, nullable | Preserve existing `createdAt`/`updatedAt`; NULL for genuinely unknown dates |
+
+Import existing hashes/salts/version **unchanged**; do not rehash a stored hash or require plaintext passwords. Current verification calls Node `scrypt(password, passwordSalt, 64)` using the stored HEX salt **as a string**, then compares the derived bytes to the HEX-decoded password hash. Preserve these exact semantics. New/reset passwords still use the current 12–128 character validation and fresh salt. Password hashes/salts and private account lists never belong in public `/api/content` or HTML; account/session responses return only safe fields.
+
+Only authenticated admins can create/reset/disable users. Keep the maximum of 200 created accounts, fixed-at-creation roles, self-disable protection and last-active-admin protection. Resetting a password or changing active status increments `password_version`; protected requests must recheck it along with role/active status, including after re-enabling. A content save must never delete or replace user records supplied by a separate user-management operation.
+
+The recovery admin (`environment-admin`) is synthesized from `ADMIN_USERNAME`/`ADMIN_PASSWORD`; do **not** insert it into `users`, seed a default password, or expose environment credentials. Its reserved normalized username must also be checked by the account service when creating accounts. Changing that environment setting needs a collision check against existing login identifiers.
+
+#### 17. user_login_identifiers — one login namespace per account
+
+| Column | SQL type | Purpose |
+| --- | --- | --- |
+| identifier | varchar(160), PK | Normalized username or nonempty email; globally unique across both kinds |
+| user_id | varchar(100), FK → users.id | Owning account; cascades only if that user is removed |
+
+A trigger derives these rows from each inserted/updated `users` row. One account with identical username and email gets one identifier; omitted email produces no empty identifier. This prevents user A's username matching user B's email, which two separate unique indexes would not prevent. Concurrent conflicts roll back the entire statement. Import **users first** and let the trigger populate this child table; do not disable the trigger or write the child independently. For SQL-backed login, normalize the input using the same trim/lowercase rules, look up the identifier, join its user and retain all role/password/session checks. The environment username reservation remains an application rule because its value lives outside PostgreSQL.
+
+#### 18. activity_events — admin-only saved history
+
+| Column | SQL type | Current source / purpose |
+| --- | --- | --- |
+| id | varchar(100), PK | `adminHistory.events[].id`; preserve existing event IDs |
+| event_sequence | bigint, unique identity | Database append order; import in the original event-array order |
+| occurred_at | timestamptz | `at`; preserve exact recorded time |
+| actor | text | `actor`; username snapshot, including environment/shared accounts |
+| action | varchar(20) | `created`, `updated`, `deleted`, `reordered`, `uploaded`, `published`, `signed_in`, `signed_out` |
+| section | varchar(30) | Current API section key, listed below |
+| entity_id | text | `entityId`; may be empty; project photo IDs use `projectId/photoId` |
+| label | text | Entry label or upload display filename |
+| changed_fields | text[] | `fields[]`; field paths only, such as `specs.dryingTime`, `password` or `order`; never secret values |
+| revision | bigint, nullable | `revision`; optional for uploads/login/user events; do not fill missing values with 0 |
+| file_url | text, nullable | Optional `fileUrl`; preserve `/uploads/...` |
+| bytes | bigint, nullable | Optional `bytes`; uploaded file size, not file data |
+
+Section keys are `landingImages`, `products`, `dealers`, `colours`, `shadeCards`, `galleryProjects`, `galleryPhotos`, `galleryAds`, `uploads`, `website`, `account`, `users`. Keep this camelCase vocabulary in values even though SQL column names use snake_case.
+
+History tabs are filters, **not** separate tables: Gallery combines `galleryProjects`, `galleryPhotos`, `galleryAds`; Colours & shade cards combines `colours`, `shadeCards`; Landing images, Products and Authorised dealers select their matching section. All activity includes Users, account events and generic uploads. Preserve `tab`, `section`, `action`, search and pagination behaviour from `GET /api/admin/history`; page size stays capped at 50. Only admin authentication events are currently recorded, not Customer/Architect/Builder logins.
+
+Read pages by `event_sequence DESC`, matching the current reversed append-only array even when timestamps tie or the clock changes. Insert imported events one at a time in their original array order while letting the identity generate sequences. If an importer sets explicit sequences, advance the identity after import. Do not sort the original array by timestamp. Derive latest-entry ages from the last `created`/`updated` event for `(section, entity_id)`, latest-section times from `created`/`updated`/`deleted`/`reordered`, and last website-save time from `published`, all using append order. Store timestamps, not a changing “days ago” number; calculate relative ages in the UI. Older entries without tracked dates remain untracked.
+
+There is deliberately no entity/user FK on the event snapshots: deleted products/photos and the environment admin must remain visible, and old shared usernames cannot be assigned retrospectively to individual staff. Preserve events when deleting content. Content edits, user mutations and their events each commit atomically; failed validations/conflicts create no corresponding saved-change events. An uploaded file may remain after a failed DB write because file storage and SQL do not share a transaction; return an error and reconcile orphan files rather than reporting a successful logged upload. There is no retention trimming, history-edit/delete API or tamper-proof audit guarantee in the current app. Keep history tables and queries outside public serialization.
+
 ### Defaults, ordering and limits
 
 Optional text uses an empty string for compatibility; nullable enquiry FKs mean “no linked record.” Use text IDs to preserve existing IDs instead of converting everything to integers/UUID columns. `position` preserves the order of arrays from the JSON file; read by `position, id` (or colour code) unless newest-first gallery sorting applies.
 
-The API must still enforce overall limits: 1–200 products, 500 dealers, 12 landing slides, 1–5,000 colours, 50 shade cards, 100 projects, 100 ads, 1–20 pack sizes, up to 30 recommended surfaces, 1–20 photos per project, 10 dealer badges and 20 matching HEX colours. At least one product must retain positive coverage. Cross-row minimums and total row counts are service rules, not fully enforced by these table definitions.
+The API must still enforce overall limits: 1–200 products, 500 dealers, 12 landing slides, 1–5,000 colours, 50 shade cards, 100 projects, 100 ads, 1–20 pack sizes, up to 30 recommended surfaces, 1–20 photos per project, 10 dealer badges, 20 matching HEX colours and 200 created users. At least one product must retain positive coverage. Cross-row minimums, the user cap, reserved environment username and last-admin rule are service rules, not fully enforced by these table definitions.
 
 The SQL sets initial timestamps using `now()`; the future server integration must update `updated_at` on meaningful changes. Preserve existing gallery `createdAt` and `updatedAt` on import and unrelated saves. There are no automatic timestamp triggers in this proposal.
+
+Current product/dealer JSON records do not carry their own `createdAt`/`updatedAt` fields. Their SQL timestamps initially describe import/database writes, not proven historical creation dates. Continue deriving the admin's “updated … ago” display from preserved activity events; do not display a migration-time default as an original upload/update date. Likewise, `site_state.updated_at` starts at schema creation and is not evidence of a pre-tracking website save.
+
+The only trigger added here synchronizes login identifiers. PostgreSQL drivers commonly return `bigint` values as strings: convert API revision/password-version/byte values only after checking JavaScript safe-integer bounds, and keep internal event ordering accurate. Optional event fields omitted in JSON map to SQL NULL and should be omitted again in the reconstructed API event. Unknown history start/user dates map to NULL. Do not let default `now()` fabricate imported dates.
 
 ### Images, PDFs and administration
 
 Store image/PDF **paths or URLs**, not file bytes or base64, in these tables. Existing `/uploads/...` and `/api/content/legacy-image/...` URLs must continue to resolve. PostgreSQL does not back up uploaded files: retain the Render persistent disk or move files to object storage, and back up both content and assets. Image uploads remain 25 MB; shade-card PDFs remain 5 MB.
 
-Admin login currently uses environment credentials and in-memory sessions. These SQL files do not change authentication or add a default password. An `admin_users` table is only needed if individual staff accounts are implemented later; store password hashes, never plain passwords. Database credentials belong in a server-side `DATABASE_URL`, never frontend configuration.
+Admin login now supports both the server-configured recovery admin and individually created admins; other accounts use the separate public login. These SQL files preserve the created accounts in `users` and history in `activity_events` **when an adapter/import is implemented**. Current sessions and login-attempt limits remain memory maps in `accounts.ts`, with separate `areva_admin`/`areva_user` cookies, eight-hour expiry and logout revocation. No sessions table is required to keep current restart-expiry behaviour. SQL account storage alone does not enable multiple replicas: shared sessions/rate limits and transactional writes must be designed before horizontal scaling. Database credentials belong in a server-side `DATABASE_URL`, never frontend configuration. `GET /api/enquiries` is admin-protected in the latest code.
+
+Upload metadata already fits existing content URL columns plus private `uploaded` events (`label`, `file_url`, `bytes`, `occurred_at`, `actor`, `section`). A separate upload registry is optional future asset-management work, not required by the current feature set. No image/PDF bytes, preview base64, session tokens or passwords should be imported into public content columns.
 
 ### Render setup and migration sequence
 
 1. Create a **Render Postgres** database in the same region as the Node Web Service. Copy its Internal Database URL into the Web Service's `DATABASE_URL` environment secret. The static frontend does not connect directly to SQL.
-2. Using a SQL client connected to a new database, run `database/schema.sql`, then `database/seed-categories.sql`. For `psql`, use `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/schema.sql` and then the same command with `database/seed-categories.sql`. Run from a trusted terminal with access to the database; the internal URL is reachable only from the appropriate Render network.
-3. Implement and test a PostgreSQL repository/adapter in place of `content-store.ts` and the enquiry memory array. Setting `DATABASE_URL` alone currently does nothing. Keep the public API response shape and admin validation unchanged.
-4. Back up the latest live `content.json` and uploads. Import actual live content once in a transaction, preserving IDs, array positions, product specs and gallery timestamps. Do not replace live content with the development seed. Import the current revision into site_state. Enquiries already lost during server restarts cannot be recovered from the current memory-only store.
-5. Verify admin save/reload, revision conflicts, the calculator, every product category, dealer search, colour search, uploads, project albums, ads and enquiry persistence on a staging service. Back up and test restoration of database plus uploaded assets.
+2. Using a SQL client connected to a new database, run `database/schema.sql`, then `database/seed-categories.sql`. For `psql`, use `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/schema.sql` and then the same command with `database/seed-categories.sql`. If the earlier 15-table proposal already exists, use `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001-users-and-activity.sql` once instead; do not reseed or rerun the new full schema. Run from a trusted terminal with access to the database; the internal URL is reachable only from the appropriate Render network.
+3. Implement and test an asynchronous PostgreSQL repository/adapter for content, `readUsers`/`saveUsers`, `readActivity`/`recordActivity` and the enquiry memory array. Authentication in `accounts.ts`, validation/saves in `routes.ts` and the public HTML renderer must use the same persisted state. Setting `DATABASE_URL` alone currently does nothing. Keep public API response shapes, private-data exclusions and admin validation unchanged.
+4. Back up the latest live `content.json` and uploads. Read the complete private file through a trusted server-side importer: `/api/content` **and** `/api/admin/content` omit users/history and cannot supply a full migration. Import actual live content once in a transaction, preserving IDs, array positions, product specs and gallery timestamps. Insert created users with unchanged hashes/salts/version/dates (the identifier trigger runs automatically), append history events in stored array order, and import `revision` plus `adminHistory.startedAt` into `site_state`. Preflight counts, normalized identifier conflicts/reserved username and missing assets; abort/roll back on mismatches. Do not replace live content with development defaults or create fictional historical events. Missing `users`/`adminHistory` in older files means empty private tables and NULL history start. Enquiries already lost during restarts cannot be recovered from the memory-only store.
+5. Verify admin save/reload, revision conflicts, the calculator, every product category, dealer/colour search, uploads, albums, ads and enquiry persistence on staging. Also verify existing passwords still sign in, all four roles remain separated, users/history remain private, duplicate username/email races fail, resets/disable/logout revoke sessions, self/last-admin protections work, history tabs/order/relative ages survive restart, no-op saves retain their events and user/upload events retain the content revision. Back up and test restoration of database plus uploaded assets.
 6. Schedule the final switch, briefly pause admin writes/submissions, import the final snapshot and resume with the SQL-backed server. Keep the old files as a rollback backup. No production database is changed by this proposal.
 
 ### Validation performed
 
-The schema and category seed executed successfully in an isolated PostgreSQL engine (PGlite). A trial import accepted all 18 default products, 13 dealers and 24 colours, including their child arrays. Checks also confirmed invalid coverage rejection, case-insensitive colour-code uniqueness, category foreign keys, photo cascades and enquiry-name preservation after a product is deleted. This validates the proposed SQL and default-data mapping; a staging migration of the latest live data remains necessary before production use.
+The original schema/category seed passed isolated PostgreSQL-engine (PGlite) execution and a trial mapping of all 18 default products, 13 dealers and 24 colours, including child arrays. Checks covered invalid coverage, case-insensitive colour-code uniqueness, category FKs, photo cascades and preservation of enquiry names after product deletion. The 11 November review additionally validates fresh creation and upgrading the old 15-table proposal, account/hash/identifier constraints, case-insensitive cross-identifier collision handling, password verification after import, history array order/optional fields and rollback of content/account/history transactions. These are isolated schema tests, not an executed migration of the live Render site. A staging adapter and migration of the latest live data remain necessary before production use.
 
 ## 13. Complete PostgreSQL schema
 
@@ -658,6 +750,7 @@ Run once against a new, empty PostgreSQL 16+ database after review. This SQL cre
 -- Proposed PostgreSQL 16+ schema for Areva Paints.
 -- Review-only: the application still uses content.json and in-memory enquiries.
 -- Apply ONCE to a new, empty database. This file does not migrate existing data.
+-- Reviewed against GitHub main 7d0656e on 2026-11-11: 18 tables, including private users/history.
 BEGIN;
 
 CREATE TABLE categories (
@@ -811,7 +904,8 @@ CREATE INDEX gallery_ads_latest_idx ON gallery_ads(channel, updated_at DESC, pos
 CREATE TABLE site_state (
   id smallint PRIMARY KEY CHECK (id = 1),
   revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  history_started_at timestamptz
 );
 INSERT INTO site_state(id, revision) VALUES (1, 0);
 
@@ -835,6 +929,78 @@ CREATE TABLE enquiries (
 );
 CREATE INDEX enquiries_created_idx ON enquiries(created_at DESC);
 CREATE INDEX enquiries_status_idx ON enquiries(status, created_at DESC);
+
+-- Created accounts only. The server-configured recovery admin is not a stored user.
+CREATE TABLE users (
+  id varchar(100) PRIMARY KEY CHECK (btrim(id) <> '' AND id <> 'environment-admin'),
+  username varchar(80) NOT NULL
+    CHECK (username = lower(btrim(username)) AND username ~ '^[a-z0-9][a-z0-9._@+-]{2,79}$'),
+  email varchar(160) NOT NULL DEFAULT ''
+    CHECK (email = lower(btrim(email)) AND (email = '' OR email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$')),
+  name varchar(100) NOT NULL CHECK (btrim(name) <> ''),
+  role varchar(9) NOT NULL CHECK (role IN ('admin', 'customer', 'architect', 'builder')),
+  active boolean NOT NULL DEFAULT true,
+  password_hash varchar(128) NOT NULL CHECK (password_hash ~ '^[0-9a-f]{128}$'),
+  password_salt varchar(32) NOT NULL CHECK (password_salt ~ '^[0-9a-f]{32}$'),
+  password_version bigint NOT NULL DEFAULT 1 CHECK (password_version >= 1),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX users_role_active_idx ON users(role, active);
+
+-- One namespace prevents a username from colliding with another user's email.
+-- A user whose username equals their own email needs only one identifier row.
+CREATE TABLE user_login_identifiers (
+  identifier varchar(160) PRIMARY KEY
+    CHECK (btrim(identifier) <> '' AND identifier = lower(btrim(identifier))),
+  user_id varchar(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX user_login_identifiers_user_idx ON user_login_identifiers(user_id);
+
+-- Maintained transactionally, including JSON import and concurrent account creation.
+CREATE FUNCTION sync_user_login_identifiers() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  DELETE FROM user_login_identifiers WHERE user_id = NEW.id;
+  INSERT INTO user_login_identifiers(identifier, user_id)
+    SELECT DISTINCT value, NEW.id
+    FROM (VALUES (NEW.username), (NULLIF(NEW.email, ''))) AS identifiers(value)
+    WHERE value IS NOT NULL;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER users_sync_login_identifiers
+  AFTER INSERT OR UPDATE OF username, email ON users
+  FOR EACH ROW EXECUTE FUNCTION sync_user_login_identifiers();
+
+-- Private saved events, not content. No FK to deleted entities or recovery admins.
+CREATE TABLE activity_events (
+  id varchar(100) PRIMARY KEY CHECK (btrim(id) <> ''),
+  event_sequence bigint GENERATED BY DEFAULT AS IDENTITY UNIQUE
+    CHECK (event_sequence > 0),
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  actor text NOT NULL CHECK (btrim(actor) <> ''),
+  action varchar(20) NOT NULL CHECK (action IN (
+    'created', 'updated', 'deleted', 'reordered', 'uploaded',
+    'published', 'signed_in', 'signed_out'
+  )),
+  section varchar(30) NOT NULL CHECK (section IN (
+    'landingImages', 'products', 'dealers', 'colours', 'shadeCards',
+    'galleryProjects', 'galleryPhotos', 'galleryAds', 'uploads',
+    'website', 'account', 'users'
+  )),
+  entity_id text NOT NULL DEFAULT '',
+  label text NOT NULL DEFAULT '',
+  changed_fields text[] NOT NULL DEFAULT ARRAY[]::text[],
+  revision bigint CHECK (revision >= 0),
+  file_url text,
+  bytes bigint CHECK (bytes >= 0)
+);
+CREATE INDEX activity_events_newest_idx ON activity_events(event_sequence DESC);
+CREATE INDEX activity_events_section_idx ON activity_events(section, event_sequence DESC);
+CREATE INDEX activity_events_action_idx ON activity_events(action, event_sequence DESC);
+CREATE INDEX activity_events_entry_idx ON activity_events(section, entity_id, event_sequence DESC)
+  WHERE action IN ('created', 'updated') AND entity_id <> '';
 
 COMMIT;
 ```
@@ -872,13 +1038,13 @@ The admin now includes a private Activity history section and per-entry update a
 | `src/admin/routes.ts` | Protected `GET /api/admin/history`, session-bound actor, login/logout and upload recording |
 | `tests/admin-history.test.mjs` | Privacy, metadata spoof resistance, meaningful changes, filter/pagination and restart regression |
 
-Events contain id, at, actor, action, section, entityId, label, changed field names and optional revision/file URL/byte count. Actions are created, updated, deleted, reordered, uploaded, published, signed_in and signed_out. File display names are bounded and never used as disk paths. The session captures the configured username at sign-in. Passwords and session tokens are excluded.
+Events contain id, at, actor, action, section, entityId, label, changed field names and optional revision/file URL/byte count. Actions are created, updated, deleted, reordered, uploaded, published, signed_in and signed_out. File display names are bounded and never used as disk paths. The session identifies the actual signed-in admin username, whether created or environment-configured. Passwords and session tokens are excluded.
 
 Private events live under `adminHistory` inside the persisted JSON document. `readContent()` strips this area before public rendering, public APIs and admin content editing. Valid content saves append their events in the same atomic file replacement; failed validations/conflicts do not create content-change events. Separate successful uploads and authentication events preserve the content revision. There is no history-edit/delete endpoint. No retention trimming is implemented; the current store remains intended for one process with persistent disk, not a high-volume distributed audit service.
 
-The history endpoint uses no-store caching, requires an admin session, and accepts section, action, search, page and pageSize filters; page size is capped at 50. It returns a page plus latest entry/section timestamps. Relative dates refresh every minute and exact times use the viewer's locale/timezone. Older unknown dates are labelled untracked; existing gallery dates may be shown. The shared admin account is not individual staff identity. Unsaved drafts and historical events before tracking began cannot be reconstructed.
+The history endpoint uses no-store caching, requires an admin session, and accepts section, action, search, page and pageSize filters; page size is capped at 50. It returns a page plus latest entry/section timestamps. Relative dates refresh every minute and exact times use the viewer's locale/timezone. Older unknown dates are labelled untracked; existing gallery dates may be shown. People sharing one admin credential cannot be distinguished retrospectively; created admin accounts provide separate usernames for future actions. Unsaved drafts and historical events before tracking began cannot be reconstructed.
 
-The 15-table PostgreSQL proposal above predates history and remains unconnected to the app. When implementing that migration, include a private activity-events table (or separate private history storage), import the existing event IDs/timestamps and commit content changes and audit events in one database transaction. Never return private audit events in the public SiteContent response. This feature does not execute SQL or change database deployment.
+The original 15-table PostgreSQL proposal predated history. The 11 November review above now includes private `activity_events`, append ordering and the history start date in its 18-table proposal; the app remains unconnected. The future importer must preserve existing event IDs/timestamps and commit content changes and events in one database transaction. Never return private audit events in the public SiteContent response. This feature does not execute SQL or change database deployment.
 
 
 ### Activity history tabs — 9 November 2026
@@ -888,7 +1054,7 @@ Activity history has All activity, Gallery, Colours & shade cards, Landing image
 
 ## 16. Individual accounts and logout addendum — 9 November 2026
 
-The new account implementation supersedes the baseline's shared-account-only and demo-public-sign-in descriptions. `UsersManager.tsx` provides admin-only account creation, search, password resets and disable/enable controls. `user-types.ts` defines Admin, Customer, Architect and Builder roles. Top-bar and sidebar Logout controls revoke the admin session. `AccountAccess.tsx` and `public/assets/account-access.js` provide real role-aware public login/logout; `legacy-page.ts` removes the original fake sign-in handlers from the served template without rewriting the original HTML asset.
+Individual accounts and logout are included in the current architecture sections above; this implementation detail is retained for handover. `UsersManager.tsx` provides admin-only account creation, search, password resets and disable/enable controls. `user-types.ts` defines Admin, Customer, Architect and Builder roles. Top-bar and sidebar Logout controls revoke the admin session. `AccountAccess.tsx` and `public/assets/account-access.js` provide real role-aware public login/logout; `legacy-page.ts` removes the original fake sign-in handlers from the served template without rewriting the original HTML asset.
 
 `src/admin/accounts.ts` owns authentication, user-management endpoints and session checks. The environment-configured admin remains a read-only recovery account; created admins can authenticate independently even if the environment password is later unset. Created passwords require 12–128 characters and use Node scrypt (64-byte derived keys, random 16-byte salts). No plaintext password is persisted, logged or returned. Usernames/emails are case-insensitively unique across both identifiers and the reserved environment username. Conflicts are rechecked after asynchronous hashing. Roles are fixed at creation; a role-change PATCH is rejected. There is no public self-registration or email reset service.
 
@@ -902,12 +1068,103 @@ The new account implementation supersedes the baseline's shared-account-only and
 | POST `/api/auth/login` | Customer, Architect or Builder credentials; optional selected role must match |
 | GET `/api/auth/session` | Current non-admin account only |
 | POST `/api/auth/logout` | Origin-checked public-account logout |
-| GET `/api/enquiries` | Now admin-only; supersedes the baseline's unprotected-read observation |
+| GET `/api/enquiries` | Admin-only; this is also reflected in the current API reference above |
 
 Admin and public sessions use separate HttpOnly SameSite=Strict cookies (`areva_admin` / `areva_user`) and random 32-byte tokens in memory, with eight-hour expiry. Every protected request rechecks the current stored role, active flag and credential version. Password resets and disabling/enabling increment that version; old sessions stay invalid. Admin self-disabling and removing the last active admin are blocked. Environment credentials cannot be edited through the user API. Login limits apply across both login endpoints, with attempts counted before expensive asynchronous hashing. Server-side checks enforce all permissions independently of visible controls.
 
 Private user records live in `users` inside `CONTENT_DATA_DIR/content.json`, alongside private adminHistory and public CMS content. `readContent()` strips both private areas. `saveUsers()` atomically writes accounts with their history events, and ordinary content/history saves preserve the latest account records. Fields are id, username, email, name, role, active, createdAt, updatedAt, passwordHash, passwordSalt and passwordVersion. The environment admin is synthesized from server settings, not stored as a password record. Role-management events are available under the Users history section in All activity.
 
-The same persistent-disk and single-process limitations apply. This does not implement a PostgreSQL connector. The earlier 15-table SQL proposal must be extended with a private users table and activity-events storage when migration is implemented. New public-account authentication does not make the existing sample-order/payment/loyalty demos into backend business systems. Split-origin deployments use a top-level backend sign-in page to allow first-party session cookies.
+The same persistent-disk and single-process limitations apply. This does not implement a PostgreSQL connector. The 11 November revision now includes `users`, `user_login_identifiers` and `activity_events`, with a one-time upgrade for the earlier 15-table design. The backend adapter and live-data import remain to be implemented. New public-account authentication does not make the existing sample-order/payment/loyalty demos into backend business systems. Split-origin deployments use a top-level backend sign-in page to allow first-party session cookies.
 
 `tests/users.test.mjs` covers access denial for anonymous/non-admin requests, role/cookie separation, hashed storage, safe responses, duplicate identifiers/concurrent creation, password reset and disable revocation, old-client content saves, origin checks, audit actors, and restart persistence with the bootstrap password removed. Browser checks cover the actual creation/login/logout controls and responsive layouts.
+
+
+## 17. PostgreSQL review and upgrade SQL — 11 November 2026
+
+Reviewed GitHub `main` at `7d0656e`. The earlier 15-table design is now an **18-table proposal**: `users`, `user_login_identifiers`, `activity_events` and `site_state.history_started_at` preserve the new account/history features. The card illustrations and brand hero use static configuration and assets, so they need no new database table. The full guide above includes exact camelCase-to-SQL mappings, scrypt salt/hash compatibility, identifier collision prevention, transaction boundaries, import order, privacy, dates, role/session revocation and staging checks.
+
+For a fresh database use the full schema and seed above. **Only for an existing database with the original 15-table proposal**, run the following upgrade once. Do not run it after the revised full schema. This is DDL only: no live database is modified by this repository change, no users/history are imported automatically, and `DATABASE_URL` still has no active connector.
+
+```sql
+-- Review-only upgrade from the original 15-table Areva schema.
+-- Apply ONCE only if that earlier schema has already been applied.
+-- New databases must use schema.sql instead, which includes these additions.
+-- No JSON data is imported, no accounts are seeded, and no app adapter is enabled.
+BEGIN;
+
+ALTER TABLE site_state ADD COLUMN history_started_at timestamptz;
+
+-- Created accounts only. The server-configured recovery admin is not a stored user.
+CREATE TABLE users (
+  id varchar(100) PRIMARY KEY CHECK (btrim(id) <> '' AND id <> 'environment-admin'),
+  username varchar(80) NOT NULL
+    CHECK (username = lower(btrim(username)) AND username ~ '^[a-z0-9][a-z0-9._@+-]{2,79}$'),
+  email varchar(160) NOT NULL DEFAULT ''
+    CHECK (email = lower(btrim(email)) AND (email = '' OR email ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$')),
+  name varchar(100) NOT NULL CHECK (btrim(name) <> ''),
+  role varchar(9) NOT NULL CHECK (role IN ('admin', 'customer', 'architect', 'builder')),
+  active boolean NOT NULL DEFAULT true,
+  password_hash varchar(128) NOT NULL CHECK (password_hash ~ '^[0-9a-f]{128}$'),
+  password_salt varchar(32) NOT NULL CHECK (password_salt ~ '^[0-9a-f]{32}$'),
+  password_version bigint NOT NULL DEFAULT 1 CHECK (password_version >= 1),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX users_role_active_idx ON users(role, active);
+
+-- One namespace prevents a username from colliding with another user's email.
+-- A user whose username equals their own email needs only one identifier row.
+CREATE TABLE user_login_identifiers (
+  identifier varchar(160) PRIMARY KEY
+    CHECK (btrim(identifier) <> '' AND identifier = lower(btrim(identifier))),
+  user_id varchar(100) NOT NULL REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX user_login_identifiers_user_idx ON user_login_identifiers(user_id);
+
+-- Maintained transactionally, including JSON import and concurrent account creation.
+CREATE FUNCTION sync_user_login_identifiers() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  DELETE FROM user_login_identifiers WHERE user_id = NEW.id;
+  INSERT INTO user_login_identifiers(identifier, user_id)
+    SELECT DISTINCT value, NEW.id
+    FROM (VALUES (NEW.username), (NULLIF(NEW.email, ''))) AS identifiers(value)
+    WHERE value IS NOT NULL;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER users_sync_login_identifiers
+  AFTER INSERT OR UPDATE OF username, email ON users
+  FOR EACH ROW EXECUTE FUNCTION sync_user_login_identifiers();
+
+-- Private saved events, not content. No FK to deleted entities or recovery admins.
+CREATE TABLE activity_events (
+  id varchar(100) PRIMARY KEY CHECK (btrim(id) <> ''),
+  event_sequence bigint GENERATED BY DEFAULT AS IDENTITY UNIQUE
+    CHECK (event_sequence > 0),
+  occurred_at timestamptz NOT NULL DEFAULT now(),
+  actor text NOT NULL CHECK (btrim(actor) <> ''),
+  action varchar(20) NOT NULL CHECK (action IN (
+    'created', 'updated', 'deleted', 'reordered', 'uploaded',
+    'published', 'signed_in', 'signed_out'
+  )),
+  section varchar(30) NOT NULL CHECK (section IN (
+    'landingImages', 'products', 'dealers', 'colours', 'shadeCards',
+    'galleryProjects', 'galleryPhotos', 'galleryAds', 'uploads',
+    'website', 'account', 'users'
+  )),
+  entity_id text NOT NULL DEFAULT '',
+  label text NOT NULL DEFAULT '',
+  changed_fields text[] NOT NULL DEFAULT ARRAY[]::text[],
+  revision bigint CHECK (revision >= 0),
+  file_url text,
+  bytes bigint CHECK (bytes >= 0)
+);
+CREATE INDEX activity_events_newest_idx ON activity_events(event_sequence DESC);
+CREATE INDEX activity_events_section_idx ON activity_events(section, event_sequence DESC);
+CREATE INDEX activity_events_action_idx ON activity_events(action, event_sequence DESC);
+CREATE INDEX activity_events_entry_idx ON activity_events(section, entity_id, event_sequence DESC)
+  WHERE action IN ('created', 'updated') AND entity_id <> '';
+
+COMMIT;
+```
