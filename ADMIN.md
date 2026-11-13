@@ -120,6 +120,8 @@ The public product-category hub uses eight illustrated range cards configured in
 
 The selected product range is highlighted in purple in the category links above its landing banner. All eight ranges are available there; selecting another changes its banner and product list. On narrow screens, the links scroll horizontally and automatically reveal the selected range. The main HTML site's category links also preserve direct URLs and browser Back/Forward behaviour. React Studio uses the same navigation and selected styling with its existing state-based category selection.
 
+The main **Products** navigation opens the **Interior Paints** landing banner by default, with that category highlighted. The home-page **Solutions for every surface** cards and **All categories** button still open the category hub; **View all products** still opens the complete catalogue.
+
 ## Users, roles and logout
 
 A **Logout** button appears in the top bar and sidebar. It invalidates the current admin session and clears its cookie; unsaved content prompts before leaving. **Users → Create user** is available only after admin sign-in. Enter full name, unique username, optional email, role and an initial password of 12–128 characters. Share credentials privately. Only admins can create accounts; there is no public registration endpoint.

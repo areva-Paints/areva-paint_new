@@ -156,13 +156,14 @@
       : "";
   }
   function navigate(id, options = {}, updateHistory = true) {
+    if (id === "products") id = "products/interior";
     const allProductsPath = id === "products/all";
     const categoryPath = id.startsWith("products/") && !allProductsPath;
     const matchedCategory = categoryPath
       ? categories.findIndex((c) => c.id === id.slice("products/".length))
       : -1;
     const unknownCategory = categoryPath && matchedCategory === -1;
-    const hubPath = id === "products" || id === "solutions" || unknownCategory;
+    const hubPath = id === "solutions" || unknownCategory;
     const target =
       document.getElementById(
         hubPath

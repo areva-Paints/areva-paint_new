@@ -81,7 +81,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Center Navigation Links (Clean, spacious, single-line) */}
           <nav className="hidden xl:flex items-center gap-5 lg:gap-8 xl:gap-10 text-sm font-semibold text-stone-700">
             <a
-              href="#solutions"
+              href="#products"
               className={`hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1 ${
                 activeSection === "products" ? "text-amber-800 font-bold" : ""
               }`}
@@ -257,7 +257,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
 
             <a
-              href="#solutions"
+              href="#products"
               onClick={() => setMobileMenuOpen(false)}
               className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-900 hover:bg-stone-100"
             >
@@ -333,7 +333,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Sticky Mobile Navigation Bar (<15% mobile viewport height) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-stone-200/90 shadow-lg px-1 py-1 flex items-center justify-around h-15">
         <a
-          href="#solutions"
+          href="#products"
           className="flex flex-col items-center justify-center flex-1 py-1 text-stone-600 hover:text-stone-950 active:scale-95 transition-transform"
         >
           <span className="text-sm">🎨</span>

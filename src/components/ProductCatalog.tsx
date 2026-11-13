@@ -46,13 +46,26 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     target?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
 
-  // Every Products entry points to the same hub; the explicit all link skips to its list.
+  function focusCategory() {
+    categoryHeading.current?.focus({ preventScroll: true });
+    sectionRef.current?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  }
+
+  // Products opens Interior Paints; explicit hub and complete-catalogue links retain their destinations.
   useEffect(() => {
     const resetFromNavigation = (event: MouseEvent) => {
       if (!(event.target instanceof Element) || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = event.target.closest('a[href="#solutions"], a[href="#products"], a[href="#products/all"]');
       if (link && link.getAttribute('target') !== '_blank') {
         event.preventDefault();
+        if (link.getAttribute('href') === '#products') {
+          if (selectedCategory === 'interior') focusCategory();
+          else {
+            focusAfterChange.current = true;
+            setSelectedCategory('interior');
+          }
+          return;
+        }
         const destination = link.getAttribute('href') === '#products/all' ? 'range' : 'hub';
         destinationAfterChange.current = destination;
         if (selectedCategory === 'all') requestAnimationFrame(() => focusOverview(destination));
@@ -70,10 +83,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     if (!focusAfterChange.current) return;
     focusAfterChange.current = false;
     if (selectedCategory === 'all') focusOverview(destinationAfterChange.current);
-    else {
-      categoryHeading.current?.focus({ preventScroll: true });
-      sectionRef.current?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-    }
+    else focusCategory();
   }, [selectedCategory]);
 
   function openCategory(categoryId: string) {
