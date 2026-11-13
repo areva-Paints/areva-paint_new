@@ -21,7 +21,7 @@ export function legacyPage() {
   );
   const c = readContent();
   html = html.replace("<!-- PROJECT_GALLERY -->", () =>
-    renderProjectGallery(c.galleryProjects, c.galleryAds),
+    renderProjectGallery(c.galleryProjects, c.galleryAds, c.galleryReviews),
   );
   const cats = [
     "interior",

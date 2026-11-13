@@ -48,7 +48,17 @@ export interface GalleryAd {
   createdAt: string;
   updatedAt: string;
 }
+export interface GalleryReview {
+  id: string;
+  name: string;
+  detail: string;
+  text: string;
+  image: string;
+  createdAt: string;
+  updatedAt: string;
+}
 export interface SiteContent {
+  galleryReviews: GalleryReview[];
   galleryAds: GalleryAd[];
   galleryProjects: GalleryProject[];
   colours: ColorShade[];

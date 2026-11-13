@@ -163,12 +163,13 @@ The main Products link (`#products`) opens Interior Paints by default. Home reta
 | Catalogue | `ProductCatalog.tsx`, reference layout | Eight categories, product descriptions, search/sort in React, product details and enquiry prefills |
 | Product badge | `ProductFlipBadge.tsx`, public reference script | Round AREVA/name face and saved photo face alternate every 5 seconds; click switches immediately; reduced-motion and hidden-tab handling |
 | Product details/photo | `ProductDetailModal.tsx`, `ProductImageZoom.tsx` | Technical specifications, product image inspection and enquiry actions |
+| Reviews | `GalleryReviews.tsx`, public gallery renderer | Admin-published review text, reviewer names, optional images, shared Reviews tab and responsive cards |
 | Colour library | `ColorTicker.tsx`, `ColorVisualizer.tsx` | Saved/admin-managed names, codes, HEX, ten families and six overlapping tone filters; shared collection heading and shade browser beside the room preview |
 | Room visualizer | `ColorVisualizer.tsx` and public template | Room presets or uploaded photo, canvas recolouring, tolerance controls, undo/reset, comparisons, saved shades and print/export-related actions |
 | Camera visualizer | `LiveCameraARVisualizer.tsx` and public template | Camera permission, tap/sample colour processing, finish/opacity/sensitivity controls, freeze frame and fallback simulation |
 | Calculator | `PaintCalculator.tsx`, public template | Wall/floor area, coverage, coats, safety allowance and estimates |
 | Project Gallery | `ProjectGallery.tsx`, `project-gallery-page.ts`, `project-gallery.js` | Project albums, captions, thumbnails, keyboard navigation and image fallback |
-| Ads Gallery | `GalleryAds.tsx`, same public gallery runtime | Projects/Ads tabs, Digital/Social media filters, image previews and external HTTPS campaign links |
+| Ads Gallery | `GalleryAds.tsx`, same public gallery runtime | Projects/Ads/Reviews tabs, Digital/Social media filters, image previews and external HTTPS campaign links |
 | Dealer search | `DealersAndServices.tsx`, public template | Saved dealer names, location/PIN filtering, contact and WhatsApp actions |
 | Enquiry | `EnquiryModal.tsx`, public forms | React POST submission and WhatsApp handoff; public HTML forms use client-side lead/WhatsApp interactions |
 | Shade-card download | `ShadeLibrary.tsx` | Published PDF downloads filtered by family/tone |
@@ -197,7 +198,7 @@ The admin has seven sidebar sections:
 | Products | Name, category, photo, descriptions, technical specs, pack sizes, coverage, units, area basis, coats and featured state |
 | Authorised dealers | Business/contact/location/PIN details and service badges |
 | Colours & shade cards | Individual shades, name/code search, ten families, six tone tags, classified PDF uploads and reviewed text imports |
-| Gallery | Projects and Ads subtabs; album photos or Digital/Social media creative content |
+| Gallery | Projects, Ads and Reviews subtabs; albums, ad creatives or reviewer name/text with optional image |
 
 The former Paint coverage tab was removed because it edited the same products. **Products → Edit is the single place for coverage settings.**
 
@@ -206,6 +207,7 @@ The former Paint coverage tab was removed because it edited the same products. *
 - `AdminPage.tsx`: authentication UI, navigation, product/dealer/landing editors, workspace and overall save.
 - `ProjectGalleryManager.tsx`: project albums, multi-image uploads, cover/order and captions.
 - `GalleryAdsManager.tsx`: ad title/channel, image and/or campaign link, optional description, search and filter.
+- `GalleryReviewsManager.tsx`, `GalleryReviews.tsx`: review text, reviewer name/description, optional images, direct or staged publication, newest-first cards and empty/fallback states.
 - `ColourManager.tsx`, `ShadeMetadataFields.tsx`: manual colours, family/tone tags, classified shade cards and import review.
 - `ActivityHistory.tsx`, `activity.ts`, `activity-types.ts`: saved-event detection, private history and grouped tab definitions.
 - `UsersManager.tsx`, `accounts.ts`, `user-types.ts`: account administration, password hashing, role-aware sessions and logout.
@@ -486,7 +488,7 @@ The packaging script currently includes selected root files, src and public asse
 | Rewards/QR payouts | Simulated UI; requires actual account, scan verification, ledger and payment integration |
 | Swatch orders/shipping | Local demonstration flow; requires persistent orders, fulfilment and payment integration if offered commercially |
 | Camera/AR | Browser camera/canvas recolouring; simulated fallback exists; no verified WebXR tracking/AI segmentation |
-| PostgreSQL accounts/history | Included in the revised 18-table proposal; adapter/live import still required, recovery admin remains in server settings |
+| PostgreSQL accounts/history | Included in the current 19-table proposal; adapter/live import still required, recovery admin remains in server settings |
 | Multi-instance scale | JSON, sessions and enquiry memory require shared persistence and concurrency/session work before horizontal scaling |
 | Media backups | Back up files separately from SQL; existing disk/object storage remains necessary |
 | Calculator consistency | Unify UI/API allowance, packaging and floor-coat semantics if a single authoritative estimating service is required |
@@ -498,7 +500,7 @@ These are observations for technical handover. This document does not implement 
 
 The following database guide is included in full so this document can be shared without opening another file. The executable schema, category seed and upgrade SQL are also included below.
 
-Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **18 tables**. This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
+Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **19 tables**, including the Gallery reviews addition (13 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
 
 Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries currently live in server memory and reset on restart.
 
@@ -524,7 +526,7 @@ erDiagram
   users ||--|{ user_login_identifiers : signs_in_with
 ```
 
-Landing images, PDF shade cards and ads are independent entries. `site_state` holds one revision number for the whole website and the private history start date. Activity events keep actor/entity snapshots without foreign keys so deleted entries and the environment admin remain readable in history. The schema permits creating parents before their children; the service must require at least one pack size per product and one photo per project before committing.
+Landing images, PDF shade cards, ads and reviews are independent entries. `site_state` holds one revision number for the whole website and the private history start date. Activity events keep actor/entity snapshots without foreign keys so deleted entries and the environment admin remain readable in history. The schema permits creating parents before their children; the service must require at least one pack size per product and one photo per project before committing.
 
 ### Main tables and their columns
 
@@ -705,19 +707,33 @@ A trigger derives these rows from each inserted/updated `users` row. One account
 | file_url | text, nullable | Optional `fileUrl`; preserve `/uploads/...` |
 | bytes | bigint, nullable | Optional `bytes`; uploaded file size, not file data |
 
-Section keys are `landingImages`, `products`, `dealers`, `colours`, `shadeCards`, `galleryProjects`, `galleryPhotos`, `galleryAds`, `uploads`, `website`, `account`, `users`. Keep this camelCase vocabulary in values even though SQL column names use snake_case.
+Section keys are `landingImages`, `products`, `dealers`, `colours`, `shadeCards`, `galleryProjects`, `galleryPhotos`, `galleryAds`, `galleryReviews`, `uploads`, `website`, `account`, `users`. Keep this camelCase vocabulary in values even though SQL column names use snake_case.
 
-History tabs are filters, **not** separate tables: Gallery combines `galleryProjects`, `galleryPhotos`, `galleryAds`; Colours & shade cards combines `colours`, `shadeCards`; Landing images, Products and Authorised dealers select their matching section. All activity includes Users, account events and generic uploads. Preserve `tab`, `section`, `action`, search and pagination behaviour from `GET /api/admin/history`; page size stays capped at 50. Only admin authentication events are currently recorded, not Customer/Architect/Builder logins.
+History tabs are filters, **not** separate tables: Gallery combines `galleryProjects`, `galleryPhotos`, `galleryAds`, `galleryReviews`; Colours & shade cards combines `colours`, `shadeCards`; Landing images, Products and Authorised dealers select their matching section. All activity includes Users, account events and generic uploads. Preserve `tab`, `section`, `action`, search and pagination behaviour from `GET /api/admin/history`; page size stays capped at 50. Only admin authentication events are currently recorded, not Customer/Architect/Builder logins.
 
 Read pages by `event_sequence DESC`, matching the current reversed append-only array even when timestamps tie or the clock changes. Insert imported events one at a time in their original array order while letting the identity generate sequences. If an importer sets explicit sequences, advance the identity after import. Do not sort the original array by timestamp. Derive latest-entry ages from the last `created`/`updated` event for `(section, entity_id)`, latest-section times from `created`/`updated`/`deleted`/`reordered`, and last website-save time from `published`, all using append order. Store timestamps, not a changing “days ago” number; calculate relative ages in the UI. Older entries without tracked dates remain untracked.
 
 There is deliberately no entity/user FK on the event snapshots: deleted products/photos and the environment admin must remain visible, and old shared usernames cannot be assigned retrospectively to individual staff. Preserve events when deleting content. Content edits, user mutations and their events each commit atomically; failed validations/conflicts create no corresponding saved-change events. An uploaded file may remain after a failed DB write because file storage and SQL do not share a transaction; return an error and reconcile orphan files rather than reporting a successful logged upload. There is no retention trimming, history-edit/delete API or tamper-proof audit guarantee in the current app. Keep history tables and queries outside public serialization.
 
+### 19. gallery_reviews — Gallery customer reviews
+
+| SQL column | API field / meaning |
+| --- | --- |
+| id varchar(100) PK | `id` |
+| name varchar(150), nonblank | `name`, reviewer name |
+| detail varchar(200), default empty | `detail`, optional location/description |
+| review_text varchar(2000), nonblank | `text`, full review with line breaks |
+| image_url text, default empty | `image`, optional uploaded or validated image URL |
+| position integer >= 0 | Saved array order; breaks equal-date ties |
+| created_at, updated_at timestamptz | `createdAt`, `updatedAt`; assigned/preserved by the server |
+
+Existing databases use `database/migrations/003-gallery-reviews.sql` once. It detects a `public` or private `areva` install, stops if both exist, creates this table and permits `galleryReviews` activity events. The private-schema path enables RLS and revokes browser-role access to the new table. Fresh schema/setup already includes it. Import `galleryReviews[]` in the same content/history transaction; up to 100 reviews, optional images use the existing 25 MiB upload path. Preserve rows when older clients omit the section. This is an SQL design update, not a live migration or backend connection.
+
 ### Defaults, ordering and limits
 
 Optional text uses an empty string for compatibility; nullable enquiry FKs mean “no linked record.” Use text IDs to preserve existing IDs instead of converting everything to integers/UUID columns. `position` preserves the order of arrays from the JSON file; read by `position, id` (or colour code) unless newest-first gallery sorting applies.
 
-The API must still enforce overall limits: 1–200 products, 500 dealers, 12 landing slides, 1–5,000 colours, 50 shade cards, 100 projects, 100 ads, 1–20 pack sizes, up to 30 recommended surfaces, 1–20 photos per project, 10 dealer badges, 20 matching HEX colours and 200 created users. At least one product must retain positive coverage. Cross-row minimums, the user cap, reserved environment username and last-admin rule are service rules, not fully enforced by these table definitions.
+The API must still enforce overall limits: 1–200 products, 500 dealers, 12 landing slides, 1–5,000 colours, 50 shade cards, 100 projects, 100 ads, 100 reviews, 1–20 pack sizes, up to 30 recommended surfaces, 1–20 photos per project, 10 dealer badges, 20 matching HEX colours and 200 created users. At least one product must retain positive coverage. Cross-row minimums, the user cap, reserved environment username and last-admin rule are service rules, not fully enforced by these table definitions.
 
 The SQL sets initial timestamps using `now()`; the future server integration must update `updated_at` on meaningful changes. Preserve existing gallery `createdAt` and `updatedAt` on import and unrelated saves. There are no automatic timestamp triggers in this proposal.
 
@@ -754,7 +770,7 @@ Run once against a new, empty PostgreSQL 16+ database after review. This SQL cre
 -- Proposed PostgreSQL 16+ schema for Areva Paints.
 -- Review-only: the application still uses content.json and in-memory enquiries.
 -- Apply ONCE to a new, empty database. This file does not migrate existing data.
--- Reviewed against GitHub main 7d0656e on 2026-11-11: 18 tables, including private users/history.
+-- Base review: GitHub main 7d0656e (2026-11-11); shade metadata and Gallery reviews added 2026-11-13.
 BEGIN;
 
 CREATE TABLE categories (
@@ -845,9 +861,12 @@ CREATE TABLE colours (
   name varchar(150) NOT NULL CHECK (btrim(name) <> ''),
   hex varchar(7) NOT NULL CHECK (hex ~ '^#[0-9A-Fa-f]{6}$'),
   family varchar(30) NOT NULL CHECK (family IN (
+    'Oranges', 'Yellows', 'Greens', 'Blues', 'Violets', 'Earth Tones',
+    'Classic Neutrals', 'Dark Accents', 'Whispering Whites', 'Reds & Pinks',
     'Warm Neutrals', 'Earthy & Clay', 'Coastal & Blues',
     'Lush Greens', 'Vibrant Accents', 'Urban Greys'
   )),
+  tones text[] NOT NULL DEFAULT '{}' CHECK (tones <@ ARRAY['Cool', 'Dark', 'Light', 'Pastel', 'Vibrant', 'Warm']::text[] AND cardinality(tones) <= 6 AND array_position(tones, NULL) IS NULL),
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0)
 );
 CREATE UNIQUE INDEX colours_code_case_insensitive_idx ON colours(upper(btrim(code)));
@@ -865,6 +884,9 @@ CREATE TABLE shade_cards (
   id varchar(100) PRIMARY KEY,
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
   pdf_url text NOT NULL CHECK (btrim(pdf_url) <> ''),
+  family varchar(30) NOT NULL DEFAULT 'All Shades' CHECK (family IN ('All Shades', 'Oranges', 'Yellows', 'Greens', 'Blues', 'Violets', 'Earth Tones',
+    'Classic Neutrals', 'Dark Accents', 'Whispering Whites', 'Reds & Pinks')),
+  tones text[] NOT NULL DEFAULT '{}' CHECK (tones <@ ARRAY['Cool', 'Dark', 'Light', 'Pastel', 'Vibrant', 'Warm']::text[] AND cardinality(tones) <= 6 AND array_position(tones, NULL) IS NULL),
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0)
 );
 
@@ -903,6 +925,18 @@ CREATE TABLE gallery_ads (
   CHECK (link_url = '' OR link_url ~* '^https://')
 );
 CREATE INDEX gallery_ads_latest_idx ON gallery_ads(channel, updated_at DESC, position DESC);
+
+CREATE TABLE gallery_reviews (
+  id varchar(100) PRIMARY KEY CHECK (btrim(id) <> ''),
+  name varchar(150) NOT NULL CHECK (btrim(name) <> ''),
+  detail varchar(200) NOT NULL DEFAULT '',
+  review_text varchar(2000) NOT NULL CHECK (btrim(review_text) <> ''),
+  image_url text NOT NULL DEFAULT '',
+  position integer NOT NULL DEFAULT 0 CHECK (position >= 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX gallery_reviews_latest_idx ON gallery_reviews(updated_at DESC, position DESC);
 
 -- One shared revision protects the existing full-content Save changes workflow.
 CREATE TABLE site_state (
@@ -990,7 +1024,7 @@ CREATE TABLE activity_events (
   )),
   section varchar(30) NOT NULL CHECK (section IN (
     'landingImages', 'products', 'dealers', 'colours', 'shadeCards',
-    'galleryProjects', 'galleryPhotos', 'galleryAds', 'uploads',
+    'galleryProjects', 'galleryPhotos', 'galleryAds', 'galleryReviews', 'uploads',
     'website', 'account', 'users'
   )),
   entity_id text NOT NULL DEFAULT '',

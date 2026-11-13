@@ -1,3 +1,4 @@
+import { GalleryReviews } from './GalleryReviews';
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -52,7 +53,7 @@ export function ProjectGallery() {
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<"projects" | "ads">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "ads" | "reviews">("projects");
   const tabsId = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -107,7 +108,7 @@ export function ProjectGallery() {
                 Gallery
               </h2>
               <p className="pg-intro">
-                Explore our latest painting projects and brand campaigns.
+                Explore our latest painting projects, brand campaigns and customer reviews.
               </p>
             </div>
           </div>
@@ -123,15 +124,10 @@ export function ProjectGallery() {
               )
                 return;
               event.preventDefault();
-              const next =
-                event.key === "Home"
-                  ? 0
-                  : event.key === "End"
-                    ? 1
-                    : activeTab === "projects"
-                      ? 1
-                      : 0;
-              setActiveTab(next === 0 ? "projects" : "ads");
+              const views = ["projects", "ads", "reviews"] as const;
+              const index = views.indexOf(activeTab);
+              const next = event.key === "Home" ? 0 : event.key === "End" ? views.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + views.length) % views.length;
+              setActiveTab(views[next]);
               tabRefs.current[next]?.focus();
             }}
           >
@@ -139,6 +135,7 @@ export function ProjectGallery() {
               [
                 ["projects", "Projects"],
                 ["ads", "Ads"],
+                ["reviews", "Reviews"],
               ] as const
             ).map(([value, label], index) => (
               <button
@@ -234,6 +231,9 @@ export function ProjectGallery() {
             {activeTab === "ads" && (
               <GalleryAds ads={content?.galleryAds ?? []} />
             )}
+          </div>
+          <div className="ga-panel" role="tabpanel" tabIndex={0} id={`${tabsId}-panel-reviews`} aria-labelledby={`${tabsId}-tab-reviews`} hidden={activeTab !== "reviews"}>
+            {activeTab === "reviews" && <GalleryReviews reviews={content?.galleryReviews ?? []} />}
           </div>
         </div>
       </section>

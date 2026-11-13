@@ -92,7 +92,7 @@
     });
   });
 
-  section.querySelectorAll(".pg-cover, .ga-cover").forEach((cover) => {
+  section.querySelectorAll(".pg-cover, .ga-cover, .gr-cover").forEach((cover) => {
     const image = cover.querySelector("img");
     const fallback = cover.querySelector(".pg-image-fallback");
     if (image && fallback) observeImage(image, fallback);

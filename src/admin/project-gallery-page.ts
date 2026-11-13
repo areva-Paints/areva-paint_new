@@ -1,4 +1,7 @@
-import type { GalleryAd, GalleryProject } from "./content-types";
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { GalleryReviews } from '../components/GalleryReviews';
+import type { GalleryAd, GalleryProject, GalleryReview } from "./content-types";
 
 const escapeHtml = (value: string) =>
   value.replace(
@@ -19,7 +22,7 @@ const safeAdLink = (link: string) => {
 };
 
 /** Render the same published project albums and ads as the React homepage. */
-export function renderProjectGallery(projects: GalleryProject[], ads: GalleryAd[] = []): string {
+export function renderProjectGallery(projects: GalleryProject[], ads: GalleryAd[] = [], reviews: GalleryReview[] = []): string {
   const albums = projects
     .map((project, index) => ({
       project: { ...project, photos: project.photos.filter((photo) => photo.image) },
@@ -89,7 +92,7 @@ export function renderProjectGallery(projects: GalleryProject[], ads: GalleryAd[
           <div class="pg-heading">
             <p class="pg-kicker">SPACES BROUGHT TO LIFE</p>
             <h2 id="pg-gallery-title" class="pg-title">Gallery</h2>
-            <p class="pg-intro">Explore our latest painting projects and brand campaigns.</p>
+            <p class="pg-intro">Explore our latest painting projects, brand campaigns and customer reviews.</p>
           </div>
         </div>
       </div>
@@ -97,6 +100,7 @@ export function renderProjectGallery(projects: GalleryProject[], ads: GalleryAd[
         <div class="ga-tabs" role="tablist" aria-label="Gallery categories">
           <button id="ga-projects-tab" class="ga-tab" type="button" role="tab" aria-selected="true" aria-controls="ga-projects-panel" tabindex="0" data-ga-tab="projects">Projects</button>
           <button id="ga-ads-tab" class="ga-tab" type="button" role="tab" aria-selected="false" aria-controls="ga-ads-panel" tabindex="-1" data-ga-tab="ads">Ads</button>
+          <button id="ga-reviews-tab" class="ga-tab" type="button" role="tab" aria-selected="false" aria-controls="ga-reviews-panel" tabindex="-1" data-ga-tab="reviews">Reviews</button>
         </div>
         <div id="ga-projects-panel" class="ga-panel" role="tabpanel" tabindex="0" aria-labelledby="ga-projects-tab" data-ga-panel="projects">
           ${albums.length ? `<div class="pg-grid">${cards}</div>` : '<div class="pg-empty"><h3>New projects are on the way</h3><p>Visit again soon for a closer look at our latest work.</p></div>'}
@@ -112,6 +116,7 @@ export function renderProjectGallery(projects: GalleryProject[], ads: GalleryAd[
           <div class="ga-grid">${adCards}</div>
           <div class="pg-empty" data-ga-empty ${latestAds.length ? "hidden" : ""}><h3 data-ga-empty-title>No ads yet</h3><p data-ga-empty-copy>Our latest digital and social media ads will appear here.</p></div>
         </div>
+        <div id="ga-reviews-panel" class="ga-panel" role="tabpanel" tabindex="0" aria-labelledby="ga-reviews-tab" data-ga-panel="reviews" hidden>${renderToStaticMarkup(createElement(GalleryReviews, { reviews }))}</div>
       </div>
     </section>
     <script type="application/json" id="pg-project-data">${projectData}</script>

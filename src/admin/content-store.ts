@@ -24,6 +24,7 @@ export function defaults(): SiteContent {
     revision: 0,
     galleryProjects: [],
     galleryAds: [],
+    galleryReviews: [],
     colours: COLOR_SHADES,
     shadeCards: [],
     products: seed.products.map((p) => {
@@ -79,6 +80,7 @@ export function readContent(): SiteContent {
     ...content,
     galleryProjects: content.galleryProjects ?? [],
     galleryAds: content.galleryAds ?? [],
+    galleryReviews: content.galleryReviews ?? [],
     colours: (content.colours ?? COLOR_SHADES).map(normalizeShade),
     shadeCards: (content.shadeCards ?? []).map(card => ({ ...card, family: card.family ?? "All Shades", tones: card.tones ?? [] })),
   };

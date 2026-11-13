@@ -202,3 +202,20 @@
   .pg-card, .pg-cover > img, .ga-card { transition: none; }
   .pg-card:hover, .pg-card:hover .pg-cover > img, .ga-card:hover { transform: none; }
 }
+
+/* Reviews share the Gallery tabs and published content store. */
+.gr-intro { color: var(--pg-muted); margin: 0 0 24px; font-size: 16px; line-height: 1.7; }
+.gr-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: start; }
+.gr-card { min-width: 0; overflow: hidden; border: 1px solid var(--pg-line); border-radius: 20px; background: var(--pg-paper); box-shadow: 0 5px 18px var(--pg-shadow-low); }
+.gr-cover { display: block; position: relative; aspect-ratio: 4/3; background: var(--pg-page); }
+.gr-cover img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.gr-cover img[hidden] { display: none; }
+.gr-cover:focus-visible { outline: 3px solid var(--pg-focus); outline-offset: -4px; }
+.gr-copy { padding: 26px; }
+.gr-copy blockquote { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 24px; color: var(--pg-ink); font-size: 17px; line-height: 1.8; }
+.gr-author { padding-top: 18px; border-top: 1px solid var(--pg-line); }
+.gr-author h3 { margin: 0; color: var(--pg-deep); font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
+.gr-author p { margin: 6px 0 0; color: var(--pg-muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .gr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .gr-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 400px) { .ga-tabs { display: flex; max-width: 100%; } .ga-tabs .ga-tab { min-width: 0; flex: 1; padding: 10px 12px; font-size: 13px; } }

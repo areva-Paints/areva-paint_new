@@ -1,7 +1,7 @@
 -- Proposed PostgreSQL 16+ schema for Areva Paints.
 -- Review-only: the application still uses content.json and in-memory enquiries.
 -- Apply ONCE to a new, empty database. This file does not migrate existing data.
--- Reviewed against GitHub main 7d0656e on 2026-11-11: 18 tables, including private users/history.
+-- Base review: GitHub main 7d0656e (2026-11-11); shade metadata and Gallery reviews added 2026-11-13.
 BEGIN;
 
 CREATE TABLE categories (
@@ -157,6 +157,18 @@ CREATE TABLE gallery_ads (
 );
 CREATE INDEX gallery_ads_latest_idx ON gallery_ads(channel, updated_at DESC, position DESC);
 
+CREATE TABLE gallery_reviews (
+  id varchar(100) PRIMARY KEY CHECK (btrim(id) <> ''),
+  name varchar(150) NOT NULL CHECK (btrim(name) <> ''),
+  detail varchar(200) NOT NULL DEFAULT '',
+  review_text varchar(2000) NOT NULL CHECK (btrim(review_text) <> ''),
+  image_url text NOT NULL DEFAULT '',
+  position integer NOT NULL DEFAULT 0 CHECK (position >= 0),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX gallery_reviews_latest_idx ON gallery_reviews(updated_at DESC, position DESC);
+
 -- One shared revision protects the existing full-content Save changes workflow.
 CREATE TABLE site_state (
   id smallint PRIMARY KEY CHECK (id = 1),
@@ -243,7 +255,7 @@ CREATE TABLE activity_events (
   )),
   section varchar(30) NOT NULL CHECK (section IN (
     'landingImages', 'products', 'dealers', 'colours', 'shadeCards',
-    'galleryProjects', 'galleryPhotos', 'galleryAds', 'uploads',
+    'galleryProjects', 'galleryPhotos', 'galleryAds', 'galleryReviews', 'uploads',
     'website', 'account', 'users'
   )),
   entity_id text NOT NULL DEFAULT '',

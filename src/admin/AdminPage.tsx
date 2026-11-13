@@ -1,3 +1,4 @@
+import { GalleryReviewsManager } from './GalleryReviewsManager';
 import { UsersManager } from "./UsersManager";
 import type { AccountUser } from "./user-types";
 import {
@@ -67,7 +68,7 @@ const sections = [
     label: "Gallery",
     icon: ImagePlus,
     description:
-      "Share project albums, digital ads and social media campaigns.",
+      "Share project albums, digital/social media ads and customer reviews.",
   },
   {
     id: "colours" as Tab,
@@ -158,7 +159,7 @@ export function AdminPage() {
   useEffect(() => {
     if (authenticated && !uploading) void refreshActivity();
   }, [authenticated, uploading, content?.revision]);
-  const [galleryView, setGalleryView] = useState<"projects" | "ads">(
+  const [galleryView, setGalleryView] = useState<"projects" | "ads" | "reviews">(
     "projects",
   );
   const [error, setError] = useState(""),
@@ -549,7 +550,7 @@ export function AdminPage() {
     : [];
   const sectionKeys: ActivitySection[] =
     tab === "galleryProjects"
-      ? ["galleryProjects", "galleryAds", "galleryPhotos"]
+      ? ["galleryProjects", "galleryAds", "galleryPhotos", "galleryReviews"]
       : tab === "colours"
         ? ["colours", "shadeCards"]
         : tab === "history" || tab === "users"
@@ -596,7 +597,7 @@ export function AdminPage() {
                       ? activity?.totalEvents || 0
                       : s.id === "galleryProjects"
                         ? content.galleryProjects.length +
-                          (content.galleryAds?.length || 0)
+                          (content.galleryAds?.length || 0) + (content.galleryReviews?.length || 0)
                         : content[s.id].length
                   : 0}
               </span>
@@ -735,14 +736,10 @@ export function AdminPage() {
                   )
                     return;
                   event.preventDefault();
-                  const nextView =
-                    event.key === "Home"
-                      ? "projects"
-                      : event.key === "End"
-                        ? "ads"
-                        : galleryView === "projects"
-                          ? "ads"
-                          : "projects";
+                  const views = ["projects", "ads", "reviews"] as const;
+                  const index = views.indexOf(galleryView);
+                  const next = event.key === "Home" ? 0 : event.key === "End" ? views.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + views.length) % views.length;
+                  const nextView = views[next];
                   setGalleryView(nextView);
                   setError("");
                   document
@@ -780,6 +777,7 @@ export function AdminPage() {
                 >
                   Ads <span>{content.galleryAds?.length || 0}</span>
                 </button>
+                <button type="button" id="adm-gallery-reviews-tab" role="tab" tabIndex={galleryView === "reviews" ? 0 : -1} aria-selected={galleryView === "reviews"} aria-controls="adm-gallery-reviews-panel" disabled={uploading || busy} onClick={() => { setGalleryView("reviews"); setError(""); }}>Reviews <span>{content.galleryReviews?.length || 0}</span></button>
               </div>
               <div
                 id="adm-gallery-projects-panel"
@@ -812,6 +810,9 @@ export function AdminPage() {
                     publishError={error}
                   />
                 )}
+              </div>
+              <div id="adm-gallery-reviews-panel" role="tabpanel" aria-labelledby="adm-gallery-reviews-tab" hidden={galleryView !== "reviews"}>
+                {galleryView === "reviews" && <GalleryReviewsManager content={content} onChange={update} onPublish={persist} onBusy={setUploading} publishError={error} />}
               </div>
             </>
           ) : tab === "colours" && content ? (

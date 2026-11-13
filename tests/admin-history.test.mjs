@@ -282,7 +282,7 @@ test("private admin activity persists, detects meaningful changes and never leak
     // Grouping happens on the server before pagination, across all related sections.
     const allEvents = await history("?pageSize=50");
     const tabs = {
-      gallery: ["galleryProjects", "galleryPhotos", "galleryAds"],
+      gallery: ["galleryProjects", "galleryPhotos", "galleryAds", "galleryReviews"],
       colours: ["colours", "shadeCards"],
       landingImages: ["landingImages"],
       products: ["products"],

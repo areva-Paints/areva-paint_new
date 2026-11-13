@@ -7,6 +7,7 @@ export const ACTIVITY_SECTIONS = {
   galleryProjects: "Gallery projects",
   galleryPhotos: "Project photos",
   galleryAds: "Gallery ads",
+  galleryReviews: "Gallery reviews",
   uploads: "Uploads",
   website: "Website",
   account: "Admin account",
@@ -20,7 +21,7 @@ export const ACTIVITY_TABS = [
   {
     id: "gallery",
     label: "Gallery",
-    sections: ["galleryProjects", "galleryPhotos", "galleryAds"],
+    sections: ["galleryProjects", "galleryPhotos", "galleryAds", "galleryReviews"],
   },
   {
     id: "colours",

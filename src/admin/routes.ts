@@ -217,6 +217,14 @@ function validate(c: SiteContent) {
         "Each ad needs a title, Digital or Social media channel, and an image or HTTPS video/post link. Description is optional.",
       );
   }
+  if (!Array.isArray(c.galleryReviews) || c.galleryReviews.length > 100 || !ids(c.galleryReviews))
+    throw Error("Keep up to 100 reviews, each with a unique identifier.");
+  for (const review of c.galleryReviews) {
+    review.detail ??= "";
+    review.image ??= "";
+    if (!nonempty(review.name, 150) || !text(review.detail, 200) || !nonempty(review.text, 2000) || !text(review.image, 2048) || (review.image && !image(review.image)))
+      throw Error("Each review needs a reviewer name and review text. Add a valid image and location/description if required.");
+  }
   const families = new Set<string>([...COLOUR_FAMILIES, ...LEGACY_SHADE_FAMILIES]);
   const codes = new Set<string>();
   for (const colour of c.colours) {
@@ -355,6 +363,7 @@ function validate(c: SiteContent) {
     ...c.products,
     ...c.galleryProjects.flatMap((p) => p.photos),
     ...c.galleryAds,
+    ...c.galleryReviews,
   ]) {
     if (
       image.image.startsWith("/uploads/") &&
@@ -377,6 +386,7 @@ contentRouter.put("/admin/content", (req, res) => {
       c = req.body as SiteContent;
     c.galleryProjects ??= current.galleryProjects;
     c.galleryAds ??= current.galleryAds;
+    c.galleryReviews ??= current.galleryReviews;
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);
@@ -427,7 +437,14 @@ contentRouter.put("/admin/content", (req, res) => {
         updatedAt: unchanged ? previous.updatedAt : now,
       };
     });
+    const galleryReviews = c.galleryReviews.map(review => {
+      const previous = current.galleryReviews.find(item => item.id === review.id);
+      const fields = { id: review.id, name: review.name.trim(), detail: review.detail.trim(), text: review.text.trim(), image: review.image.trim() };
+      const unchanged = previous && JSON.stringify(fields) === JSON.stringify({ id: previous.id, name: previous.name, detail: previous.detail, text: previous.text, image: previous.image });
+      return { ...fields, createdAt: previous?.createdAt || now, updatedAt: unchanged ? previous.updatedAt : now };
+    });
     const next = {
+      galleryReviews,
       galleryProjects,
       galleryAds: c.galleryAds.map((ad) => {
         const previous = current.galleryAds.find((p) => p.id === ad.id);
@@ -483,6 +500,7 @@ function uploadedActivity(
       "products",
       "galleryProjects",
       "galleryAds",
+      "galleryReviews",
       "shadeCards",
     ].includes(req.body.section)
       ? req.body.section

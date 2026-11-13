@@ -7,7 +7,7 @@ Open `/admin` to manage the website. The admin interface has seven sections:
 | Landing images     | Upload JPEG/PNG/WebP images, set captions and subtitles, reorder or remove slides              | Homepage carousel and React hero  |
 | Products           | Products, images, descriptions, coverage per coat, material units and recommended coats        | Catalog, product details and calculator |
 | Authorised dealers | Business name, phone, full address, city, state, PIN and service badges                        | Dealer search and enquiry routing |
-| Gallery            | Project albums and digital/social media ads                                                   | Public Gallery tabs               |
+| Gallery            | Project albums, digital/social media ads and customer reviews                                                   | Public Gallery tabs               |
 | Colours & shade cards | Searchable colours and PDF shade cards                                                     | Colour library and visualizers    |
 | Activity history | Private saved-action history, upload names and update dates | Admin only |
 | Users | Create Admin, Customer, Architect and Builder accounts; disable/enable and reset passwords | Admin only |
@@ -101,6 +101,14 @@ Both calculators offer a 0–30% safety allowance, defaulting to the existing 10
 Use **Admin → Gallery → Ads → Add ad** to add a campaign. Choose **Digital** or **Social media**, enter a title and add an image, an HTTPS video/post/campaign link, or both. Description is optional. Creative images use the existing JPEG/PNG/WebP upload limit of **25 MB**; up to 100 ads can be saved. **Save ad to website** saves directly; **Apply to workspace** and the footer's **Save changes** can be used to stage edits. Deletion is staged until saving.
 
 Customers find these under **Gallery → Ads**, with **All**, **Digital** and **Social media** filters. Image creatives open in a full preview; configured video/post links open in a new tab. New or edited ads appear first. Existing projects, landing images and product data are preserved, including when an older admin client saves content without the Ads field. Run `node --import tsx --test tests/gallery-ads.test.mjs` to check validation, publication, safe rendering, compatibility and persistence.
+
+## Gallery Reviews
+
+Use **Admin → Gallery → Reviews → Add review**. Enter the reviewer name and review text; location/description and an image are optional. Images use the existing JPEG/PNG/WebP upload limit of **25 MB**, with a preview and remove-image option. **Save review to website** publishes immediately; **Apply to workspace** stages edits until **Save changes**. Search, edit and remove reviews in the same tab. Up to 100 reviews are supported.
+
+The public Gallery now has **Projects / Ads / Reviews**, with keyboard navigation and a responsive review-card grid. Review text preserves line breaks; optional images open at full size in a new tab. Reviews appear newest update first. Empty libraries show **No reviews yet**; no sample endorsements or ratings are generated. Both public renderers read the same saved records, and their existing focus/revision refresh applies. Review uploads and saved edits appear under **Activity history → Gallery → Gallery reviews**.
+
+SQL deployments need `database/migrations/003-gallery-reviews.sql` once; fresh schema/setup already includes `gallery_reviews`. The migration supports `public` and private Supabase `areva`, keeps private-schema RLS restrictions, and adds the history section value. It does not import data or connect the current JSON-backed site to SQL. Run `node --test tests/gallery-reviews.test.mjs` for review validation, image uploads, safe output, dates, older clients, persistence and history checks.
 
 ## Homepage campaign hero
 

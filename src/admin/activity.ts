@@ -128,6 +128,7 @@ export function contentActivity(
     "shadeCards",
     "galleryProjects",
     "galleryAds",
+    "galleryReviews",
   ] as const)
     compare(
       section,
