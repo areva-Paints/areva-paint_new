@@ -73,7 +73,7 @@ export const CATEGORY_LANDINGS: Record<
     title: "Wall Putty",
     accent: "& Primers",
     tone: "#4a2468",
-    image: "/assets/images/landing-putty-primers.webp",
+    image: "/assets/images/landing-putty-primers-branded.webp",
     features: [
       { icon: "roller", label: "Smooth surfaces" },
       { icon: "layers", label: "Surface leveling" },

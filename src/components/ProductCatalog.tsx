@@ -111,7 +111,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         <section id="solutions" className="pc-container pc-overview" ref={hubRef} aria-labelledby="pc-solutions-heading">
           <div className="pc-overview-heading">
             <span className="pc-eyebrow"><Sparkles aria-hidden="true" />PRODUCTS FOR EVERY SURFACE</span>
-            <h2 id="pc-solutions-heading" ref={overviewHeading} tabIndex={-1}>Solutions for every surface</h2>
+            <h2 id="pc-solutions-heading" className="category-hub-title" ref={overviewHeading} tabIndex={-1}>Solutions for <em>every surface.</em></h2>
             <p>Choose a category to explore the right paints, protective coatings and finishes for your space.</p>
             <a className="pc-all-products-link" href="#products/all">View all products <ArrowUpRight aria-hidden="true" /></a>
           </div>

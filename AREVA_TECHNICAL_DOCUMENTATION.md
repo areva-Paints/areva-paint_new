@@ -132,13 +132,13 @@ This refresh mechanism is event/focus based. It is not WebSocket or server-push 
 | `src/reference-theme.css` | Corporate theme for the React site |
 | `src/product-category.css` | React category cards, product rows and circular badges |
 | `src/components/CategorySceneCard.tsx`, `src/data/categoryArt.ts` | Shared illustrated category cards and their eight static image/colour palettes |
-| `public/assets/category-scenes.css` | Shared curved gold panels and responsive home-category cards |
+| `public/assets/category-scenes.css` | Shared image-above-copy cards, light hub background and responsive four/two/one-column grid |
 | `src/components/CategoryLandingHero.tsx`, `src/data/categoryLandings.ts`, `public/assets/category-landings.css` | Selected-category full-width banners, feature labels, new scene assets and navigation controls |
 | `src/components/DreamsHero.tsx`, `public/assets/dreams-hero.css` | Brand hero, wordmark panel and static campaign artwork |
 | `src/index.css` | Tailwind import, global fonts, custom utilities and animations |
 | `index.html` | Root HTML, page metadata, Google Font links and app mount point |
 
-The current home has one **Solutions for every surface** category section. Its eight illustrated cards combine relevant room/surface photographs, live readable text, individual pale colour palettes, icons and curved gold borders on a plum-to-mauve section background. Desktop uses two columns; screens at 1000px or below use one. The main HTML site and React Studio share `CategorySceneCard`; category-page headers now use separate full-width scenes through `CategoryLandingHero`, with white/gold titles, four range highlights and working Explore Products / All categories controls. These decorative images are code configuration, while individual product photographs and landing campaigns remain admin-managed. They require no new PostgreSQL content table.
+The current home has one **Solutions for every surface** category section. Its eight image-first cards place the existing room/surface photograph above a white caption panel with a bold title, arrow and readable description. A light grey section background and purple/gold serif heading follow the supplied layout reference. Desktop uses four columns, tablet widths two and narrow phones one. The primer landing artwork now includes AREVA PAINTS printed on the painter’s back. The main HTML site and React Studio share `CategorySceneCard`; category-page headers now use separate full-width scenes through `CategoryLandingHero`, with white/gold titles, four range highlights and working Explore Products / All categories controls. These decorative images are code configuration, while individual product photographs and landing campaigns remain admin-managed. They require no new PostgreSQL content table.
 
 The main Products link (`#products`) opens Interior Paints by default. Home retains the category hub (`#solutions`), and **All categories** returns there; `#products/all` remains the complete catalogue. Category links above each banner highlight the selected range. Public category routes are:
 

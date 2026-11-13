@@ -200,11 +200,11 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
 .ref-benefits a:last-child { border: 0; }
 .ref-benefits a span { display: block; color: var(--brand-deep); font-size: 26px; line-height: 1.4; }
 .ref-benefits a:hover { color: #5c1c81; }
-.ref-solutions-band { background: linear-gradient(110deg, #32183f 0%, #51365f 55%, #7a6380 100%); border-top: 2px solid #e9b33c; }
+.ref-solutions-band { background: #f7f7f9; border-top: 1px solid #ece7ef; }
 .ref-solutions { padding-top: 54px; padding-bottom: 54px; }
-.ref-solutions .ref-eyebrow { color: #ead099; margin-bottom: 12px; }
-.ref-solutions h2 { color: #fff; }
-.ref-solutions .lead { color: #ece2f0; }
+.ref-solutions .ref-eyebrow { color: #896018; margin-bottom: 12px; }
+.ref-solutions h2 { color: #361052; }
+.ref-solutions .lead { color: #66616e; }
 .ref-solution-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 20px; }
 .ref-solution { display: flex; flex-direction: column; min-width: 0; padding: 24px; text-align: left; text-decoration: none; border: 1px solid #ffffff99; background: linear-gradient(140deg, var(--solution-bg), var(--solution-end)); border-radius: 28px; color: #361052; font: inherit; cursor: pointer; box-shadow: 0 6px 20px #180c2010; transition: transform .2s, box-shadow .2s; }
 .ref-solution:hover { transform: translateY(-4px); box-shadow: 0 12px 26px #180c2040; }
@@ -213,8 +213,8 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
 .ref-solution-copy { display: grid; gap: 6px; }
 .ref-solution b { color: #361052; font-size: 17px; line-height: 1.35; }
 .ref-solution small { color: #56346b; font-size: 13px; line-height: 1.65; }
-.ref-solutions .ref-view-all { margin-top: 28px; color: #fff; border-color: #e4d1ed; }
-.ref-solutions .ref-view-all:hover { background: #fff; color: #361052; }
+.ref-solutions .ref-view-all { margin-top: 28px; color: #361052; border-color: #cabbd5; }
+.ref-solutions .ref-view-all:hover { background: #361052; color: #fff; }
 .ref-home-stats { padding-bottom: 36px; }
 .ref-home-stats .stat { border: 1px solid var(--brand-line); background: #fff; }
 .ref-home-stats .stat b { color: var(--brand-deep); }
