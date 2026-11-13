@@ -1,4 +1,4 @@
-import { ShadeLibrary } from './ShadeLibrary';
+import { ColourCollectionHeading, ShadeLibrary } from './ShadeLibrary';
 
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useRef, useEffect } from 'react';
@@ -479,11 +479,14 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <ColourCollectionHeading total={COLOR_SHADES.length} />
         {/* Studio Workspace: Split Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="colour-studio-grid">
           
-          {/* Left: Canvas Stage & Controls (7 Cols) */}
-          <div className="lg:col-span-7 space-y-4">
+          {/* Room preview and painting controls */}
+          <div className="colour-room-panel space-y-4">
+            <h3 className="colour-room-title">Try colours on a room</h3>
+            <p className="colour-room-description">Choose a room or upload a photo of your own home, pick a shade and see it on the walls. Drag the slider to compare, then print the result for your painter.</p>
             
             {/* Room Selector Chips */}
             <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -677,8 +680,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
           </div>
 
-          {/* Right: Color Selector, Complementary Pairings & Inquiry Module (5 Cols) */}
-          <div className="lg:col-span-5 space-y-4">
+          {/* Selected shade, palette filters and shade library */}
+          <div className="colour-shade-panel space-y-4">
             
             {/* Active Color Preview & Spec Request Box */}
             <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
@@ -720,7 +723,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                 <span className="text-xs font-semibold text-stone-600 block mb-2">
                   Harmonious Complementary Pairings:
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {currentShade.goesWellWith.map((pairHex) => {
                     const match = COLOR_SHADES.find(
                       (c) => c.hex.toLowerCase() === pairHex.toLowerCase()
@@ -770,16 +773,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               </div>
 
             </div>
-
-
+            <ShadeLibrary shades={COLOR_SHADES} cards={siteContent?.shadeCards || []} onSelect={onSelectColor} selectedHex={selectedColorHex} />
           </div>
 
         </div>
 
       </div>
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <ShadeLibrary shades={COLOR_SHADES} cards={siteContent?.shadeCards || []} onSelect={onSelectColor} selectedHex={selectedColorHex} />
-    </div>
 </section>
   );
 };

@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ShadeLibrary } from '../components/ShadeLibrary';
+import { ColourCollectionHeading, ShadeLibrary } from '../components/ShadeLibrary';
 import { renderProjectGallery } from "./project-gallery-page";
 import { referenceLayout } from "./reference-layout";
 import fs from "node:fs";
@@ -117,7 +117,15 @@ export function legacyPage() {
   html = html.replace("Tap ♡ to save a colour. Shade names and codes are samples.", "Tap ♡ beside a shade to save it to your palette.");
   html = html.replace('</head>', '<link rel="stylesheet" href="/assets/shade-library.css"></head>');
   html = html.replace('<input id="q" type="search" placeholder="Search colour by name or code" aria-label="Search colours"><div class="sw" id="sw"></div>', '');
-  html = html.replace(/(<section id="visualizer"[\s\S]*?)(<\/section>)/, (_match, body, end) => body + '<div class="wrap">' + renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true })) + '</div>' + end);
+  html = html.replace(/(<section id="visualizer"[\s\S]*?)(<\/section>)/, (_match, body: string, end) => {
+    const heading = renderToStaticMarkup(createElement(ColourCollectionHeading, { total: c.colours.length }));
+    const library = renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true }));
+    body = body.replace(/<h2>Try colours on a room<\/h2>(<p class="lead">[\s\S]*?<\/p>)\s*<div class="two"><div>/,
+      (_intro, description) => `${heading}<div class="two colour-studio-grid"><div class="colour-room-panel"><h3 class="colour-room-title">Try colours on a room</h3>${description.replace('class="lead"', 'class="colour-room-description"')}`);
+    body = body.replace(/<div>\s*<p><b id="cn">/, '<div class="colour-shade-panel"><div class="colour-palette-summary"><p><b id="cn">');
+    body = body.replace('Tap ♡ beside a shade to save it to your palette.</p>', `Tap ♡ beside a shade to save it to your palette.</p></div>${library}`);
+    return body + end;
+  });
   html = html.replace('function drawSw(){', 'let shadeFamily = "All Shades", shadeTone = "All";\nfunction drawSw(){');
   html = html.replace(/function drawSw\(\)\{[\s\S]*?\n\}/, () => `function drawSw(){
     const root=document.querySelector('[data-shade-library]'); if(!root) return;

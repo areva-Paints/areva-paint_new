@@ -163,7 +163,7 @@ The main Products link (`#products`) opens Interior Paints by default. Home reta
 | Catalogue | `ProductCatalog.tsx`, reference layout | Eight categories, product descriptions, search/sort in React, product details and enquiry prefills |
 | Product badge | `ProductFlipBadge.tsx`, public reference script | Round AREVA/name face and saved photo face alternate every 5 seconds; click switches immediately; reduced-motion and hidden-tab handling |
 | Product details/photo | `ProductDetailModal.tsx`, `ProductImageZoom.tsx` | Technical specifications, product image inspection and enquiry actions |
-| Colour library | `ColorTicker.tsx`, `ColorVisualizer.tsx` | Saved/admin-managed names, codes, HEX, ten families and six overlapping tone filters through shared ShadeLibrary |
+| Colour library | `ColorTicker.tsx`, `ColorVisualizer.tsx` | Saved/admin-managed names, codes, HEX, ten families and six overlapping tone filters; shared collection heading and shade browser beside the room preview |
 | Room visualizer | `ColorVisualizer.tsx` and public template | Room presets or uploaded photo, canvas recolouring, tolerance controls, undo/reset, comparisons, saved shades and print/export-related actions |
 | Camera visualizer | `LiveCameraARVisualizer.tsx` and public template | Camera permission, tap/sample colour processing, finish/opacity/sensitivity controls, freeze frame and fallback simulation |
 | Calculator | `PaintCalculator.tsx`, public template | Wall/floor area, coverage, coats, safety allowance and estimates |

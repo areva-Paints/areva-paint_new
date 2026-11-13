@@ -17,6 +17,23 @@ interface FilterProps {
   onQuery: (query: string) => void;
   legacy?: boolean;
 }
+
+export function ColourCollectionHeading({ total }: { total: number }) {
+  return (
+    <div className="colour-collection-heading">
+      <div>
+        <p className="colour-collection-kicker">THE AREVA COLOUR COLLECTION</p>
+        <h2 className="colour-collection-title">Explore the Colour Spectrum</h2>
+        <p className="colour-collection-description">
+          Browse by colour family, filter by tone and select a shade to preview.
+        </p>
+      </div>
+      <strong className="colour-collection-count">
+        {total} original shades
+      </strong>
+    </div>
+  );
+}
 export function ShadeFilters({
   shades,
   family,
@@ -117,7 +134,6 @@ export function ShadeLibrary({
       data-shade-library
       aria-label="Colour shade library"
     >
-      <h3 className="shade-library-title">Find your shade</h3>
       <ShadeFilters
         shades={shades}
         family={family}
