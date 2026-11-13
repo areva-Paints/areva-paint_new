@@ -22,6 +22,7 @@ import { ColorSplashArcade } from './components/ColorSplashArcade';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { MessageSquare, ArrowUp } from 'lucide-react';
+import '../public/assets/page-gradient.css';
 
 export default function App() {
   // View mode switcher: 'attached' (shows the user's attached HTML file), 'react' (modern React platform), 'split' (side-by-side)

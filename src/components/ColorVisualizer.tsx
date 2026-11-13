@@ -467,22 +467,26 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
   return (
     <section id="visualizer" className="py-14 lg:py-20 bg-stone-100 border-b border-stone-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="page-gradient-banner">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Section Header */}
-        <div className="max-w-3xl mb-8">
-          <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 tracking-wider uppercase mb-1.5">
-            <Palette className="w-4 h-4" />
-            <span>Interactive Coating Studio</span>
+          {/* Section Header */}
+          <div className="page-gradient-heading max-w-3xl mb-8">
+            <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 tracking-wider uppercase mb-1.5">
+              <Palette className="w-4 h-4" />
+              <span>Interactive Coating Studio</span>
+            </div>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-stone-950 tracking-tight">
+              See Areva shades on your walls in real time.
+            </h2>
+            <p className="text-stone-600 text-base mt-2">
+              Switch between architectural presets or upload a photo of your own room. Tap any surface to apply your chosen shade with realistic lighting preservation, then export a painter specification card or request a dealer quote.
+            </p>
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-stone-950 tracking-tight">
-            See Areva shades on your walls in real time.
-          </h2>
-          <p className="text-stone-600 text-base mt-2">
-            Switch between architectural presets or upload a photo of your own room. Tap any surface to apply your chosen shade with realistic lighting preservation, then export a painter specification card or request a dealer quote.
-          </p>
-        </div>
 
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Studio Workspace: Split Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           

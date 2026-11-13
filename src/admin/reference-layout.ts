@@ -19,7 +19,7 @@ const escapeHtml = (value: string) =>
 export function referenceLayout(html: string, content: SiteContent) {
   html = html.replace(
     "</head>",
-    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"></head>',
+    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/page-gradient.css"></head>',
   );
   const logo =
     html.match(/<a class="logo"[^>]*>(<img[^>]+>)<\/a>/)?.[1] || "Areva Paints";
@@ -84,12 +84,43 @@ export function referenceLayout(html: string, content: SiteContent) {
       "Plan with confidence",
       "Use your selected product’s coverage to estimate paint for your project.",
     ],
+    [
+      "services",
+      "Services",
+      "Painting services",
+      "Explore painting services and request guidance from the Areva team.",
+    ],
+    [
+      "about",
+      "Our story",
+      "Colouring the future.",
+      "Discover the Areva story, our values and our approach to better spaces.",
+      "Protecting every surface.",
+    ],
+    [
+      "portals",
+      "Authorised dealers",
+      "Find your local Areva team",
+      "Explore our dealer network and connect with the right support for your project.",
+    ],
+    [
+      "certs",
+      "Documents",
+      "Product documents",
+      "Browse product information, technical documents and certification details.",
+    ],
+    [
+      "contact",
+      "Contact",
+      "Let’s bring your ideas to life",
+      "Ask for a quotation, product guidance, dealership information or support.",
+    ],
   ];
-  for (const [id, eyebrow, title, copy] of banners) {
+  for (const [id, eyebrow, title, copy, accent] of banners) {
     html = html.replace(
       new RegExp(`(<section id="${id}"[^>]*>)`),
-      () =>
-        `<section id="${id}" data-ref-view="${id}">${id === "products" ? "<div data-ref-category-hero hidden></div>" : ""}<div class="ref-page-banner"><div class="wrap"><span class="ref-eyebrow">HOME / ${eyebrow.toUpperCase()}</span><h1>${title}</h1><p>${copy}</p></div></div>`,
+      (opening) =>
+        `${opening.slice(0, -1)} data-ref-view="${id}">${id === "products" ? "<div data-ref-category-hero hidden></div>" : ""}<div class="ref-page-banner"><div class="wrap"><span class="ref-eyebrow">HOME / ${eyebrow.toUpperCase()}</span><h1>${title}${accent ? `<em>${accent}</em>` : ""}</h1><p>${copy}</p></div></div>`,
     );
   }
   const specs = content.products.map((p) => {

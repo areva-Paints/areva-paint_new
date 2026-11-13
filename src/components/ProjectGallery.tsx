@@ -99,16 +99,20 @@ export function ProjectGallery() {
         className="pg-section"
         aria-labelledby="project-gallery-heading"
       >
-        <div className="pg-wrap">
-          <div className="pg-heading">
-            <span className="pg-kicker">SPACES BROUGHT TO LIFE</span>
-            <h2 id="project-gallery-heading" className="pg-title">
-              Gallery
-            </h2>
-            <p className="pg-intro">
-              Explore our latest painting projects and brand campaigns.
-            </p>
+        <div className="page-gradient-banner">
+          <div className="pg-wrap">
+            <div className="pg-heading">
+              <span className="pg-kicker">SPACES BROUGHT TO LIFE</span>
+              <h2 id="project-gallery-heading" className="pg-title">
+                Gallery
+              </h2>
+              <p className="pg-intro">
+                Explore our latest painting projects and brand campaigns.
+              </p>
+            </div>
           </div>
+        </div>
+        <div className="pg-wrap">
           <div
             className="ga-tabs"
             role="tablist"

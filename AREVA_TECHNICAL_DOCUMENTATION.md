@@ -133,6 +133,7 @@ This refresh mechanism is event/focus based. It is not WebSocket or server-push 
 | `src/product-category.css` | React category cards, product rows and circular badges |
 | `src/components/CategorySceneCard.tsx`, `src/data/categoryArt.ts` | Shared illustrated category cards and their eight static image/colour palettes |
 | `public/assets/category-scenes.css` | Shared image-above-copy cards, light hub background and responsive four/two/one-column grid |
+| `public/assets/page-gradient.css` | Purple/magenta/orange header banners with light page bodies; Home, Products, navigation and admin excluded |
 | `src/components/CategoryLandingHero.tsx`, `src/data/categoryLandings.ts`, `public/assets/category-landings.css` | Selected-category full-width banners, feature labels, new scene assets and navigation controls |
 | `src/components/DreamsHero.tsx`, `public/assets/dreams-hero.css` | Brand hero, wordmark panel and static campaign artwork |
 | `src/index.css` | Tailwind import, global fonts, custom utilities and animations |

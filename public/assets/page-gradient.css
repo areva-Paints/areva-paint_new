@@ -1,0 +1,75 @@
+/* Header banners only. Home, Products, site navigation and admin are excluded. */
+:root {
+  --areva-page-gradient: linear-gradient(112deg, #36005f 0%, #7f00ce 33%, #e8109b 68%, #ff7b19 100%);
+}
+
+/* Keep the page body light, with its original cards, forms and spacing. */
+main#top > section[data-ref-view]:not([data-ref-view="home"]):not(#products),
+#gallery.pg-section,
+.areva-reference-site :is(#visualizer, #calculator, #gallery, #dealers) {
+  background: #faf8fc;
+}
+
+main#top > section:not(#home):not(#products) > .ref-page-banner,
+#gallery > .page-gradient-banner,
+.areva-reference-site :is(#visualizer, #calculator, #dealers) > .page-gradient-banner {
+  background: var(--areva-page-gradient);
+  color: #fff;
+  padding: clamp(48px, 6vw, 86px) 0;
+  margin-bottom: 48px;
+}
+main#top > section:not(#home):not(#products) > .ref-page-banner h1 {
+  max-width: 1100px;
+  margin: 18px 0 22px;
+  color: #fff;
+  font: 400 clamp(40px, 5.5vw, 82px)/1.08 Georgia, serif;
+  letter-spacing: -0.035em;
+}
+main#top > section:not(#home):not(#products) > .ref-page-banner h1 em {
+  display: block;
+  color: #ffdf35;
+  font-style: normal;
+}
+main#top > section:not(#home):not(#products) > .ref-page-banner .ref-eyebrow,
+main#top > section:not(#home):not(#products) > .ref-page-banner p {
+  color: #fff;
+}
+main#top > section:not(#home):not(#products) > .ref-page-banner p {
+  max-width: 740px;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.8;
+}
+
+/* Gallery and React tools have separate banner and content containers. */
+#gallery.pg-section,
+.areva-reference-site :is(#visualizer, #calculator, #dealers) {
+  padding-top: 0;
+}
+#gallery .page-gradient-banner .pg-heading,
+.areva-reference-site .page-gradient-banner .page-gradient-heading {
+  max-width: 760px;
+  margin-bottom: 0;
+}
+#gallery .page-gradient-banner .pg-title,
+.areva-reference-site .page-gradient-banner .page-gradient-heading h2 {
+  color: #fff;
+  font: 400 clamp(40px, 5.5vw, 76px)/1.1 Georgia, serif;
+}
+#gallery .page-gradient-banner :is(.pg-kicker, .pg-intro),
+.areva-reference-site .page-gradient-banner .page-gradient-heading > p {
+  color: #fff;
+}
+.areva-reference-site .page-gradient-banner .page-gradient-heading > div:first-child {
+  color: #ffdf69;
+}
+@media (max-width: 700px) {
+  main#top > section:not(#home):not(#products) > .ref-page-banner,
+  #gallery > .page-gradient-banner,
+  .areva-reference-site :is(#visualizer, #calculator, #dealers) > .page-gradient-banner {
+    margin-bottom: 32px;
+  }
+  main#top > section:not(#home):not(#products) > .ref-page-banner p {
+    font-size: 15px;
+  }
+}

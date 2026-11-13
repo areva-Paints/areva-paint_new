@@ -122,6 +122,10 @@ The selected product range is highlighted in purple in the category links above 
 
 The main **Products** navigation opens the **Interior Paints** landing banner by default, with that category highlighted. The home-page **Solutions for every surface** cards and **All categories** button still open the category hub; **View all products** still opens the complete catalogue.
 
+## Public page backgrounds
+
+Only the header banners of the visualizer, calculator, gallery, services, About, authorised dealers, documents and Contact use the purple → magenta → orange gradient in `public/assets/page-gradient.css`. Content below uses a light background with the existing cards and forms. Home, Products (including category photos and banners), the navigation header and admin portal keep their previous appearance. Both public renderers use the shared header treatment; no database migration is needed.
+
 ## Users, roles and logout
 
 A **Logout** button appears in the top bar and sidebar. It invalidates the current admin session and clears its cookie; unsaved content prompts before leaving. **Users → Create user** is available only after admin sign-in. Enter full name, unique username, optional email, role and an initial password of 12–128 characters. Share credentials privately. Only admins can create accounts; there is no public registration endpoint.

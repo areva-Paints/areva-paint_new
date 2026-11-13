@@ -84,12 +84,16 @@ export function renderProjectGallery(projects: GalleryProject[], ads: GalleryAd[
 
   return `<link rel="stylesheet" href="/assets/project-gallery.css">
     <section id="gallery" class="pg-section" aria-labelledby="pg-gallery-title">
-      <div class="pg-wrap">
-        <div class="pg-heading">
-          <p class="pg-kicker">SPACES BROUGHT TO LIFE</p>
-          <h2 id="pg-gallery-title" class="pg-title">Gallery</h2>
-          <p class="pg-intro">Explore our latest painting projects and brand campaigns.</p>
+      <div class="page-gradient-banner">
+        <div class="pg-wrap">
+          <div class="pg-heading">
+            <p class="pg-kicker">SPACES BROUGHT TO LIFE</p>
+            <h2 id="pg-gallery-title" class="pg-title">Gallery</h2>
+            <p class="pg-intro">Explore our latest painting projects and brand campaigns.</p>
+          </div>
         </div>
+      </div>
+      <div class="pg-wrap">
         <div class="ga-tabs" role="tablist" aria-label="Gallery categories">
           <button id="ga-projects-tab" class="ga-tab" type="button" role="tab" aria-selected="true" aria-controls="ga-projects-panel" tabindex="0" data-ga-tab="projects">Projects</button>
           <button id="ga-ads-tab" class="ga-tab" type="button" role="tab" aria-selected="false" aria-controls="ga-ads-panel" tabindex="-1" data-ga-tab="ads">Ads</button>

@@ -94,22 +94,26 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
 
   return (
     <section id="calculator" className="py-16 lg:py-24 bg-stone-50 border-b border-stone-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="page-gradient-banner">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Section Header */}
-        <div className="max-w-3xl mb-10">
-          <div className="flex items-center gap-2 text-xs font-bold text-amber-700 tracking-wider uppercase mb-1">
-            <Calculator className="w-4 h-4" />
-            <span>Precision Surface Estimator</span>
+          {/* Section Header */}
+          <div className="page-gradient-heading max-w-3xl mb-10">
+            <div className="flex items-center gap-2 text-xs font-bold text-amber-700 tracking-wider uppercase mb-1">
+              <Calculator className="w-4 h-4" />
+              <span>Precision Surface Estimator</span>
+            </div>
+            <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-stone-950 tracking-tight">
+              How much paint does your project require?
+            </h2>
+            <p className="text-stone-600 text-base mt-2">
+              Select any coating formulation from our catalog to automatically calculate paint volume in Liters based on product-specific coverage, room dimensions, and opening deductions.
+            </p>
           </div>
-          <h2 className="font-display text-3xl sm:text-4xl font-extrabold text-stone-950 tracking-tight">
-            How much paint does your project require?
-          </h2>
-          <p className="text-stone-600 text-base mt-2">
-            Select any coating formulation from our catalog to automatically calculate paint volume in Liters based on product-specific coverage, room dimensions, and opening deductions.
-          </p>
-        </div>
 
+        </div>
+      </div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Calculator Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
