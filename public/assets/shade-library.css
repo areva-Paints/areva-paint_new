@@ -289,34 +289,9 @@
 .colour-shade-panel {
   min-width: 0;
 }
-.colour-room-title {
-  margin: 0 0 12px;
-  color: #361052;
-  font:
-    400 28px/1.2 Georgia,
-    serif;
-}
-.colour-room-description {
-  margin: 0 0 20px;
-  color: #68606e;
-  font:
-    400 14px/1.7 Arial,
-    sans-serif;
-}
-.colour-palette-summary {
-  padding: 20px;
-  border: 1px solid #e4dcea;
-  border-radius: 20px;
-  background: #fff;
-}
-.colour-palette-summary > p:first-child {
-  margin-top: 0;
-}
-.colour-palette-summary > p:last-child {
-  margin-bottom: 0;
-}
+.colour-painting-label { margin: 0; color: #302536; font: 400 14px/1.6 Arial, sans-serif; }
 .colour-shade-panel .shade-library {
-  margin: 20px 0 0;
+  margin: 0;
   padding: 18px;
   border: 1px solid #e4dcea;
   border-radius: 20px;

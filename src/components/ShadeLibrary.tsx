@@ -109,12 +109,16 @@ export function ShadeLibrary({
   onSelect,
   selectedHex = "",
   legacy = false,
+  savedCodes = [],
+  onToggleSave,
 }: {
   shades: ColorShade[];
   cards?: ShadeCard[];
   onSelect?: (hex: string, name: string) => void;
   selectedHex?: string;
   legacy?: boolean;
+  savedCodes?: string[];
+  onToggleSave?: (code: string) => void;
 }) {
   const [family, setFamily] = useState("All Shades"),
     [tone, setTone] = useState("All"),
@@ -165,14 +169,16 @@ export function ShadeLibrary({
               <strong>{s.name}</strong>
               <small>{s.code}</small>
             </button>
-            {legacy && (
+            {(legacy || onToggleSave) && (
               <button
                 className="shade-save"
                 type="button"
                 data-h={i}
                 aria-label={`Save ${s.name}`}
+                aria-pressed={savedCodes.includes(s.code)}
+                onClick={() => onToggleSave?.(s.code)}
               >
-                ♡
+                {savedCodes.includes(s.code) ? "♥" : "♡"}
               </button>
             )}
           </div>

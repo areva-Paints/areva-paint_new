@@ -7,11 +7,9 @@ import {
   Undo2, 
   Upload, 
   Sliders, 
-  Heart, 
   Printer, 
   Palette,
   MessageSquare,
-  FileCheck,
   Camera
 } from 'lucide-react';
 import { ColorShade, RoomPreset } from '../types';
@@ -485,8 +483,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
           
           {/* Room preview and painting controls */}
           <div className="colour-room-panel space-y-4">
-            <h3 className="colour-room-title">Try colours on a room</h3>
-            <p className="colour-room-description">Choose a room or upload a photo of your own home, pick a shade and see it on the walls. Drag the slider to compare, then print the result for your painter.</p>
+            <p className="colour-painting-label">Painting with: <strong>{currentShade.name} ({currentShade.code})</strong></p>
             
             {/* Room Selector Chips */}
             <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
@@ -665,7 +662,14 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => onRequestQuote(currentShade.name, currentShade.code)}
+                    className="p-2 text-stone-800 border border-stone-200 hover:bg-stone-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Request Quotation</span>
+                  </button>
                   <button
                     onClick={handlePrintSummary}
                     className="p-2 text-stone-800 border border-stone-200 hover:bg-stone-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
@@ -680,100 +684,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
           </div>
 
-          {/* Selected shade, palette filters and shade library */}
+          {/* Palette filters and shade library */}
           <div className="colour-shade-panel space-y-4">
             
-            {/* Active Color Preview & Spec Request Box */}
-            <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-4">
-              
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-14 h-14 rounded-xl border border-black/10 shadow-inner flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: currentShade.hex }}
-                  />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
-                        {currentShade.code}
-                      </span>
-                      <span className="text-xs text-stone-400">·</span>
-                      <span className="text-xs text-stone-500 font-medium">{currentShade.family}</span>
-                    </div>
-                    <h3 className="font-display text-lg font-bold text-stone-900 mt-0.5">{currentShade.name}</h3>
-                    <p className="text-xs text-stone-500 font-mono">{currentShade.hex.toUpperCase()}</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => toggleSaveColor(currentShade.code)}
-                  className={`p-2 rounded-xl border transition-colors ${
-                    savedColors.includes(currentShade.code)
-                      ? 'border-rose-200 bg-rose-50 text-rose-600'
-                      : 'border-stone-200 text-stone-400 hover:text-stone-700'
-                  }`}
-                  aria-label="Save shade to wishlist"
-                >
-                  <Heart className={`w-5 h-5 ${savedColors.includes(currentShade.code) ? 'fill-rose-500' : ''}`} />
-                </button>
-              </div>
-
-              {/* Complementary Shades ("Goes Well With") */}
-              <div className="pt-3 border-t border-stone-100">
-                <span className="text-xs font-semibold text-stone-600 block mb-2">
-                  Harmonious Complementary Pairings:
-                </span>
-                <div className="flex flex-wrap items-center gap-2">
-                  {currentShade.goesWellWith.map((pairHex) => {
-                    const match = COLOR_SHADES.find(
-                      (c) => c.hex.toLowerCase() === pairHex.toLowerCase()
-                    );
-                    const pairName = match ? match.name : pairHex;
-                    return (
-                      <button
-                        key={pairHex}
-                        onClick={() => onSelectColor(pairHex, pairName)}
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 hover:border-stone-900 bg-stone-50 hover:bg-white transition-all text-xs text-stone-700"
-                        title={`Try pairing: ${pairName}`}
-                      >
-                        <span
-                          className="w-3.5 h-3.5 rounded-full border border-black/15 shrink-0"
-                          style={{ backgroundColor: pairHex }}
-                        />
-                        <span className="truncate max-w-[90px]">{pairName}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Direct Technical Request Module */}
-              <div className="pt-3 border-t border-stone-100 space-y-3">
-                <p className="text-xs text-stone-600">
-                  Ready to specify <strong className="text-stone-900">{currentShade.name}</strong> for your villa, apartment, or commercial project?
-                </p>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => onRequestQuote(currentShade.name, currentShade.code)}
-                    className="py-2.5 px-3 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    <span>Request Quotation</span>
-                  </button>
-
-                  <button
-                    onClick={handlePrintSummary}
-                    className="py-2.5 px-3 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-stone-200"
-                  >
-                    <FileCheck className="w-3.5 h-3.5 text-stone-600" />
-                    <span>Print Spec Card</span>
-                  </button>
-                </div>
-              </div>
-
-            </div>
-            <ShadeLibrary shades={COLOR_SHADES} cards={siteContent?.shadeCards || []} onSelect={onSelectColor} selectedHex={selectedColorHex} />
+            <ShadeLibrary shades={COLOR_SHADES} cards={siteContent?.shadeCards || []} onSelect={onSelectColor} selectedHex={selectedColorHex} savedCodes={savedColors} onToggleSave={toggleSaveColor} />
           </div>
 
         </div>
