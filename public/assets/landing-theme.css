@@ -98,6 +98,63 @@ header .btn-line:hover { background: var(--brand-soft); }
 #products { background: #fff; }
 #visualizer { background: var(--brand-page); }
 #calculator, #services { background: var(--brand-soft); }
+/* Services: colourful panels above white copy, matching the supplied card reference. */
+#services #sv {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  align-items: stretch;
+}
+#services #sv > .box {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #e8e1eb;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 12px 32px #3610520d;
+}
+#services #sv > .box::before {
+  content: "";
+  display: block;
+  flex-shrink: 0;
+  height: clamp(150px, 14vw, 210px);
+  background: linear-gradient(120deg, #ffb327 0%, #ff328e 48%, #5414a0 100%);
+}
+#services #sv > .box:nth-child(2)::before {
+  background: linear-gradient(120deg, #06b7d8 0%, #285db7 48%, #7c21b6 100%);
+}
+#services #sv > .box:nth-child(3)::before {
+  background: linear-gradient(125deg, #a2d5d4 0%, #43a472 50%, #214e7e 100%);
+}
+#services #sv > .box:nth-child(4)::before {
+  background: linear-gradient(120deg, #ad8bd7 0%, #7c36b4 48%, #e465a0 100%);
+}
+#services #sv > .box > h3 {
+  margin: 24px 24px 12px;
+  color: #361052;
+  font: 700 22px/1.35 Arial, Helvetica, sans-serif;
+}
+#services #sv > .box > p {
+  flex: 1;
+  margin: 0 24px 24px;
+  color: #68636f;
+  font: 400 15px/1.75 Arial, Helvetica, sans-serif;
+}
+#services #sv > .box > .btn {
+  align-self: flex-start;
+  margin: 0 24px 26px;
+  padding: 11px 20px;
+}
+@media (max-width: 1100px) {
+  #services #sv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  #services #sv { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  #services #sv > .box::before { height: 170px; }
+}
 #about, #certs { background: #fff; }
 #portals, #contact { background: var(--brand-page); }
 .tile { background: var(--brand-page); color: var(--brand-deep); border: 1px solid #e6dfd1; box-shadow: none; }

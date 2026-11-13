@@ -136,6 +136,8 @@ The main **Products** navigation opens the **Interior Paints** landing banner by
 
 ## Public page backgrounds
 
+The public **Services** cards use decorative gradient panels above white text areas, matching the supplied warm pink/purple, cyan/blue/violet and mint/green/blue reference. All four services retain their descriptions and **Book this** actions. The scoped rules in `public/assets/landing-theme.css` use four, two or one column according to screen width; the existing booking form and WhatsApp handoff remain in place. No content or database changes are needed.
+
 Only the header banners of the visualizer, calculator, gallery, services, About, authorised dealers, documents and Contact use the purple → magenta → orange gradient in `public/assets/page-gradient.css`. Content below uses a light background with the existing cards and forms. Home, Products (including category photos and banners), the navigation header and admin portal keep their previous appearance. Both public renderers use the shared header treatment; no database migration is needed.
 
 ## Users, roles and logout
