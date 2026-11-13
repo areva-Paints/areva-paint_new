@@ -1,3 +1,4 @@
+import { COLOUR_FAMILIES, SHADE_TONES, filterShades } from './src/data/shadeFamilies';
 import { requireAdmin } from './src/admin/accounts';
 import 'dotenv/config';
 import { contentRouter, uploads } from './src/admin/routes';
@@ -154,22 +155,12 @@ app.get('/api/products/:id', (req: Request, res: Response) => {
 
 // 4. Architectural Shades Palette
 app.get('/api/shades', (req: Request, res: Response) => {
-  const { family } = req.query;
-  let shades = [...readContent().colours];
-  if (typeof req.query.search === 'string') {
-    const query = req.query.search.toLowerCase().trim();
-    shades = shades.filter(shade => shade.name.toLowerCase().includes(query) || shade.code.toLowerCase().includes(query));
-  }
-
-  if (family && family !== 'All') {
-    shades = shades.filter((s) => s.family === family);
-  }
-
-  res.json({
-    shades,
-    families: ['All', ...new Set(readContent().colours.map(c=>c.family))],
-    total: shades.length,
-  });
+  const all = readContent().colours;
+  const family = typeof req.query.family === 'string' && req.query.family !== 'All' ? req.query.family : 'All Shades';
+  const tone = typeof req.query.tone === 'string' ? req.query.tone : 'All';
+  const search = typeof req.query.search === 'string' ? req.query.search : '';
+  const shades = filterShades(all, family, tone, search);
+  res.json({ shades, families: ['All Shades', ...COLOUR_FAMILIES], tones: ['All', ...SHADE_TONES], toneCounts: Object.fromEntries(['All', ...SHADE_TONES].map(t => [t, filterShades(all, family, t, search).length])), total: shades.length });
 });
 
 // 5. Authorized Dealer Depots

@@ -1,3 +1,4 @@
+import type { ShadeFamily, ShadeTone } from '../data/shadeFamilies';
 import type { Product, ColorShade } from "../types";
 export interface LandingImage {
   id: string;
@@ -17,6 +18,8 @@ export interface Dealer {
   badges: string[];
 }
 export interface ShadeCard {
+  family?: ShadeFamily | "All Shades";
+  tones?: ShadeTone[];
   id: string;
   title: string;
   url: string;

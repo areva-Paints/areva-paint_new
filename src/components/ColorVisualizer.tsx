@@ -1,4 +1,5 @@
-import { ShadeCardDownloads } from './ShadeCardDownloads';
+import { ShadeLibrary } from './ShadeLibrary';
+
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
@@ -31,7 +32,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   onRequestQuote,
   onOpenLiveAR,
 }) => {
-  const COLOR_SHADES = useSiteContent()?.colours || DEFAULT_SHADES;
+  const siteContent = useSiteContent();
+  const COLOR_SHADES = siteContent?.colours || DEFAULT_SHADES;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const originalCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -41,8 +43,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   const [sliderPosition, setSliderPosition] = useState<number>(100); // 100 = full painted, 0 = full original
   const [tolerance, setTolerance] = useState<number>(24);
   const [history, setHistory] = useState<ImageData[]>([]);
-  const [colorFamily, setColorFamily] = useState<string>('All');
-  const [searchQuery, setSearchQuery] = useState<string>('');
   const [savedColors, setSavedColors] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('areva_saved_shades') || '["AR108", "AR112"]');
@@ -66,7 +66,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     code: 'CUSTOM',
     name: selectedColorName || 'Custom Shade',
     hex: selectedColorHex,
-    family: 'Warm Neutrals' as const,
+    family: 'Classic Neutrals' as const,
     goesWellWith: ['#f4efe6', '#26305a', '#b9bfcc'],
   };
 
@@ -392,14 +392,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       localStorage.setItem('areva_saved_shades', JSON.stringify(next));
     } catch {}
   };
-
-  const filteredShades = COLOR_SHADES.filter((shade) => {
-    const matchesFamily = colorFamily === 'All' || shade.family === colorFamily;
-    const matchesSearch =
-      shade.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      shade.code.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFamily && matchesSearch;
-  });
 
   const handlePrintSummary = () => {
     const canvas = canvasRef.current;
@@ -779,90 +771,15 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
             </div>
 
-            {/* Shade Library & Palette Explorer */}
-            <div className="bg-white p-5 rounded-2xl border border-stone-200 shadow-sm space-y-3">
-              
-              <div className="flex items-center justify-between">
-                <h4 className="font-display text-sm font-bold text-stone-900">Areva Architectural Palette</h4>
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] font-semibold text-stone-600 flex items-center gap-1 cursor-pointer bg-stone-100 hover:bg-stone-200 px-2 py-1 rounded-md">
-                    <span className="w-3 h-3 rounded-full border border-black/20" style={{ backgroundColor: selectedColorHex }} />
-                    <span>Custom Hex</span>
-                    <input
-                      type="color"
-                      value={selectedColorHex}
-                      onChange={(e) => onSelectColor(e.target.value, `Custom (${e.target.value})`)}
-                      className="sr-only"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Search & Family Filter Tabs */}
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  placeholder="Search shade name or code (e.g. Coral, AR108)..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-stone-50"
-                />
-
-                <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar text-xs">
-                  {['All', 'Warm Neutrals', 'Earthy & Clay', 'Coastal & Blues', 'Lush Greens', 'Vibrant Accents', 'Urban Greys'].map((fam) => (
-                    <button
-                      key={fam}
-                      onClick={() => setColorFamily(fam)}
-                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors whitespace-nowrap shrink-0 ${
-                        colorFamily === fam
-                          ? 'bg-stone-900 text-white'
-                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                      }`}
-                    >
-                      {fam}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Swatch Grid */}
-              <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-56 overflow-y-auto pr-1">
-                {filteredShades.map((shade) => {
-                  const isCurrent = currentShade.code === shade.code;
-                  return (
-                    <button
-                      key={shade.code}
-                      onClick={() => onSelectColor(shade.hex, shade.name)}
-                      className={`group flex flex-col items-center p-1.5 rounded-lg border text-center transition-all ${
-                        isCurrent
-                          ? 'border-stone-950 bg-stone-50 ring-2 ring-stone-950/20 shadow-xs'
-                          : 'border-stone-200 hover:border-stone-400 hover:bg-stone-50'
-                      }`}
-                      title={`${shade.name} (${shade.code})`}
-                    >
-                      <div
-                        className="w-full aspect-square rounded-md border border-black/10 shadow-xs transition-transform group-hover:scale-105"
-                        style={{ backgroundColor: shade.hex }}
-                      />
-                      <span className="text-[10px] font-bold text-stone-800 truncate w-full mt-1">
-                        {shade.code}
-                      </span>
-                      <span className="text-[9px] text-stone-500 truncate w-full leading-tight">
-                        {shade.name}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-
-            </div>
 
           </div>
 
         </div>
 
       </div>
-    <ShadeCardDownloads/>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <ShadeLibrary shades={COLOR_SHADES} cards={siteContent?.shadeCards || []} onSelect={onSelectColor} selectedHex={selectedColorHex} />
+    </div>
 </section>
   );
 };

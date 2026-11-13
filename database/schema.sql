@@ -92,9 +92,12 @@ CREATE TABLE colours (
   name varchar(150) NOT NULL CHECK (btrim(name) <> ''),
   hex varchar(7) NOT NULL CHECK (hex ~ '^#[0-9A-Fa-f]{6}$'),
   family varchar(30) NOT NULL CHECK (family IN (
+    'Oranges', 'Yellows', 'Greens', 'Blues', 'Violets', 'Earth Tones',
+    'Classic Neutrals', 'Dark Accents', 'Whispering Whites', 'Reds & Pinks',
     'Warm Neutrals', 'Earthy & Clay', 'Coastal & Blues',
     'Lush Greens', 'Vibrant Accents', 'Urban Greys'
   )),
+  tones text[] NOT NULL DEFAULT '{}' CHECK (tones <@ ARRAY['Cool', 'Dark', 'Light', 'Pastel', 'Vibrant', 'Warm']::text[] AND cardinality(tones) <= 6 AND array_position(tones, NULL) IS NULL),
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0)
 );
 CREATE UNIQUE INDEX colours_code_case_insensitive_idx ON colours(upper(btrim(code)));
@@ -112,6 +115,9 @@ CREATE TABLE shade_cards (
   id varchar(100) PRIMARY KEY,
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
   pdf_url text NOT NULL CHECK (btrim(pdf_url) <> ''),
+  family varchar(30) NOT NULL DEFAULT 'All Shades' CHECK (family IN ('All Shades', 'Oranges', 'Yellows', 'Greens', 'Blues', 'Violets', 'Earth Tones',
+    'Classic Neutrals', 'Dark Accents', 'Whispering Whites', 'Reds & Pinks')),
+  tones text[] NOT NULL DEFAULT '{}' CHECK (tones <@ ARRAY['Cool', 'Dark', 'Light', 'Pastel', 'Vibrant', 'Warm']::text[] AND cardinality(tones) <= 6 AND array_position(tones, NULL) IS NULL),
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0)
 );
 

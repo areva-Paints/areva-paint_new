@@ -223,10 +223,11 @@ test("admin authentication, uploads, validation, public integration and persiste
           code: "AR901",
           hex: "#B3CCD5",
           family: "Coastal & Blues",
+          tones: ["Cool", "Light"],
           goesWellWith: [],
         },
       ],
-      shadeCards: [{ id: "test-pdf", title: "Shade card", url: pdfUrl }],
+      shadeCards: [{ id: "test-pdf", title: "Shade card", url: pdfUrl, family: "Blues", tones: ["Cool"] }],
       products: [...original.products, product],
       landingImages: [
         {
@@ -274,6 +275,12 @@ test("admin authentication, uploads, validation, public integration and persiste
       (await req("/api/admin/content", "PUT", invalidHex)).status,
       400,
     );
+    for (const tones of [["Neon"], ["Warm", "Warm"], "Warm"]) {
+      const invalidTones = structuredClone(edited); invalidTones.colours[0].tones = tones;
+      assert.equal((await req("/api/admin/content", "PUT", invalidTones)).status, 400);
+    }
+    const invalidPdfFamily = structuredClone(edited); invalidPdfFamily.shadeCards[0].family = "Unknown";
+    assert.equal((await req("/api/admin/content", "PUT", invalidPdfFamily)).status, 400);
     const noColours = structuredClone(edited);
     noColours.colours = [];
     assert.equal(
@@ -307,6 +314,11 @@ test("admin authentication, uploads, validation, public integration and persiste
     const palette = await (await req("/api/shades?search=ar901")).json();
     assert.equal(palette.total, 1);
     assert.equal(palette.shades[0].hex, "#B3CCD5");
+    assert.equal(palette.shades[0].family, "Blues");
+    assert.deepEqual(palette.shades[0].tones, ["Cool", "Light"]);
+    const filteredPalette = await (await req("/api/shades?search=AR901&family=Blues&tone=Cool")).json();
+    assert.equal(filteredPalette.total, 1); assert.equal(filteredPalette.toneCounts.Light, 1);
+    assert.equal((await (await req("/api/shades?search=AR901&family=Yellows")).json()).total, 0);
     const nameSearch = await (
       await req("/api/shades?search=coastal%20mist")
     ).json();
@@ -352,10 +364,14 @@ test("admin authentication, uploads, validation, public integration and persiste
     assert.equal(restored.revision, 1);
     assert.equal(restored.colours.at(-1).code, "AR901");
     assert.equal(restored.shadeCards[0].url, pdfUrl);
+    assert.equal(restored.shadeCards[0].family, "Blues");
+    assert.deepEqual(restored.shadeCards[0].tones, ["Cool"]);
     assert.equal(restored.products.at(-1).id, "test-product");
     const imageOnly = {
       ...restored,
       landingImages: [{ id: "image-only", image: url }],
+      colours: restored.colours.map(({ tones, ...shade }) => shade),
+      shadeCards: restored.shadeCards.map(({ family, tones, ...card }) => card),
     };
     const imageOnlyResponse = await req("/api/admin/content", "PUT", imageOnly);
     assert.equal(
@@ -364,6 +380,9 @@ test("admin authentication, uploads, validation, public integration and persiste
       "Image-only landing slides must not require metadata",
     );
     const imageOnlySaved = await imageOnlyResponse.json();
+    assert.deepEqual(imageOnlySaved.colours.at(-1).tones, ["Cool", "Light"], "Older clients must preserve saved shade tone tags");
+    assert.equal(imageOnlySaved.shadeCards[0].family, "Blues");
+    assert.deepEqual(imageOnlySaved.shadeCards[0].tones, ["Cool"]);
     assert.equal(imageOnlySaved.landingImages[0].label, "");
     assert.equal(imageOnlySaved.landingImages[0].roomType, "");
     assert.equal(imageOnlySaved.landingImages[0].recommendedProduct, "");

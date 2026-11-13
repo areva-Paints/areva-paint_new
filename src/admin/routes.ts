@@ -1,3 +1,4 @@
+import { COLOUR_FAMILIES, LEGACY_SHADE_FAMILIES, SHADE_TONES, normalizeShade } from '../data/shadeFamilies';
 import {
   adminLogin,
   adminLogout,
@@ -216,7 +217,7 @@ function validate(c: SiteContent) {
         "Each ad needs a title, Digital or Social media channel, and an image or HTTPS video/post link. Description is optional.",
       );
   }
-  const families = new Set(COLOR_SHADES.map((c) => c.family));
+  const families = new Set<string>([...COLOUR_FAMILIES, ...LEGACY_SHADE_FAMILIES]);
   const codes = new Set<string>();
   for (const colour of c.colours) {
     if (
@@ -225,12 +226,13 @@ function validate(c: SiteContent) {
       !/^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$/.test(colour.code) ||
       !/^#[0-9A-Fa-f]{6}$/.test(colour.hex) ||
       !families.has(colour.family) ||
+      !validTones(colour.tones) ||
       !Array.isArray(colour.goesWellWith) ||
       colour.goesWellWith.length > 20 ||
       !colour.goesWellWith.every((v) => /^#[0-9A-Fa-f]{6}$/.test(v))
     )
       throw Error(
-        "Each colour needs a name, valid code, six-digit HEX value and colour family.",
+        "Each colour needs a name, valid code, six-digit HEX value, supported colour family and valid tone tags.",
       );
     const code = colour.code.trim().toUpperCase();
     if (codes.has(code))
@@ -242,11 +244,13 @@ function validate(c: SiteContent) {
   for (const card of c.shadeCards)
     if (
       !nonempty(card.title, 150) ||
+      (card.family !== undefined && card.family !== "All Shades" && !COLOUR_FAMILIES.includes(card.family)) ||
+      !validTones(card.tones) ||
       typeof card.url !== "string" ||
       !/^\/uploads\/[a-f0-9-]+\.pdf$/.test(card.url) ||
       !fs.existsSync(path.join(dataDir, "uploads", path.basename(card.url)))
     )
-      throw Error("Shade cards need a title and an uploaded PDF.");
+      throw Error("Shade cards need a title, an uploaded PDF and valid family/tone tags.");
   if (!ids(c.products) || !ids(c.dealers) || !ids(c.landingImages))
     throw Error("Each entry needs a unique identifier.");
   if (!c.products.some((p) => p.coverageSqFtPerLiter > 0))
@@ -364,6 +368,9 @@ function validate(c: SiteContent) {
       );
   }
 }
+function validTones(tones: unknown): boolean {
+  return tones === undefined || (Array.isArray(tones) && tones.length <= SHADE_TONES.length && new Set(tones).size === tones.length && tones.every(t => SHADE_TONES.includes(t)));
+}
 contentRouter.put("/admin/content", (req, res) => {
   try {
     const current = readContent(),
@@ -373,6 +380,12 @@ contentRouter.put("/admin/content", (req, res) => {
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);
+    const previousShades = new Map(current.colours.map(shade => [shade.code.toUpperCase(), shade]));
+    c.colours = c.colours.map(shade => normalizeShade({
+      ...shade,
+      tones: shade.tones ?? previousShades.get(shade.code.toUpperCase())?.tones,
+    }));
+    c.shadeCards = c.shadeCards.map(card => { const old = current.shadeCards.find(previous => previous.id === card.id); return { ...card, family: card.family ?? old?.family ?? "All Shades", tones: card.tones ?? old?.tones ?? [] }; });
     if (c.revision !== current.revision)
       return res.status(409).json({
         error:

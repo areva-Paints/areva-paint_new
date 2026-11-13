@@ -112,9 +112,11 @@ The current recommended-product field accepts free text, so it is deliberately n
 
 | Table | Columns |
 | --- | --- |
-| colours | **code** varchar(40) PK; name varchar(150); hex varchar(7); family varchar(30); position integer |
+| colours | **code** varchar(40) PK; name varchar(150); hex varchar(7); family varchar(30); tones text[]; position integer |
 | colour_pairings | **colour_code** varchar(40) FK → colours.code; **position** smallint; matching_hex varchar(7). PK = (colour_code, position) |
-| shade_cards | **id** varchar(100) PK; title varchar(150); pdf_url text; position integer |
+| shade_cards | **id** varchar(100) PK; title varchar(150); pdf_url text; family varchar(30), default All Shades; tones text[]; position integer |
+
+The palette uses ten families (Oranges, Yellows, Greens, Blues, Violets, Earth Tones, Classic Neutrals, Dark Accents, Whispering Whites, Reds & Pinks). `tones` stores zero or more of Cool, Dark, Light, Pastel, Vibrant, Warm; filter counts overlap. PDFs can use All Shades for a general document. Both arrays default to empty. Old family values remain accepted for migration; the application normalizes them from their saved HEX, preserving names/codes/HEX and allowing admin corrections. Existing installations need `database/migrations/002-shade-families-and-tones.sql` once (private `areva` or ordinary `public`; fresh setup already includes it). Map JSON `colours[].tones`, `shadeCards[].family` and `shadeCards[].tones` in a future SQL adapter.
 
 Colour codes are unique ignoring case. Keep existing code strings during migration; subsequent lookups should use the same case-insensitive normalization as the API. `goesWellWith[]` contains HEX values, so pairing rows do not require another colour to exist in the library.
 

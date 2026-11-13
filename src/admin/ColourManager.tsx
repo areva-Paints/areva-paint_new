@@ -1,3 +1,6 @@
+import { ShadeFilters } from '../components/ShadeLibrary';
+import { ShadeMetadataFields } from './ShadeMetadataFields';
+import { filterShades, type ShadeFamily, type ShadeTone } from '../data/shadeFamilies';
 import { AdminUpdated } from "./ActivityHistory";
 import React, { useId, useRef, useState } from "react";
 import {
@@ -13,12 +16,13 @@ import {
 } from "lucide-react";
 import type { ColorShade } from "../types";
 import type { SiteContent } from "./content-types";
-import { COLOUR_FAMILIES, parseColourRows } from "./colour-import";
+import { parseColourRows } from "./colour-import";
 const blank = (): ColorShade => ({
   name: "",
   code: "",
   hex: "#6C4CF5",
-  family: "Warm Neutrals",
+  family: "Classic Neutrals",
+  tones: [],
   goesWellWith: [],
 });
 export function ColourManager({
@@ -30,6 +34,9 @@ export function ColourManager({
   onChange: (c: SiteContent) => void;
   onBusy: (busy: boolean) => void;
 }) {
+  const [family, setFamily] = useState("All Shades"), [tone, setTone] = useState("All"),
+    [uploadFamily, setUploadFamily] = useState<ShadeFamily | "All Shades">("All Shades"), [uploadTones, setUploadTones] = useState<ShadeTone[]>([]),
+    [importFamily, setImportFamily] = useState<ShadeFamily>("Classic Neutrals"), [importTones, setImportTones] = useState<ShadeTone[]>([]);
   const [query, setQuery] = useState(""),
     [editing, setEditing] = useState<ColorShade | null>(null),
     [original, setOriginal] = useState<string | null>(null),
@@ -43,7 +50,7 @@ export function ColourManager({
     latest = useRef(content);
   latest.current = content;
   function open(colour?: ColorShade) {
-    setEditing(colour ? { ...colour } : blank());
+    setEditing(colour ? { ...colour, tones: [...(colour.tones || [])] } : { ...blank(), family: family === "All Shades" ? importFamily : family as ShadeFamily });
     setOriginal(colour?.code ?? null);
     setError("");
     dialog.current?.showModal();
@@ -82,9 +89,9 @@ export function ColourManager({
     });
     close();
   }
-  function preview(value = text) {
+  function preview(value = text, selectedFamily = importFamily, selectedTones = importTones) {
     try {
-      const result = parseColourRows(value);
+      const result = parseColourRows(value, { family: selectedFamily, tones: selectedTones });
       setCandidates(result.colours);
       setNotice(
         `${result.colours.length} colour rows found${result.rejected ? `; ${result.rejected} lines could not be read` : ""}. Review before adding.`,
@@ -131,6 +138,9 @@ export function ColourManager({
       setError("Keep up to 50 PDF shade cards.");
       return;
     }
+    const pdfFamily = uploadFamily, pdfTones = [...uploadTones];
+    const rowFamily = pdfFamily === "All Shades" ? importFamily : pdfFamily;
+    setImportFamily(rowFamily); setImportTones(pdfTones);
     setBusy(true);
     onBusy(true);
     setError("");
@@ -163,6 +173,8 @@ export function ColourManager({
             title:
               file.name.replace(/\.pdf$/i, "").slice(0, 150) || "Shade card",
             url: result.url,
+            family: pdfFamily,
+            tones: pdfTones,
           },
         ],
       });
@@ -173,7 +185,7 @@ export function ColourManager({
         const { readPdfText } = await import("./pdf-import");
         const value = await readPdfText(file);
         setText(value.slice(0, 250000));
-        preview(value.slice(0, 250000));
+        preview(value.slice(0, 250000), rowFamily, pdfTones);
         if (value.length > 250000)
           setNotice(
             "PDF uploaded. Preview includes only the first 250,000 text characters; split larger shade cards to import the rest. Review the detected rows before adding.",
@@ -194,9 +206,7 @@ export function ColourManager({
       onBusy(false);
     }
   }
-  const filtered = content.colours.filter((c) =>
-    `${c.name} ${c.code}`.toLowerCase().includes(query.toLowerCase().trim()),
-  );
+  const filtered = filterShades(content.colours, family, tone, query);
   return (
     <div className="adm-colour-manager">
       <div className="adm-panel">
@@ -217,17 +227,7 @@ export function ColourManager({
             Add colour
           </button>
         </div>
-        <div className="adm-colour-tools">
-          <label className="adm-search">
-            <Search size={17} />
-            <input
-              aria-label="Search colour by name or code"
-              placeholder="Search colour by name or code"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </label>
-        </div>
+        <div className="adm-colour-tools"><ShadeFilters shades={content.colours} family={family} tone={tone} query={query} onFamily={value => { setFamily(value); setTone("All"); }} onTone={setTone} onQuery={setQuery} /></div>
         <div className="adm-colour-grid">
           {filtered.map((c) => (
             <article className="adm-colour-card" key={c.code}>
@@ -241,7 +241,7 @@ export function ColourManager({
                 <small>
                   {c.code} · {c.hex}
                 </small>
-                <small>{c.family}</small>
+                <small>{c.family}{c.tones?.length ? ` · ${c.tones.join(", ")}` : ""}</small>
                 <div className="adm-row-actions">
                   <button
                     disabled={busy}
@@ -299,6 +299,7 @@ export function ColourManager({
           </label>
         </div>
         <div className="adm-colour-tools">
+          <ShadeMetadataFields family={uploadFamily} tones={uploadTones} allowAll label="PDF upload" disabled={busy} onChange={(f, t) => { setUploadFamily(f); setUploadTones(t); }} />
           <p className="adm-muted">
             PDF up to 5 MB. Text import supports up to 50 pages and requires a
             name, colour code and explicit HEX value per row. Scanned pages and
@@ -322,6 +323,7 @@ export function ColourManager({
                   })
                 }
               />
+              <ShadeMetadataFields family={card.family || "All Shades"} tones={card.tones} allowAll label={card.title} disabled={busy} onChange={(family, tones) => onChange({ ...content, shadeCards: content.shadeCards.map(c => c.id === card.id ? { ...c, family, tones } : c) })} />
               <AdminUpdated section="shadeCards" id={card.id} />
               <a href={card.url} download aria-label={"Download " + card.title}>
                 <Download size={17} />
@@ -343,6 +345,7 @@ export function ColourManager({
               </button>
             </div>
           ))}
+          <ShadeMetadataFields family={importFamily} tones={importTones} label="Import defaults" disabled={busy} onChange={(f, t) => { setImportFamily(f as ShadeFamily); setImportTones(t); setCandidates([]); }} />
           <label className="adm-field">
             <span>Colour rows from PDF or pasted text</span>
             <textarea
@@ -359,8 +362,7 @@ export function ColourManager({
               }
             />
             <small>
-              One colour per line: Name | Code | #HEX. Commas, tabs or spaces
-              are also supported.
+              One colour per line: Name | Code | #HEX. Optional columns: | Family | Warm+Light. Rows without metadata use the import defaults above.
             </small>
           </label>
           <button
@@ -409,6 +411,7 @@ export function ColourManager({
                       }
                     />
                     <code>{c.hex}</code>
+                    <ShadeMetadataFields family={c.family} tones={c.tones} label={`Import row ${i + 1}`} onChange={(family, tones) => setCandidates(candidates.map((x, n) => n === i ? { ...x, family: family as ShadeFamily, tones } : x))} />
                     <button
                       aria-label={`Skip import row ${i + 1}`}
                       onClick={() =>
@@ -526,24 +529,7 @@ export function ColourManager({
                   />
                 </label>
               </div>
-              <label className="adm-field" htmlFor={prefix + "family"}>
-                Colour family
-                <select
-                  aria-label="Colour family"
-                  id={prefix + "family"}
-                  value={editing.family}
-                  onChange={(e) =>
-                    setEditing({
-                      ...editing,
-                      family: e.target.value as ColorShade["family"],
-                    })
-                  }
-                >
-                  {COLOUR_FAMILIES.map((f) => (
-                    <option key={f}>{f}</option>
-                  ))}
-                </select>
-              </label>
+              <ShadeMetadataFields family={editing.family} tones={editing.tones} onChange={(family, tones) => setEditing({ ...editing, family: family as ShadeFamily, tones })} />
               {error && (
                 <p role="alert" className="adm-error">
                   {error}

@@ -1,3 +1,4 @@
+import type { ShadeFamily, ShadeTone } from '../data/shadeFamilies';
 export interface Product {
   id: string;
   name: string;
@@ -39,7 +40,8 @@ export interface ColorShade {
   code: string;
   name: string;
   hex: string;
-  family: 'Warm Neutrals' | 'Earthy & Clay' | 'Coastal & Blues' | 'Lush Greens' | 'Vibrant Accents' | 'Urban Greys';
+  family: ShadeFamily;
+  tones?: ShadeTone[];
   goesWellWith: string[]; // array of hex codes
 }
 

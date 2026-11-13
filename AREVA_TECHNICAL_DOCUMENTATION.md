@@ -163,7 +163,7 @@ The main Products link (`#products`) opens Interior Paints by default. Home reta
 | Catalogue | `ProductCatalog.tsx`, reference layout | Eight categories, product descriptions, search/sort in React, product details and enquiry prefills |
 | Product badge | `ProductFlipBadge.tsx`, public reference script | Round AREVA/name face and saved photo face alternate every 5 seconds; click switches immediately; reduced-motion and hidden-tab handling |
 | Product details/photo | `ProductDetailModal.tsx`, `ProductImageZoom.tsx` | Technical specifications, product image inspection and enquiry actions |
-| Colour library | `ColorTicker.tsx`, `ColorVisualizer.tsx` | Saved/admin-managed names, codes, HEX values and family filtering |
+| Colour library | `ColorTicker.tsx`, `ColorVisualizer.tsx` | Saved/admin-managed names, codes, HEX, ten families and six overlapping tone filters through shared ShadeLibrary |
 | Room visualizer | `ColorVisualizer.tsx` and public template | Room presets or uploaded photo, canvas recolouring, tolerance controls, undo/reset, comparisons, saved shades and print/export-related actions |
 | Camera visualizer | `LiveCameraARVisualizer.tsx` and public template | Camera permission, tap/sample colour processing, finish/opacity/sensitivity controls, freeze frame and fallback simulation |
 | Calculator | `PaintCalculator.tsx`, public template | Wall/floor area, coverage, coats, safety allowance and estimates |
@@ -171,7 +171,7 @@ The main Products link (`#products`) opens Interior Paints by default. Home reta
 | Ads Gallery | `GalleryAds.tsx`, same public gallery runtime | Projects/Ads tabs, Digital/Social media filters, image previews and external HTTPS campaign links |
 | Dealer search | `DealersAndServices.tsx`, public template | Saved dealer names, location/PIN filtering, contact and WhatsApp actions |
 | Enquiry | `EnquiryModal.tsx`, public forms | React POST submission and WhatsApp handoff; public HTML forms use client-side lead/WhatsApp interactions |
-| Shade-card download | `ShadeCardDownloads.tsx` | Published PDF reference downloads |
+| Shade-card download | `ShadeLibrary.tsx` | Published PDF downloads filtered by family/tone |
 | Navigation/footer | `Navbar.tsx`, `Footer.tsx`, `GrandCtaBanner.tsx` | Section navigation, calls to action and modal launch controls |
 | Colour game | `ColorSplashArcade.tsx` | Interactive browser game using timers, animation and client state |
 | Source download | `ProjectDownloadModal.tsx` | Prebuilt ZIP downloads or client-side ZIP creation from source manifest |
@@ -196,7 +196,7 @@ The admin has seven sidebar sections:
 | Landing images | Image, optional caption/subtitle/recommended product text, order and removal |
 | Products | Name, category, photo, descriptions, technical specs, pack sizes, coverage, units, area basis, coats and featured state |
 | Authorised dealers | Business/contact/location/PIN details and service badges |
-| Colours & shade cards | Individual shades, colour-code search, HEX/family values, PDF reference uploads and reviewed text imports |
+| Colours & shade cards | Individual shades, name/code search, ten families, six tone tags, classified PDF uploads and reviewed text imports |
 | Gallery | Projects and Ads subtabs; album photos or Digital/Social media creative content |
 
 The former Paint coverage tab was removed because it edited the same products. **Products → Edit is the single place for coverage settings.**
@@ -206,7 +206,7 @@ The former Paint coverage tab was removed because it edited the same products. *
 - `AdminPage.tsx`: authentication UI, navigation, product/dealer/landing editors, workspace and overall save.
 - `ProjectGalleryManager.tsx`: project albums, multi-image uploads, cover/order and captions.
 - `GalleryAdsManager.tsx`: ad title/channel, image and/or campaign link, optional description, search and filter.
-- `ColourManager.tsx`: manual colours, shade cards and import review.
+- `ColourManager.tsx`, `ShadeMetadataFields.tsx`: manual colours, family/tone tags, classified shade cards and import review.
 - `ActivityHistory.tsx`, `activity.ts`, `activity-types.ts`: saved-event detection, private history and grouped tab definitions.
 - `UsersManager.tsx`, `accounts.ts`, `user-types.ts`: account administration, password hashing, role-aware sessions and logout.
 - `ImagePreview.tsx`: previews, image-load checks and unavailable states.
@@ -229,7 +229,7 @@ Deleted list entries are removed from content on save. Uploaded files are not au
 
 ### PDF import behaviour
 
-PDF upload stores a reference file. PDF.js extracts selectable text for a preview. Import rows must explicitly provide a name, code and HEX value; the importer does not derive accurate HEX values from scanned/printed colour photographs. Imported rows are reviewed before saving. Duplicate existing codes are skipped rather than silently overwritten. The reviewed file remains downloadable even when its text cannot be imported.
+PDF upload stores a reference file. PDF.js extracts selectable text for a preview. Import rows must explicitly provide a name, code and HEX value; the importer does not derive accurate HEX values from scanned/printed colour photographs. Imported rows are reviewed before saving. Duplicate existing codes are skipped rather than silently overwritten. The reviewed file remains downloadable even when its text cannot be imported. Select a family/tone default before uploading; review or override metadata for each detected row. Optional import columns support `Name | Code | #HEX | Family | Warm+Light`. Public downloads use the same family/tone metadata; general PDFs appear across families. `src/data/shadeFamilies.ts` defines the shared taxonomy and compatibility grouping for old records; `ShadeLibrary.tsx` and `public/assets/shade-library.css` supply the public/admin filter interface. New colours require explicit HEX values and are not inferred from the reference screenshots.
 
 ## 5. Backend services and API reference
 
@@ -243,7 +243,7 @@ PDF upload stores a reference file. PDF.js extracts selectable text for a previe
 | GET | `/api/content` | Complete shared public content including revision |
 | GET | `/api/products` | Optional category and search filters |
 | GET | `/api/products/:id` | One product, or 404 |
-| GET | `/api/shades` | Optional family and name/code search |
+| GET | `/api/shades` | Optional family, tone and name/code search; returns family list and tone counts |
 | GET | `/api/dealers` | Optional state filter |
 | POST | `/api/calculator/estimate` | Dimensions, doors/windows, coats and product ID; returns estimated material and packaging |
 | POST | `/api/enquiries` | Topic, full name, phone, city, optional product/shade/message; adds an in-memory ticket |
@@ -610,9 +610,11 @@ The current recommended-product field accepts free text, so it is deliberately n
 
 | Table | Columns |
 | --- | --- |
-| colours | **code** varchar(40) PK; name varchar(150); hex varchar(7); family varchar(30); position integer |
+| colours | **code** varchar(40) PK; name varchar(150); hex varchar(7); family varchar(30); tones text[]; position integer |
 | colour_pairings | **colour_code** varchar(40) FK → colours.code; **position** smallint; matching_hex varchar(7). PK = (colour_code, position) |
-| shade_cards | **id** varchar(100) PK; title varchar(150); pdf_url text; position integer |
+| shade_cards | **id** varchar(100) PK; title varchar(150); pdf_url text; family varchar(30), default All Shades; tones text[]; position integer |
+
+The palette uses ten families (Oranges, Yellows, Greens, Blues, Violets, Earth Tones, Classic Neutrals, Dark Accents, Whispering Whites, Reds & Pinks). `tones` stores zero or more of Cool, Dark, Light, Pastel, Vibrant, Warm; filter counts overlap. PDFs can use All Shades for a general document. Both arrays default to empty. Old family values remain accepted for migration; the application normalizes them from their saved HEX, preserving names/codes/HEX and allowing admin corrections. Existing installations need `database/migrations/002-shade-families-and-tones.sql` once (private `areva` or ordinary `public`; fresh setup already includes it). Map JSON `colours[].tones`, `shadeCards[].family` and `shadeCards[].tones` in a future SQL adapter.
 
 Colour codes are unique ignoring case. Keep existing code strings during migration; subsequent lookups should use the same case-insensitive normalization as the API. `goesWellWith[]` contains HEX values, so pairing rows do not require another colour to exist in the library.
 

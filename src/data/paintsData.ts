@@ -1,3 +1,4 @@
+import { normalizeShade } from './shadeFamilies';
 import { Category, Product, ColorShade, RoomPreset } from '../types';
 
 export const CATEGORIES: Category[] = [
@@ -417,7 +418,7 @@ export const COLOR_SHADES: ColorShade[] = [
   { code: 'AR122', name: 'Arabian Sea', hex: '#16526d', family: 'Coastal & Blues', goesWellWith: ['#ffd2b3', '#f4efe6', '#ffb800'] },
   { code: 'AR123', name: 'Charcoal Basalt', hex: '#373a40', family: 'Urban Greys', goesWellWith: ['#f4efe6', '#edd6b5', '#ff6b5e'] },
   { code: 'AR124', name: 'Spiced Amber', hex: '#df8931', family: 'Earthy & Clay', goesWellWith: ['#26305a', '#f4efe6', '#587b68'] },
-];
+].map(normalizeShade);
 
 export const ROOM_PRESETS: RoomPreset[] = [
   {

@@ -1,3 +1,4 @@
+import { normalizeShade } from '../data/shadeFamilies';
 import type { StoredUser } from "./user-types";
 import fs from "node:fs";
 import path from "node:path";
@@ -78,8 +79,8 @@ export function readContent(): SiteContent {
     ...content,
     galleryProjects: content.galleryProjects ?? [],
     galleryAds: content.galleryAds ?? [],
-    colours: content.colours ?? COLOR_SHADES,
-    shadeCards: content.shadeCards ?? [],
+    colours: (content.colours ?? COLOR_SHADES).map(normalizeShade),
+    shadeCards: (content.shadeCards ?? []).map(card => ({ ...card, family: card.family ?? "All Shades", tones: card.tones ?? [] })),
   };
 }
 export function readActivity(): ActivityStore {
