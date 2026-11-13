@@ -41,7 +41,7 @@ Landing images, PDF shade cards and ads are independent entries. `site_state` ho
 | accent_color | varchar(7) | Six-digit HEX colour |
 | position | integer | Preserve category order, starting at 0 |
 
-The latest illustrated cards and matching category-header photographs use `src/data/categoryArt.ts`, `CategorySceneCard.tsx` and `public/assets/category-scenes.css`. Their decorative image/ink/paper/tint values remain code configuration. No extra image table, duplicated product image or change to these category columns is needed. Category `accent_color` still maps to `CATEGORIES[].accentColor`; it is not the new card's entire visual palette. The brand hero is also a static asset/component; uploaded landing campaigns remain in `landing_images`.
+The illustrated home cards use `src/data/categoryArt.ts`, `CategorySceneCard.tsx` and `public/assets/category-scenes.css`. After selecting a category, a separate full-width landing banner uses `src/data/categoryLandings.ts`, `CategoryLandingHero.tsx`, `public/assets/category-landings.css` and its own local `landing-*.webp` scene. These decorative images, palette values, live headings and range-feature labels remain code configuration. No extra image table, duplicated product image or change to these category columns is needed. Category `accent_color` still maps to `CATEGORIES[].accentColor`; it is not the new card's entire visual palette. The brand hero is also a static asset/component; uploaded landing campaigns remain in `landing_images`.
 
 ### 2. products — one row per product
 

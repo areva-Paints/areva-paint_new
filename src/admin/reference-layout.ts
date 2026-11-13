@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DreamsHero } from "../components/DreamsHero";
 import { CategorySceneCard } from "../components/CategorySceneCard";
-import { CATEGORY_ART } from "../data/categoryArt";
+import { CategoryLandingHero } from "../components/CategoryLandingHero";
 import type { SiteContent } from "./content-types";
 import { CATEGORIES } from "../data/paintsData";
 
@@ -19,7 +19,7 @@ const escapeHtml = (value: string) =>
 export function referenceLayout(html: string, content: SiteContent) {
   html = html.replace(
     "</head>",
-    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"></head>',
+    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"></head>',
   );
   const logo =
     html.match(/<a class="logo"[^>]*>(<img[^>]+>)<\/a>/)?.[1] || "Areva Paints";
@@ -89,7 +89,7 @@ export function referenceLayout(html: string, content: SiteContent) {
     html = html.replace(
       new RegExp(`(<section id="${id}"[^>]*>)`),
       () =>
-        `<section id="${id}" data-ref-view="${id}"><div class="ref-page-banner">${id === "products" ? '<img class="category-banner-art" data-ref-category-art hidden alt="" decoding="async">' : ""}<div class="wrap"><span class="ref-eyebrow">HOME / ${eyebrow.toUpperCase()}</span><h1>${title}</h1><p>${copy}</p></div></div>`,
+        `<section id="${id}" data-ref-view="${id}">${id === "products" ? "<div data-ref-category-hero hidden></div>" : ""}<div class="ref-page-banner"><div class="wrap"><span class="ref-eyebrow">HOME / ${eyebrow.toUpperCase()}</span><h1>${title}</h1><p>${copy}</p></div></div>`,
     );
   }
   const specs = content.products.map((p) => {
@@ -142,9 +142,11 @@ export function referenceLayout(html: string, content: SiteContent) {
       id: category.id,
       name: category.name,
       description: category.description,
-      image: CATEGORY_ART[category.id].image,
+      hero: renderToStaticMarkup(
+        createElement(CategoryLandingHero, { category }),
+      ),
     })),
-  );
+  ).replace(/</g, "\\u003c");
   html = html.replace(
     /function pick\(i, scroll\)\{[^\n]*\}/,
     () => `window.arevaProductCategories=${categoryData};

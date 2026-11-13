@@ -116,7 +116,9 @@ The same persistent disk/backup requirements apply. Keep the entire content file
 
 ## Product category illustrations
 
-The public product-category hub uses eight illustrated range cards with live text, individual colour palettes and local photographs. The same decorative photograph appears in each range header. These are category illustrations configured in `src/data/categoryArt.ts`; they do not replace the individual product photographs managed in **Products**. Both the main HTML site and React Studio share this card design and retain existing product navigation, specifications, enquiries and the five-second product-photo flip.
+The public product-category hub uses eight illustrated range cards configured in `src/data/categoryArt.ts`. Each selected range now opens a separate full-width photo banner with a white-and-gold heading, four descriptive feature icons, **Explore Products** (scrolls/focuses that range) and **All categories** (returns to the hub). The banners use `src/data/categoryLandings.ts`, shared `CategoryLandingHero.tsx` markup and local `landing-*.webp` scenes. Both renderers share the design, with a stacked mobile composition. These decorative category illustrations do not replace individual product photographs managed in **Products**; specifications, enquiries and the five-second product-photo flip remain in place. No database or Supabase change is needed for these banners.
+
+The selected product range is highlighted in purple in the category links above its landing banner. All eight ranges are available there; selecting another changes its banner and product list. On narrow screens, the links scroll horizontally and automatically reveal the selected range. The main HTML site's category links also preserve direct URLs and browser Back/Forward behaviour. React Studio uses the same navigation and selected styling with its existing state-based category selection.
 
 ## Users, roles and logout
 

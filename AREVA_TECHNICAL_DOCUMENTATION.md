@@ -132,12 +132,13 @@ This refresh mechanism is event/focus based. It is not WebSocket or server-push 
 | `src/reference-theme.css` | Corporate theme for the React site |
 | `src/product-category.css` | React category cards, product rows and circular badges |
 | `src/components/CategorySceneCard.tsx`, `src/data/categoryArt.ts` | Shared illustrated category cards and their eight static image/colour palettes |
-| `public/assets/category-scenes.css` | Shared curved gold panels, responsive cards and category-header imagery |
+| `public/assets/category-scenes.css` | Shared curved gold panels and responsive home-category cards |
+| `src/components/CategoryLandingHero.tsx`, `src/data/categoryLandings.ts`, `public/assets/category-landings.css` | Selected-category full-width banners, feature labels, new scene assets and navigation controls |
 | `src/components/DreamsHero.tsx`, `public/assets/dreams-hero.css` | Brand hero, wordmark panel and static campaign artwork |
 | `src/index.css` | Tailwind import, global fonts, custom utilities and animations |
 | `index.html` | Root HTML, page metadata, Google Font links and app mount point |
 
-The current home has one **Solutions for every surface** category section. Its eight illustrated cards combine relevant room/surface photographs, live readable text, individual pale colour palettes, icons and curved gold borders on a plum-to-mauve section background. Desktop uses two columns; screens at 1000px or below use one. The main HTML site and React Studio share `CategorySceneCard`; category-page headers reuse each range's photograph. These decorative images are code configuration, while individual product photographs and landing campaigns remain admin-managed. They require no new PostgreSQL content table.
+The current home has one **Solutions for every surface** category section. Its eight illustrated cards combine relevant room/surface photographs, live readable text, individual pale colour palettes, icons and curved gold borders on a plum-to-mauve section background. Desktop uses two columns; screens at 1000px or below use one. The main HTML site and React Studio share `CategorySceneCard`; category-page headers now use separate full-width scenes through `CategoryLandingHero`, with white/gold titles, four range highlights and working Explore Products / All categories controls. These decorative images are code configuration, while individual product photographs and landing campaigns remain admin-managed. They require no new PostgreSQL content table.
 
 The main Products link and Home use the same category hub (`#solutions`), avoiding duplicate category selectors. Public category routes are:
 
@@ -537,7 +538,7 @@ Landing images, PDF shade cards and ads are independent entries. `site_state` ho
 | accent_color | varchar(7) | Six-digit HEX colour |
 | position | integer | Preserve category order, starting at 0 |
 
-The latest illustrated cards and matching category-header photographs use `src/data/categoryArt.ts`, `CategorySceneCard.tsx` and `public/assets/category-scenes.css`. Their decorative image/ink/paper/tint values remain code configuration. No extra image table, duplicated product image or change to these category columns is needed. Category `accent_color` still maps to `CATEGORIES[].accentColor`; it is not the new card's entire visual palette. The brand hero is also a static asset/component; uploaded landing campaigns remain in `landing_images`.
+The illustrated home cards use `src/data/categoryArt.ts`, `CategorySceneCard.tsx` and `public/assets/category-scenes.css`. After selecting a category, a separate full-width landing banner uses `src/data/categoryLandings.ts`, `CategoryLandingHero.tsx`, `public/assets/category-landings.css` and its own local `landing-*.webp` scene. These decorative images, palette values, live headings and range-feature labels remain code configuration. No extra image table, duplicated product image or change to these category columns is needed. Category `accent_color` still maps to `CATEGORIES[].accentColor`; it is not the new card's entire visual palette. The brand hero is also a static asset/component; uploaded landing campaigns remain in `landing_images`.
 
 #### 2. products — one row per product
 

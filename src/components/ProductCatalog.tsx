@@ -5,9 +5,10 @@ import { CATEGORIES, PRODUCTS as DEFAULT_PRODUCTS } from '../data/paintsData';
 import { ArrowLeft, ArrowUpRight, Eye, Image as ImageIcon, Info, MessageSquare, Search, Sparkles, X } from 'lucide-react';
 import { ProductFlipBadge } from './ProductFlipBadge';
 import { CategorySceneCard } from './CategorySceneCard';
-import { CATEGORY_ART } from '../data/categoryArt';
+import { CategoryLandingHero } from './CategoryLandingHero';
 import '../product-category.css';
 import '../../public/assets/category-scenes.css';
+import '../../public/assets/category-landings.css';
 
 interface ProductCatalogProps {
   selectedColorHex: string;
@@ -95,19 +96,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   return (
     <section id="products" className={`pc-catalog${activeCategory ? ' pc-category-view' : ''}`} ref={sectionRef}>
       {activeCategory ? (
-        <div className="pc-category-banner">
-          <img className="category-banner-art" src={CATEGORY_ART[activeCategory.id].image} alt="" decoding="async" />
-          <div className="pc-container">
-            <nav className="pc-breadcrumb" aria-label="Product category breadcrumb">
-              <button type="button" onClick={() => openCategory('all')}>Products</button>
-              <span aria-hidden="true">/</span>
-              <span aria-current="page">{activeCategory.name}</span>
-            </nav>
-            <span className="pc-eyebrow">AREVA PAINTS · {activeCategory.name.toUpperCase()}</span>
-            <h1 ref={categoryHeading} tabIndex={-1}>{activeCategory.name}</h1>
-            <p>{activeCategory.description}</p>
-          </div>
-        </div>
+        <CategoryLandingHero category={activeCategory} headingRef={categoryHeading} onExplore={() => focusOverview('range')} onCategoryChange={openCategory} />
       ) : (
         <section id="solutions" className="pc-container pc-overview" ref={hubRef} aria-labelledby="pc-solutions-heading">
           <div className="pc-overview-heading">

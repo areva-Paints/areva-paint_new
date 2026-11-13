@@ -119,24 +119,14 @@
   window.addEventListener("pageshow", restartProductFlip);
   window.addEventListener("pagehide", () => clearInterval(productFlipTimer));
   const categories = window.arevaProductCategories || [];
-  const categoryCopy = {
-    interior:
-      "Beautiful interiors begin with thoughtful colour and dependable finishes. Explore the Areva Paints interior collection.",
-    exterior:
-      "Give exterior walls a lasting finish. Explore paints and protective coatings for surfaces that face the elements.",
-    waterproofing:
-      "Protect the spaces that matter. Explore waterproofing solutions for roofs, walls and other suitable surfaces.",
-    "tile-adhesives":
-      "Build on a dependable bond. Find tile adhesives for your installation and surface requirements.",
-    sealants:
-      "Finish every joint with care. Explore sealants for compatible gaps, joints and construction applications.",
-    "putty-primers":
-      "A beautiful finish starts beneath the colour. Explore wall putty and primers for surface preparation.",
-    textures:
-      "Bring character to your walls. Explore decorative textures and finishes for your next project.",
-    chemicals:
-      "Find practical solutions for building and repair. Explore specialist construction products from Areva Paints.",
-  };
+  function revealSelectedCategory() {
+    const tabs = document.querySelector("#products [data-category-tabs]");
+    const selected = tabs?.querySelector('[aria-current="page"]');
+    if (tabs && selected)
+      tabs.scrollLeft =
+        selected.offsetLeft - (tabs.clientWidth - selected.offsetWidth) / 2;
+  }
+  window.addEventListener("resize", revealSelectedCategory);
   function updateCatalogue(index) {
     window.arevaSetProductCategory?.(index);
     currentCategory = index;
@@ -144,17 +134,16 @@
     const products = document.getElementById("products");
     products.classList.toggle("ref-category-page", Boolean(category));
     const banner = products.querySelector(".ref-page-banner");
-    const artwork = banner.querySelector("[data-ref-category-art]");
-    artwork.hidden = !category;
-    if (category) artwork.src = category.image;
-    else artwork.removeAttribute("src");
-    banner.querySelector("h1").textContent = category?.name || "All products";
+    const hero = products.querySelector("[data-ref-category-hero]");
+    hero.hidden = !category;
+    hero.innerHTML = category?.hero || "";
+    requestAnimationFrame(revealSelectedCategory);
+    banner.hidden = Boolean(category);
+    banner.querySelector("h1").textContent = "All products";
     banner.querySelector(".ref-eyebrow").textContent =
-      "HOME / PRODUCTS / " +
-      (category ? category.name.toUpperCase() : "ALL PRODUCTS");
-    banner.querySelector("p").textContent = category
-      ? categoryCopy[category.id] || category.description
-      : "Browse the complete Areva collection and compare finishes, coverage and product specifications.";
+      "HOME / PRODUCTS / ALL PRODUCTS";
+    banner.querySelector("p").textContent =
+      "Browse the complete Areva collection and compare finishes, coverage and product specifications.";
     document.getElementById("listTitle").textContent = category
       ? "Our " + category.name
       : "All products";
@@ -258,6 +247,16 @@
       event.altKey
     )
       return;
+    if (event.target.closest("[data-category-explore]")) {
+      const heading = document.getElementById("listTitle");
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+      heading.scrollIntoView({
+        block: "start",
+        behavior: productMotion.matches ? "auto" : "smooth",
+      });
+      return;
+    }
     const link = event.target.closest('a[href^="#"]');
     if (!link || link.target === "_blank" || !link.hash) return;
     const id = decodeHash(link.hash);
