@@ -3,7 +3,7 @@ services:
     name: areva-paint-new
     runtime: node
     plan: starter
-    buildCommand: npm install --include=dev --package-lock=false && npx vite build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     disk:
@@ -25,3 +25,7 @@ services:
         sync: false
       - key: ADMIN_TEST_LOGIN
         value: "false"
+      - key: PUBLIC_SITE_ORIGINS
+        value: https://areva-paint-new.onrender.com,https://areva-paint-new-admin.onrender.com
+      - key: UPLOAD_STORAGE_MB
+        value: "512"

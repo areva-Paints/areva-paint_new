@@ -34,11 +34,11 @@ This is a source-code review and technical handover, not a claim that every brow
 
 The website uses **React + TypeScript** for the app shell, React Studio and admin portal, plus an existing **HTML/CSS/JavaScript public website** displayed in an iframe by default. **Node.js + Express** serves APIs, uploads and dynamically updated public HTML. **Vite** handles development and frontend builds.
 
-**SQL is proposed, not connected:** admin content currently uses a JSON file; enquiries use a process-local memory array. There is no PostgreSQL driver, ORM or active `DATABASE_URL` integration in the current application. The PostgreSQL files included in this document are a prepared design, validated separately.
+**SQL is proposed, not connected:** admin content and enquiries use private persistent JSON files on `CONTENT_DATA_DIR`. There is no PostgreSQL driver, ORM or active `DATABASE_URL` integration in the current application. The PostgreSQL files included in this document are a prepared design, validated separately.
 
 ### Application and build dependencies
 
-Versions below are the declared ranges in `package.json`, not a frozen installed dependency inventory. Reinstalling without a lockfile can resolve newer compatible versions.
+Versions below are declared ranges. The committed `package-lock.json` freezes resolved versions; use `npm ci` for reproducible installation.
 
 | Technology/package | Declared version | Actual role |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ Versions below are the declared ranges in `package.json`, not a frozen installed
 | @types/* packages | See package.json | Development type declarations for Node, React, Express, ZIP/archive packages |
 | @google/genai | ^2.4.0 | Installed dependency; no active application import/integration identified |
 | motion | ^12.23.24 | Installed dependency; no active application import identified; current visible effects use CSS/browser animation |
-| archiver | ^8.0.0 | Installed dependency; current packaging code uses JSZip instead |
+| @electric-sql/pglite | See package.json | Development-only PostgreSQL engine for isolated schema and permission tests |
 
 ### Native browser and Node APIs
 
@@ -95,7 +95,7 @@ flowchart TD
   HTML --> Files
   Studio --> Files
   Enquiry[React enquiry submission] --> EnquiryAPI[Express /api/enquiries]
-  EnquiryAPI --> Memory[Current in-memory enquiries]
+  EnquiryAPI --> Enquiries[Private enquiries.json]
   AdminAPI -. future repository adapter .-> SQL[Proposed PostgreSQL tables]
   EnquiryAPI -. future persistent repository .-> SQL
 ```
@@ -248,8 +248,8 @@ PDF upload stores a reference file. PDF.js extracts selectable text for a previe
 | GET | `/api/shades` | Optional family, tone and name/code search; returns family list and tone counts |
 | GET | `/api/dealers` | Optional state filter |
 | POST | `/api/calculator/estimate` | Dimensions, doors/windows, coats and product ID; returns estimated material and packaging |
-| POST | `/api/enquiries` | Topic, full name, phone, city, optional product/shade/message; adds an in-memory ticket |
-| GET | `/api/enquiries` | Current in-memory enquiry list; requires an admin session |
+| POST | `/api/enquiries` | Topic, full name, phone, city, optional product/shade/message; persists a private enquiry ticket |
+| GET | `/api/enquiries` | Private saved enquiry list; requires an admin session |
 | GET | `/api/content/legacy-image/:index` | Extracts an existing embedded product image as a normal image response |
 | GET | `/uploads/<filename>` | Uploaded image or PDF; PDFs use download disposition |
 
@@ -277,19 +277,19 @@ Login is public but rate limited; logout is idempotent and clears the appropriat
 | `/admin` | React admin entry served by the Vite/production SPA shell |
 | `/assets/aistudio/areva-paints_a2364c60.html` | Dynamic attached website response, before normal static asset serving |
 | `/attached-page`, `/areva-html`, `/attached-version` | Dynamic website aliases |
-| `/api/project/download`, `/areva-paints-fullstack.zip` | Existing full-stack ZIP artifact |
-| `/api/project/download-code`, `/areva-paints-code.zip` | Existing code ZIP artifact |
-| `/api/project/source-files` | Public text-file manifest used for browser JSZip downloads |
+| `/api/project/download`, `/areva-paints-fullstack.zip` | Admin-only private full-stack archive (if generated) |
+| `/api/project/download-code`, `/areva-paints-code.zip` | Admin-only private code archive (if generated) |
+| `/api/project/source-files` | Admin-only text-file manifest used for browser JSZip downloads |
 | `/api/project/info` | Informational architecture summary; some descriptive labels are broader than implemented capabilities |
 
-Later duplicate static handlers for attached-page aliases remain in `server.ts`; the earlier dynamic handler responds first. Production uses `dist/index.html` as its SPA fallback; normal public assets are served from `public/` and the compiled frontend from `dist/`.
+Attached-page aliases use one dynamic handler; duplicate unreachable static handlers have been removed. Production uses `dist/index.html` as its SPA fallback; normal public assets are served from `public/` and the compiled frontend from `dist/`.
 
 ## 6. Authentication and validation
 
 ### Current accounts and authentication
 
 - The recovery admin is configured by `ADMIN_USERNAME`/`ADMIN_PASSWORD`, alongside up to 200 privately stored created accounts. An active created admin can sign in even when the environment recovery password is unset.
-- A recovery password must have at least 12 characters. `ADMIN_TEST_LOGIN=true` supplies the documented temporary test credential only when no configured password is present; keep it disabled for production.
+- A recovery password must have at least 12 characters. `ADMIN_TEST_LOGIN=true` supplies the documented temporary test credential only outside production and when no configured password is present. Production ignores that flag.
 - Only admins create users, with fixed roles `admin`, `customer`, `architect`, `builder`. Public Customer/Architect/Builder sign-in validates a real stored account and the selected role. There is no public self-registration.
 - Created passwords have 12–128 characters and use Node scrypt, a random 16-byte salt and a 64-byte derived key; salts/hashes are stored as HEX. Environment password comparisons use SHA-256 digests and timing-safe comparison without persisting that password.
 - Username/email identifiers are normalized and unique across both fields and the reserved environment username. Role changes through PATCH are rejected. Admins can reset passwords and disable/enable created accounts, with self-disable/last-admin checks.
@@ -297,14 +297,14 @@ Later duplicate static handlers for attached-page aliases remain in `server.ts`;
 - Separate cookies: `areva_admin` and `areva_user`; HttpOnly, SameSite=Strict, Secure when Express recognizes HTTPS. Protected requests recheck active status, role and `passwordVersion`; password reset and active-status changes revoke previous sessions. Logout deletes the token and clears its cookie.
 - Login attempts are limited after eight failures within a 15-minute window per detected client IP.
 - Session and login-attempt maps reset on server restart and are not shared between replicas.
-- Admin responses use `Cache-Control: no-store`. Mutating admin requests with an Origin header must match the externally detected server origin.
+- Admin responses use `Cache-Control: no-store`. Mutating admin/auth requests require JSON, reject cross-site Fetch Metadata and require any Origin header to match the detected server origin. Checks and admin authentication run before large-body parsing.
 - Proxy configuration matters on Render because HTTPS is terminated before forwarding to Node.
 
 ### Content validation
 
 The admin server validates required text, category identifiers, colour codes/HEX/families, numeric bounds, image URLs, file existence and collection sizes. Newer gallery/colour fields are preserved when older clients omit them. HTML fields are escaped and embedded JSON escapes `<` to avoid terminating script blocks. Ad links require validated HTTPS URLs; external links use safe new-tab attributes.
 
-Global public CORS headers allow `*`; this does not replace the cookie/origin checks and does not enable cross-origin credentialed administration. Admin-only account creation and password reset are implemented; email-based password recovery and public self-registration are not. `readContent()` excludes private users/history even from the admin editing payload.
+Public read-only content/assets use an explicit origin allowlist. Admin/auth/source APIs do not grant cross-origin access. Production CSP uses a per-response nonce for the legacy executable inline script, plus object/base/form/frame restrictions. Admin pages prohibit framing. See `docs/security-review.md` for exact protections and limits. Admin-only account creation and password reset are implemented; email-based password recovery and public self-registration are not. `readContent()` excludes private users/history even from the admin editing payload.
 
 ## 7. Storage, uploads and persistence
 
@@ -316,12 +316,12 @@ Global public CORS headers allow `*`; this does not replace the cookie/origin ch
 | Default CMS values | `legacy-seed.json` + `paintsData.ts` | Used when no saved file exists; 18 products, 13 dealers, 24 colours in current defaults |
 | Uploaded files | `CONTENT_DATA_DIR/uploads/` | UUID filenames, retained separately from content |
 | Existing embedded images | Public HTML plus legacy-image endpoint | Existing assets remain available |
-| Enquiries | `enquiriesStore` in `server.ts` | Lost on restart; includes an existing sample ticket |
+| Enquiries | `CONTENT_DATA_DIR/enquiries.json` | Private atomic persistence; UUID-based tickets; no generated sample customer record |
 | Admin/public sessions and login attempts | Maps in `accounts.ts` | Lost on restart; eight-hour session expiry |
 | Favourite shades | Browser localStorage | Local to browser/origin, not a customer account |
 | Game/sample/reward UI state | React/client memory | No connected durable order/payment/reward store |
 
-Default data directory: `.local/content`. `saveContent()` creates the directory, writes `content.json.tmp` with restricted file permissions and renames it over `content.json`. The store uses synchronous filesystem access and assumes one Node process with a writable disk. Atomic rename avoids partially written files, but this is not a multi-process database or distributed lock.
+Default data directory: `.local/content`. `saveContent()` creates the directory, writes a uniquely named temporary file with mode 0600, flushes it and renames it over `content.json`. The same private writer persists enquiries. The store uses synchronous filesystem access and assumes one Node process with a writable disk. Atomic rename avoids partially written files, but this is not a multi-process database or distributed lock.
 
 ### Upload limits
 
@@ -330,7 +330,8 @@ Default data directory: `.local/content`. `saveContent()` creates the directory,
 | Images | JPEG, PNG or WebP, up to 25 MiB per image |
 | Image request body | 36 MB JSON parser limit to accommodate base64 encoding |
 | PDF shade cards | Up to 5 MiB; PDF header and trailing EOF validation |
-| Other JSON endpoints | 10 MB request body limit |
+| Content save / PDF upload / other JSON | 10 MiB / 8 MiB / 64 KiB request limits |
+| Upload directory | 512 MiB default shared budget; `UPLOAD_STORAGE_MB` configures it |
 | Product count | 1–200, with at least one positive-coverage product |
 | Dealers / landing slides | Up to 500 / 12 |
 | Colours / PDF references | 1–5,000 / up to 50 |
@@ -376,7 +377,7 @@ No real passwords, session tokens or database connection secrets belong in this 
 
 `render.yaml` describes a **Node Web Service** using a Starter plan and a 1 GB persistent disk mounted at `/var/data/areva`, with `CONTENT_DATA_DIR` pointed there. It declares Node 24.22.1, production mode, one trusted proxy hop and `/api/health` as the health endpoint.
 
-Build command: `npm install --include=dev --package-lock=false && npx vite build`
+Build command: `npm ci --include=dev && npx vite build`
 
 Start command: `npm start`
 
@@ -396,7 +397,7 @@ External dependencies include Google Fonts, WhatsApp links and any externally co
 
 ```bash
 # Install application packages using the current repository convention.
-npm install --include=dev --package-lock=false
+npm ci --include=dev
 
 # Development: Express + Vite on the same server/port.
 npm run dev
@@ -407,14 +408,17 @@ npm run lint
 # Frontend build without regenerating existing downloadable ZIPs.
 npx vite build
 
-# Full package script: frontend build AND replacement ZIP artifact generation.
+# Production frontend build (does not regenerate source archives).
 npm run build
+
+# Explicit operator-only source archive generation.
+npm run package:source
 
 # Production runtime, after dist has been built.
 NODE_ENV=production npm start
 
 # Current regression checks; isolated temporary storage and test servers.
-node --import tsx --test tests/admin.test.mjs tests/admin-history.test.mjs tests/users.test.mjs tests/colour-import.test.mjs tests/project-gallery.test.mjs tests/gallery-ads.test.mjs
+npm test
 ```
 
 `npm start` runs TypeScript through tsx; it does not execute a separately compiled server binary. `npm run preview` is Vite's frontend preview and does not replace the Express backend. The TypeScript configuration uses ES2022, ESNext modules, bundler resolution and JSX; `strict` is not enabled in the reviewed tsconfig, so “lint passed” is not a strict-mode audit or ESLint result.
@@ -434,7 +438,7 @@ node --import tsx --test tests/admin.test.mjs tests/admin-history.test.mjs tests
 
 These results concern the local code and isolated data used during changes. They do not certify the latest live database (none is connected), current Render deployment or every demo UI flow. A documentation-only update does not require regeneration of the frontend archives.
 
-Vite currently reports an existing future config-loader warning for `__dirname` and a large main-chunk warning. They did not prevent the reviewed builds. Dependency versions are ranges; production reproducibility would improve with an agreed lockfile/version policy.
+Vite's config now uses `import.meta.url`, removing the `__dirname` config-loader warning. A large main-chunk warning remains. Dependencies are locked, CI runs build/type/API/SQL checks and npm audit, and the unused vulnerable archive dependency chain has been removed. See the dated security review for actual results and remaining work.
 
 ### Repository file map
 
@@ -459,7 +463,7 @@ src/data/paintsData.ts              Categories, React defaults and presets
 src/types/index.ts                 Product/colour/enquiry interfaces
 public/assets/aistudio/            Existing HTML source
 public/assets/*.css, *.js          Public layout and gallery runtime
-public/areva-paints-*.zip           Existing downloadable archives
+artifacts/source/areva-paints-*.zip Private operator archives (ignored by Git)
 scripts/pack_windows_zip.cjs        JSZip archive generation
 render.yaml                        Render blueprint
 vite.config.ts                     React/Tailwind Vite plugins
@@ -481,7 +485,7 @@ The packaging script currently includes selected root files, src and public asse
 | CMS products/dealers/colours/landing/gallery/ads | Implemented with JSON storage and disk uploads |
 | Shared coverage editor | Implemented in Products; duplicate sidebar removed |
 | PostgreSQL | Schema and category seed prepared/tested; driver, repository, migration and deployment still required |
-| Enquiries | API exists but memory-only; SQL proposal provides persistence |
+| Enquiries | API persists private enquiry JSON; SQL adapter remains pending |
 | Enquiry list access | GET `/api/enquiries` requires an admin session |
 | Submission confirmation | React enquiry UI can show a locally generated ticket even when the API fails; confirmation should be tied to confirmed server persistence |
 | Customer/architect/builder login | Real server-backed role-aware login/logout; business order/reward features remain separate demos |
@@ -489,7 +493,7 @@ The packaging script currently includes selected root files, src and public asse
 | Swatch orders/shipping | Local demonstration flow; requires persistent orders, fulfilment and payment integration if offered commercially |
 | Camera/AR | Browser camera/canvas recolouring; simulated fallback exists; no verified WebXR tracking/AI segmentation |
 | PostgreSQL accounts/history | Included in the current 19-table proposal; adapter/live import still required, recovery admin remains in server settings |
-| Multi-instance scale | JSON, sessions and enquiry memory require shared persistence and concurrency/session work before horizontal scaling |
+| Multi-instance scale | JSON files and session/limit maps require shared persistence and concurrency/session work before horizontal scaling |
 | Media backups | Back up files separately from SQL; existing disk/object storage remains necessary |
 | Calculator consistency | Unify UI/API allowance, packaging and floor-coat semantics if a single authoritative estimating service is required |
 | Contact destinations | Several head-office WhatsApp links are hard-coded; confirm business destinations before operational use |
@@ -498,15 +502,23 @@ These are observations for technical handover. This document does not implement 
 
 ## 12. PostgreSQL column dictionary and relationships
 
-The following database guide is included in full so this document can be shared without opening another file. The executable schema, category seed and upgrade SQL are also included below.
-
 Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **19 tables**, including the Gallery reviews addition (13 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
 
-Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries currently live in server memory and reset on restart.
+Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries now persist privately in `CONTENT_DATA_DIR/enquiries.json`.
+
+**Using Supabase instead:** follow [supabase-setup.md](docs/supabase-setup.md) and its single [supabase-setup.sql](database/supabase-setup.sql) file. That alternative creates the same 19 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
 
 Use [schema.sql](database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
 If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. Back up and rehearse either route on staging first.
+
+### Database access guardrails (14 November 2026)
+
+Fresh `schema.sql` now enables row-level security on all 19 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
+
+For an existing installation that already has migrations 001–004, review and apply [005-private-access-guardrails.sql](database/migrations/005-private-access-guardrails.sql) once. It revokes prior direct application-table access and preserves unrelated tables. If both `areva.users` and `public.users` exist, it stops for inspection. The migration changes permissions; rehearse it against a backup and assess any existing integrations. No SQL has been applied to the live project during this review.
+
+Tests execute fresh public/private schemas, permission denials, hostile-search-path trigger calls, preserved unrelated tables and repeat-install rollback in isolated PGlite instances. Run `npm test` for these checks alongside the application regressions. This verifies the scripts, not the live Supabase configuration.
 
 ### Relationships
 
@@ -715,13 +727,13 @@ Read pages by `event_sequence DESC`, matching the current reversed append-only a
 
 There is deliberately no entity/user FK on the event snapshots: deleted products/photos and the environment admin must remain visible, and old shared usernames cannot be assigned retrospectively to individual staff. Preserve events when deleting content. Content edits, user mutations and their events each commit atomically; failed validations/conflicts create no corresponding saved-change events. An uploaded file may remain after a failed DB write because file storage and SQL do not share a transaction; return an error and reconcile orphan files rather than reporting a successful logged upload. There is no retention trimming, history-edit/delete API or tamper-proof audit guarantee in the current app. Keep history tables and queries outside public serialization.
 
-### Product display details and warranty — 14 November 2026
+#### Product display details and warranty — 14 November 2026
 
 The product editor exposes all public technical fields. `sheen` is now free text (`varchar(100)`, nonblank). Additional `products` columns map to optional `specs` properties: `coverage_text varchar(300)` → `specs.coverageText`; `dilution varchar(300)` → `specs.dilution`; `bases varchar(100)[]` → `specs.bases` (up to 30 entries); `packing varchar(100)[]` → `specs.packing` (up to 20 entries); `warranty_label varchar(100)` → `specs.warrantyLabel`. Strings default to empty and arrays to empty arrays. The API rejects blank list items, excessive lengths and invalid numeric pack sizes. Comma-separated input is an editor convenience; arrays are stored without losing base codes such as `017`.
 
 `specs.warrantyYears` continues to map to `warranty_years` (0–100). Positive values show the gold duration/label badge at the top-right of the dark product summary; zero hides it. An empty label uses Performance warranty*. Free display coverage and packing labels do not replace numeric calculator coverage or `product_pack_sizes`. Existing numeric values supply display fallbacks when overrides are blank. Preserve the new optional properties if older clients omit them; empty strings/arrays clear overrides. Existing installations apply `database/migrations/004-product-display-details.sql` once, in either `public` or private `areva`; fresh setup includes it. No live database connection/import is implemented by this change.
 
-### 19. gallery_reviews — Gallery customer reviews
+#### 19. gallery_reviews — Gallery customer reviews
 
 | SQL column | API field / meaning |
 | --- | --- |
@@ -759,8 +771,8 @@ Upload metadata already fits existing content URL columns plus private `uploaded
 
 1. Create a **Render Postgres** database in the same region as the Node Web Service. Copy its Internal Database URL into the Web Service's `DATABASE_URL` environment secret. The static frontend does not connect directly to SQL.
 2. Using a SQL client connected to a new database, run `database/schema.sql`, then `database/seed-categories.sql`. For `psql`, use `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/schema.sql` and then the same command with `database/seed-categories.sql`. If the earlier 15-table proposal already exists, use `psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/migrations/001-users-and-activity.sql` once instead; do not reseed or rerun the new full schema. Run from a trusted terminal with access to the database; the internal URL is reachable only from the appropriate Render network.
-3. Implement and test an asynchronous PostgreSQL repository/adapter for content, `readUsers`/`saveUsers`, `readActivity`/`recordActivity` and the enquiry memory array. Authentication in `accounts.ts`, validation/saves in `routes.ts` and the public HTML renderer must use the same persisted state. Setting `DATABASE_URL` alone currently does nothing. Keep public API response shapes, private-data exclusions and admin validation unchanged.
-4. Back up the latest live `content.json` and uploads. Read the complete private file through a trusted server-side importer: `/api/content` **and** `/api/admin/content` omit users/history and cannot supply a full migration. Import actual live content once in a transaction, preserving IDs, array positions, product specs and gallery timestamps. Insert created users with unchanged hashes/salts/version/dates (the identifier trigger runs automatically), append history events in stored array order, and import `revision` plus `adminHistory.startedAt` into `site_state`. Preflight counts, normalized identifier conflicts/reserved username and missing assets; abort/roll back on mismatches. Do not replace live content with development defaults or create fictional historical events. Missing `users`/`adminHistory` in older files means empty private tables and NULL history start. Enquiries already lost during restarts cannot be recovered from the memory-only store.
+3. Implement and test an asynchronous PostgreSQL repository/adapter for content, `readUsers`/`saveUsers`, `readActivity`/`recordActivity` and the private enquiry file. Authentication in `accounts.ts`, validation/saves in `routes.ts` and the public HTML renderer must use the same persisted state. Setting `DATABASE_URL` alone currently does nothing. Keep public API response shapes, private-data exclusions and admin validation unchanged.
+4. Back up the latest live `content.json`, `enquiries.json` and uploads. Read the complete private file through a trusted server-side importer: `/api/content` **and** `/api/admin/content` omit users/history and cannot supply a full migration. Import actual live content once in a transaction, preserving IDs, array positions, product specs and gallery timestamps. Insert created users with unchanged hashes/salts/version/dates (the identifier trigger runs automatically), append history events in stored array order, and import `revision` plus `adminHistory.startedAt` into `site_state`. Preflight counts, normalized identifier conflicts/reserved username and missing assets; abort/roll back on mismatches. Do not replace live content with development defaults or create fictional historical events. Missing `users`/`adminHistory` in older files means empty private tables and NULL history start. Import current `enquiries.json` separately; enquiries lost before private persistence was added cannot be recovered retrospectively.
 5. Verify admin save/reload, revision conflicts, the calculator, every product category, dealer/colour search, uploads, albums, ads and enquiry persistence on staging. Also verify existing passwords still sign in, all four roles remain separated, users/history remain private, duplicate username/email races fail, resets/disable/logout revoke sessions, self/last-admin protections work, history tabs/order/relative ages survive restart, no-op saves retain their events and user/upload events retain the content revision. Back up and test restoration of database plus uploaded assets.
 6. Schedule the final switch, briefly pause admin writes/submissions, import the final snapshot and resume with the SQL-backed server. Keep the old files as a rollback backup. No production database is changed by this proposal.
 
@@ -768,13 +780,14 @@ Upload metadata already fits existing content URL columns plus private `uploaded
 
 The original schema/category seed passed isolated PostgreSQL-engine (PGlite) execution and a trial mapping of all 18 default products, 13 dealers and 24 colours, including child arrays. Checks covered invalid coverage, case-insensitive colour-code uniqueness, category FKs, photo cascades and preservation of enquiry names after product deletion. The 11 November review additionally validates fresh creation and upgrading the old 15-table proposal, account/hash/identifier constraints, case-insensitive cross-identifier collision handling, password verification after import, history array order/optional fields and rollback of content/account/history transactions. These are isolated schema tests, not an executed migration of the live Render site. A staging adapter and migration of the latest live data remain necessary before production use.
 
+
 ## 13. Complete PostgreSQL schema
 
 Run once against a new, empty PostgreSQL 16+ database after review. This SQL creates tables only; it does not migrate data or connect the application.
 
 ```sql
 -- Proposed PostgreSQL 16+ schema for Areva Paints.
--- Review-only: the application still uses content.json and in-memory enquiries.
+-- Review-only: the application uses private JSON files, not a PostgreSQL adapter.
 -- Apply ONCE to a new, empty database. This file does not migrate existing data.
 -- Base review: GitHub main 7d0656e (2026-11-11); shade metadata and Gallery reviews added 2026-11-13.
 BEGIN;
@@ -1008,13 +1021,17 @@ CREATE INDEX user_login_identifiers_user_idx ON user_login_identifiers(user_id);
 
 -- Maintained transactionally, including JSON import and concurrent account creation.
 CREATE FUNCTION sync_user_login_identifiers() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS $$
 BEGIN
-  DELETE FROM user_login_identifiers WHERE user_id = NEW.id;
-  INSERT INTO user_login_identifiers(identifier, user_id)
-    SELECT DISTINCT value, NEW.id
-    FROM (VALUES (NEW.username), (NULLIF(NEW.email, ''))) AS identifiers(value)
-    WHERE value IS NOT NULL;
+  -- Qualify with the trigger table's schema; never resolve a caller-controlled path.
+  EXECUTE format('DELETE FROM %I.user_login_identifiers WHERE user_id = $1', TG_TABLE_SCHEMA)
+    USING NEW.id;
+  EXECUTE format($sql$
+    INSERT INTO %I.user_login_identifiers(identifier, user_id)
+      SELECT DISTINCT value, $1
+      FROM (VALUES ($2), (NULLIF($3, ''))) AS identifiers(value)
+      WHERE value IS NOT NULL
+  $sql$, TG_TABLE_SCHEMA) USING NEW.id, NEW.username, NEW.email;
   RETURN NEW;
 END;
 $$;
@@ -1050,6 +1067,46 @@ CREATE INDEX activity_events_section_idx ON activity_events(section, event_seque
 CREATE INDEX activity_events_action_idx ON activity_events(action, event_sequence DESC);
 CREATE INDEX activity_events_entry_idx ON activity_events(section, entity_id, event_sequence DESC)
   WHERE action IN ('created', 'updated') AND entity_id <> '';
+
+-- Private application tables: access is through the authenticated Express backend.
+-- No browser policies or broad grants are created. The owner can administer data.
+DO $$
+DECLARE
+  target text;
+  role_name text;
+  app_schema text := current_schema();
+BEGIN
+  FOREACH target IN ARRAY ARRAY[
+    'categories', 'products', 'product_pack_sizes', 'product_surfaces',
+    'dealers', 'dealer_badges', 'landing_images', 'colours', 'colour_pairings',
+    'shade_cards', 'gallery_projects', 'gallery_photos', 'gallery_ads', 'gallery_reviews',
+    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events'
+  ] LOOP
+    IF to_regclass(format('%I.%I', app_schema, target)) IS NULL THEN
+      RAISE EXCEPTION 'Missing table %.%; apply earlier migrations before hardening.', app_schema, target;
+    END IF;
+    EXECUTE format('ALTER TABLE %I.%I ENABLE ROW LEVEL SECURITY', app_schema, target);
+    EXECUTE format('REVOKE ALL ON TABLE %I.%I FROM PUBLIC', app_schema, target);
+    FOR role_name IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated', 'service_role') LOOP
+      EXECUTE format('REVOKE ALL ON TABLE %I.%I FROM %I', app_schema, target, role_name);
+    END LOOP;
+  END LOOP;
+  EXECUTE format('REVOKE ALL ON FUNCTION %I.sync_user_login_identifiers() FROM PUBLIC', app_schema);
+  -- This sequence belongs to Areva; avoid touching unrelated sequences in public.
+  EXECUTE format('REVOKE ALL ON SEQUENCE %s FROM PUBLIC', pg_get_serial_sequence(format('%I.activity_events', app_schema), 'event_sequence'));
+  FOR role_name IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated', 'service_role') LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %I.sync_user_login_identifiers() FROM %I', app_schema, role_name);
+    EXECUTE format('REVOKE ALL ON SEQUENCE %s FROM %I', pg_get_serial_sequence(format('%I.activity_events', app_schema), 'event_sequence'), role_name);
+    IF app_schema = 'areva' THEN
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA areva REVOKE ALL ON TABLES FROM %I', role_name);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA areva REVOKE ALL ON SEQUENCES FROM %I', role_name);
+      EXECUTE format('ALTER DEFAULT PRIVILEGES IN SCHEMA areva REVOKE ALL ON FUNCTIONS FROM %I', role_name);
+      EXECUTE format('REVOKE ALL ON SCHEMA areva FROM %I', role_name);
+    END IF;
+  END LOOP;
+  IF app_schema = 'areva' THEN REVOKE ALL ON SCHEMA areva FROM PUBLIC; END IF;
+END;
+$$;
 
 COMMIT;
 ```
@@ -1217,3 +1274,8 @@ CREATE INDEX activity_events_entry_idx ON activity_events(section, entity_id, ev
 
 COMMIT;
 ```
+
+
+## Security review — 14 November 2026
+
+See [security-review.md](docs/security-review.md) for findings, implemented controls, validation and remaining production work. Source APIs/ZIPs now require admin authentication; enquiries are private durable JSON; public content is allowlisted; request limits and production browser headers are enforced; fresh SQL and migration 005 restrict application-table access. No live Supabase migration or deployment was performed. Warranty registration remains deferred.

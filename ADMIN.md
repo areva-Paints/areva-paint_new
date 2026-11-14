@@ -18,7 +18,7 @@ Coverage is managed in **Products → Edit**, alongside the product details. Cov
 
 ## Start and sign in
 
-1. Use Node.js 24 and install dependencies with `npm install --package-lock=false`.
+1. Use Node.js 24 and install dependencies with `npm ci`.
 2. Set `ADMIN_PASSWORD` in the server environment or an ignored `.env` file to a unique password of at least 12 characters. Never commit a real password. Without it, the server-configured admin login is disabled. Existing created admin accounts can still sign in; if none exist, administration stays disabled.
 3. Run `npm run dev`, then open `/admin`. Sign in with username `admin` (or your `ADMIN_USERNAME`) and the configured password.
 
@@ -46,7 +46,7 @@ Local server/browser checks may require the cloud command sandbox's supported es
 
 A plain `Not Found` at both `/admin` and `/api/health` indicates that Render is not serving the current Express application. Use a **Node Web Service**, not a Static Site: admin authentication, saving and uploads require the backend. A static-site rewrite alone will not enable these functions.
 
-For an existing Web Service, select the repository's `main` branch, set the build command to `npm install --include=dev --package-lock=false && npx vite build`, and the start command to `npm start`. Set `NODE_ENV=production` and `TRUST_PROXY_HOPS=1` behind Render's proxy, then deploy the latest commit. After deployment, `/api/health` must return JSON and `/admin` must show the login form. If this is currently a Static Site, create a Web Service and use its URL; editing this repository cannot change an existing Render service's type.
+For an existing Web Service, select the repository's `main` branch, set the build command to `npm ci --include=dev && npm run build`, and the start command to `npm start`. Set `NODE_ENV=production` and `TRUST_PROXY_HOPS=1` behind Render's proxy, then deploy the latest commit. After deployment, `/api/health` must return JSON and `/admin` must show the login form. If this is currently a Static Site, create a Web Service and use its URL; editing this repository cannot change an existing Render service's type.
 
 For temporary testing, set `ADMIN_TEST_LOGIN=true` in Render's Environment settings and leave `ADMIN_PASSWORD` unset or empty. Sign in with username **admin** and password **ArevaTest2026!**. These are public testing credentials; do not enable them for a site containing real customer data. To disable the test login, set `ADMIN_TEST_LOGIN=false` and set a unique `ADMIN_PASSWORD` of at least 12 characters. `ADMIN_USERNAME` defaults to `admin`; a configured password always takes precedence over the test password. Redeploy/restart after changing environment settings.
 
@@ -168,3 +168,12 @@ Admins can disable/enable accounts and reset passwords. These actions invalidate
 Both the HTML site and React Studio support account sign-in/logout. In a split Static Site/backend deployment, sign-in opens the backend site at top level so browser restrictions on third-party cookies do not turn login into a false success. Administration remains on the backend. Viewing the enquiry list (`GET /api/enquiries`) now also requires an admin session; public enquiry submission is unchanged.
 
 Back up the entire content file and keep its persistent disk. Existing created accounts survive restarts/redeployments only when that storage survives. Future PostgreSQL migration must include private user credentials/roles and session-revocation versions, alongside the separate activity events. Run `node --import tsx --test tests/users.test.mjs` for authorization, role separation, password storage, collision checks, session revocation, privacy and restart checks.
+
+
+## Security and operations review (14 November 2026)
+
+See [security-review.md](docs/security-review.md). Admin/auth writes require JSON and same-origin browser requests; upload authentication runs before large request parsing. Production ignores `ADMIN_TEST_LOGIN`. Source manifests and every ZIP path now require admin authentication. Session expiry, role separation, user disable/reset revocation and existing save-conflict protection remain in place.
+
+Enquiries submitted to the API now persist privately in `CONTENT_DATA_DIR/enquiries.json`, with validated contact fields, UUID ticket IDs and a five-request/15-minute per-IP limit. There is no automatic SMS/email delivery. Include this file with the full private content file and uploads in backups. Existing process-memory enquiries cannot be recovered retrospectively. Image/PDF uploads share a configurable 512 MiB budget; capacity errors preserve existing media and require an operator to review storage.
+
+Use one Node process with persistent private storage. Session/rate-limit maps are local to that process. The SQL schema and migration 005 include private-access guardrails, but no database connection or live migration was performed. Changing a SQL file alone does not move the site's records. Warranty registration/OTP remains on hold.

@@ -10,3 +10,6 @@ extracted_areva/
 
 # Persistent admin content and uploaded images
 .local/
+
+# Operator source packages must never enter a public/static deployment.
+artifacts/

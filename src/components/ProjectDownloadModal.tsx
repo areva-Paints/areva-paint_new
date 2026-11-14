@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Download,
   X,
@@ -16,8 +16,8 @@ import {
   Zap,
   AlertTriangle,
   HelpCircle,
-} from 'lucide-react';
-import JSZip from 'jszip';
+} from "lucide-react";
+import JSZip from "jszip";
 
 interface ProjectDownloadModalProps {
   isOpen: boolean;
@@ -28,15 +28,67 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'windows-fix' | 'github'>('overview');
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "windows-fix" | "github"
+  >("overview");
   const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
-  
+
   // Client-side in-browser generation states
   const [isGeneratingClientZip, setIsGeneratingClientZip] = useState(false);
-  const [clientZipProgress, setClientZipProgress] = useState<string>('');
+  const [clientZipProgress, setClientZipProgress] = useState<string>("");
   const [clientZipDone, setClientZipDone] = useState(false);
 
+  const [access, setAccess] = useState<"checking" | "admin" | "denied">(
+    "checking",
+  );
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    setAccess("checking");
+    void fetch("/api/admin/session", { cache: "no-store" })
+      .then(async (response) => {
+        const session = response.ok ? await response.json() : null;
+        if (!cancelled)
+          setAccess(
+            session?.authenticated && session?.user?.role === "admin"
+              ? "admin"
+              : "denied",
+          );
+      })
+      .catch(() => {
+        if (!cancelled) setAccess("denied");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
   if (!isOpen) return null;
+  if (access !== "admin")
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-stone-950/80">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="source-access-title"
+          className="max-w-md rounded-3xl bg-white p-8 text-stone-900"
+        >
+          <h3 id="source-access-title" className="text-xl font-bold">
+            Project source downloads
+          </h3>
+          <p className="my-4">
+            {access === "checking"
+              ? "Checking access…"
+              : "Sign in as an administrator to download project source files."}
+          </p>
+          {access === "denied" && (
+            <a className="mr-6 underline" href="/admin">
+              Admin sign in
+            </a>
+          )}
+          <button onClick={onClose}>Close</button>
+        </div>
+      </div>
+    );
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -48,52 +100,58 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
   const handleGenerateInBrowser = async () => {
     setIsGeneratingClientZip(true);
     setClientZipDone(false);
-    setClientZipProgress('Fetching latest project source files...');
+    setClientZipProgress("Fetching latest project source files...");
     try {
-      const res = await fetch('/api/project/source-files');
-      if (!res.ok) throw new Error('Unable to fetch source code manifest from server.');
+      const res = await fetch("/api/project/source-files");
+      if (!res.ok)
+        throw new Error("Unable to fetch source code manifest from server.");
       const data = await res.json();
-      
-      setClientZipProgress(`Packing ${data.count} project files with MS-DOS FAT headers...`);
+
+      setClientZipProgress(
+        `Packing ${data.count} project files with MS-DOS FAT headers...`,
+      );
       const zip = new JSZip();
 
       for (const [filePath, content] of Object.entries(data.files)) {
         zip.file(filePath, content as string, {
-          date: new Date('2026-01-01T00:00:00Z'),
+          date: new Date("2026-01-01T00:00:00Z"),
           createFolders: true,
         });
       }
 
-      setClientZipProgress('Compressing archive (DEFLATE level 9)...');
+      setClientZipProgress("Compressing archive (DEFLATE level 9)...");
       const blob = await zip.generateAsync({
-        type: 'blob',
-        compression: 'DEFLATE',
+        type: "blob",
+        compression: "DEFLATE",
         compressionOptions: { level: 9 },
-        platform: 'DOS',
+        platform: "DOS",
       });
 
-      setClientZipProgress('Triggering direct browser download...');
+      setClientZipProgress("Triggering direct browser download...");
       const blobUrl = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = blobUrl;
-      link.download = 'areva-paints-fullstack.zip';
+      link.download = "areva-paints-fullstack.zip";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
       setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
       setClientZipDone(true);
-      setClientZipProgress('ZIP archive generated and downloaded successfully!');
+      setClientZipProgress(
+        "ZIP archive generated and downloaded successfully!",
+      );
       setTimeout(() => setClientZipDone(false), 5000);
     } catch (err) {
-      console.error('In-browser zip generation error:', err);
-      setClientZipProgress('Failed to generate ZIP: ' + (err as Error).message);
+      console.error("In-browser zip generation error:", err);
+      setClientZipProgress("Failed to generate ZIP: " + (err as Error).message);
     } finally {
       setIsGeneratingClientZip(false);
     }
   };
 
-  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const currentOrigin =
+    typeof window !== "undefined" ? window.location.origin : "";
   const fullZipUrl = `${currentOrigin}/areva-paints-fullstack.zip`;
   const codeZipUrl = `${currentOrigin}/areva-paints-code.zip`;
 
@@ -126,7 +184,8 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-stone-400 mt-0.5">
-                Full-Stack React 19 + TypeScript + Node.js/Express + WebXR AR Studio
+                Full-Stack React 19 + TypeScript + Node.js/Express + WebXR AR
+                Studio
               </p>
             </div>
           </div>
@@ -143,21 +202,21 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
         {/* Tab Navigation */}
         <div className="flex border-b border-stone-200 bg-stone-100/70 px-4 sm:px-8 pt-2.5 gap-2 overflow-x-auto">
           <button
-            onClick={() => setActiveTab('overview')}
+            onClick={() => setActiveTab("overview")}
             className={`pb-2.5 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'overview'
-                ? 'border-amber-700 text-amber-950 bg-white rounded-t-xl shadow-xs'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
+              activeTab === "overview"
+                ? "border-amber-700 text-amber-950 bg-white rounded-t-xl shadow-xs"
+                : "border-transparent text-stone-500 hover:text-stone-800"
             }`}
           >
             📦 Download Archives
           </button>
           <button
-            onClick={() => setActiveTab('windows-fix')}
+            onClick={() => setActiveTab("windows-fix")}
             className={`pb-2.5 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'windows-fix'
-                ? 'border-blue-700 text-blue-950 bg-white rounded-t-xl shadow-xs'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
+              activeTab === "windows-fix"
+                ? "border-blue-700 text-blue-950 bg-white rounded-t-xl shadow-xs"
+                : "border-transparent text-stone-500 hover:text-stone-800"
             }`}
           >
             <span>⊞ Windows 10/11 Extraction Guide</span>
@@ -166,11 +225,11 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
             </span>
           </button>
           <button
-            onClick={() => setActiveTab('github')}
+            onClick={() => setActiveTab("github")}
             className={`pb-2.5 px-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'github'
-                ? 'border-stone-900 text-stone-950 bg-white rounded-t-xl shadow-xs'
-                : 'border-transparent text-stone-500 hover:text-stone-800'
+              activeTab === "github"
+                ? "border-stone-900 text-stone-950 bg-white rounded-t-xl shadow-xs"
+                : "border-transparent text-stone-500 hover:text-stone-800"
             }`}
           >
             <span>🐙 Push to GitHub</span>
@@ -179,13 +238,19 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
 
         {/* Modal Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-6 text-stone-900">
-          {activeTab === 'overview' && (
+          {activeTab === "overview" && (
             <>
               {/* Notice Banner */}
               <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-start gap-3 text-xs">
                 <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">Windows MS-DOS Compatibility Applied:</span> All archives below are formatted with standard FAT/MS-DOS 32-bit directory records and parent-first ordering, ensuring Windows 10 & 11 File Explorer unzips cleanly without &ldquo;invalid folder&rdquo; errors.
+                  <span className="font-bold">
+                    Windows MS-DOS Compatibility Applied:
+                  </span>{" "}
+                  All archives below are formatted with standard FAT/MS-DOS
+                  32-bit directory records and parent-first ordering, ensuring
+                  Windows 10 & 11 File Explorer unzips cleanly without
+                  &ldquo;invalid folder&rdquo; errors.
                 </div>
               </div>
 
@@ -205,7 +270,8 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
                     areva-paints-fullstack.zip
                   </h4>
                   <p className="text-xs sm:text-sm text-stone-600 max-w-md">
-                    Complete source code, Express backend, React components, and high-definition architectural demonstration images.
+                    Complete source code, Express backend, React components, and
+                    high-definition architectural demonstration images.
                   </p>
                 </div>
 
@@ -247,7 +313,10 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
                     areva-paints-code.zip
                   </h4>
                   <p className="text-xs text-stone-600 max-w-md">
-                    100% complete TypeScript logic, components, Express backend, configuration, and styles (excludes heavy demo JPGs). Downloads instantly in under 1 second with <strong>zero risk of network cutoff</strong>.
+                    100% complete TypeScript logic, components, Express backend,
+                    configuration, and styles (excludes heavy demo JPGs).
+                    Downloads instantly in under 1 second with{" "}
+                    <strong>zero risk of network cutoff</strong>.
                   </p>
                 </div>
 
@@ -278,14 +347,21 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="font-bold flex items-center gap-2 text-stone-900 text-sm">
                     <Sparkles className="w-4 h-4 text-amber-700" />
-                    <span>Option 3: Generate ZIP Inside Your Browser (Zero Network Stream Dropout)</span>
+                    <span>
+                      Option 3: Generate ZIP Inside Your Browser (Zero Network
+                      Stream Dropout)
+                    </span>
                   </div>
                   <span className="text-[10px] bg-amber-200/70 text-amber-900 px-2 py-0.5 rounded font-mono font-bold">
                     Client-Side Engine
                   </span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed">
-                  If your browser or network has trouble streaming large zip files inside the preview iframe, this option bundles all project source files directly into your browser&rsquo;s RAM using <strong>JSZip</strong> and initiates a local blob download.
+                  If your browser or network has trouble streaming large zip
+                  files inside the preview iframe, this option bundles all
+                  project source files directly into your browser&rsquo;s RAM
+                  using <strong>JSZip</strong> and initiates a local blob
+                  download.
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
@@ -327,55 +403,89 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
                     <Terminal className="w-4 h-4 text-stone-700" />
                     Quick Run Instructions Once Extracted
                   </h4>
-                  <span className="text-xs text-stone-500 font-mono">Node.js 18+ required</span>
+                  <span className="text-xs text-stone-500 font-mono">
+                    Node.js 18+ required
+                  </span>
                 </div>
 
                 <div className="bg-stone-950 text-stone-100 rounded-2xl p-4 sm:p-5 font-mono text-xs space-y-3 border border-stone-800 shadow-inner">
                   <div className="flex items-center justify-between pb-2 border-b border-stone-800">
-                    <span className="text-stone-400 text-[11px]"># 1. Install dependencies</span>
+                    <span className="text-stone-400 text-[11px]">
+                      # 1. Install dependencies
+                    </span>
                     <button
-                      onClick={() => copyToClipboard('npm install', 'c1')}
+                      onClick={() => copyToClipboard("npm install", "c1")}
                       className="text-stone-400 hover:text-white transition-colors p-1 cursor-pointer"
                       title="Copy command"
                     >
-                      {copiedCommand === 'c1' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedCommand === "c1" ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
-                  <div className="text-emerald-400 font-semibold selection:bg-stone-700">npm install</div>
+                  <div className="text-emerald-400 font-semibold selection:bg-stone-700">
+                    npm install
+                  </div>
 
                   <div className="flex items-center justify-between pt-2 pb-2 border-b border-stone-800">
-                    <span className="text-stone-400 text-[11px]"># 2. Run full-stack dev server</span>
+                    <span className="text-stone-400 text-[11px]">
+                      # 2. Run full-stack dev server
+                    </span>
                     <button
-                      onClick={() => copyToClipboard('npm run dev', 'c2')}
+                      onClick={() => copyToClipboard("npm run dev", "c2")}
                       className="text-stone-400 hover:text-white transition-colors p-1 cursor-pointer"
                       title="Copy command"
                     >
-                      {copiedCommand === 'c2' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedCommand === "c2" ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
-                  <div className="text-amber-300 font-semibold selection:bg-stone-700">npm run dev</div>
+                  <div className="text-amber-300 font-semibold selection:bg-stone-700">
+                    npm run dev
+                  </div>
                 </div>
               </div>
             </>
           )}
 
-          {activeTab === 'windows-fix' && (
+          {activeTab === "windows-fix" && (
             <div className="space-y-6">
               {/* Problem Explanation */}
               <div className="p-5 rounded-2xl bg-amber-50 border border-amber-300 text-stone-900 space-y-2">
                 <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
                   <AlertTriangle className="w-5 h-5 text-amber-600" />
-                  <span>Why Did Windows Report &ldquo;The Compressed (zipped) Folder is invalid&rdquo;?</span>
+                  <span>
+                    Why Did Windows Report &ldquo;The Compressed (zipped) Folder
+                    is invalid&rdquo;?
+                  </span>
                 </div>
                 <p className="text-xs text-stone-700 leading-relaxed">
-                  In Windows 10 and 11, the built-in File Explorer unzipper (<code className="font-mono text-xs bg-amber-100 px-1 py-0.5 rounded">zipfldr.dll</code>) throws this error if:
+                  In Windows 10 and 11, the built-in File Explorer unzipper (
+                  <code className="font-mono text-xs bg-amber-100 px-1 py-0.5 rounded">
+                    zipfldr.dll
+                  </code>
+                  ) throws this error if:
                 </p>
                 <ul className="text-xs text-stone-700 space-y-1 list-disc list-inside pl-2">
-                  <li><strong>Incomplete Download:</strong> The browser in the preview iframe stopped the download halfway, resulting in a corrupted partial file on your disk.</li>
-                  <li><strong>Unix Header Conflict:</strong> Standard Linux archives often omit MS-DOS FAT 32-bit folder attributes.</li>
+                  <li>
+                    <strong>Incomplete Download:</strong> The browser in the
+                    preview iframe stopped the download halfway, resulting in a
+                    corrupted partial file on your disk.
+                  </li>
+                  <li>
+                    <strong>Unix Header Conflict:</strong> Standard Linux
+                    archives often omit MS-DOS FAT 32-bit folder attributes.
+                  </li>
                 </ul>
                 <p className="text-xs text-emerald-800 font-semibold mt-1">
-                  ✓ We have completely regenerated the ZIP archives with explicit MS-DOS attributes, proper parent-first folder ordering, and added a 1-click PowerShell unzipper below.
+                  ✓ We have completely regenerated the ZIP archives with
+                  explicit MS-DOS attributes, proper parent-first folder
+                  ordering, and added a 1-click PowerShell unzipper below.
                 </p>
               </div>
 
@@ -383,25 +493,40 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
               <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 text-stone-900 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="font-bold flex items-center gap-2 text-blue-950 text-sm">
-                    <span className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-black shadow-xs">1</span>
-                    <span>Method 1 (Guaranteed): 1-Click PowerShell Download &amp; Extract</span>
+                    <span className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center text-xs font-black shadow-xs">
+                      1
+                    </span>
+                    <span>
+                      Method 1 (Guaranteed): 1-Click PowerShell Download &amp;
+                      Extract
+                    </span>
                   </div>
                   <span className="text-[10px] bg-blue-200 text-blue-900 font-bold px-2 py-0.5 rounded">
                     Bypasses Browser
                   </span>
                 </div>
                 <p className="text-xs text-stone-600">
-                  Press <kbd className="bg-stone-200 px-1.5 py-0.5 rounded text-[11px] font-mono">Win + X</kbd> and choose <strong>Terminal</strong> or <strong>PowerShell</strong>, then paste this command:
+                  Press{" "}
+                  <kbd className="bg-stone-200 px-1.5 py-0.5 rounded text-[11px] font-mono">
+                    Win + X
+                  </kbd>{" "}
+                  and choose <strong>Terminal</strong> or{" "}
+                  <strong>PowerShell</strong>, then paste this command:
                 </p>
 
                 <div className="bg-stone-950 text-stone-100 p-3.5 rounded-xl font-mono text-[11px] space-y-2 border border-stone-800">
                   <div className="flex items-center justify-between pb-1 border-b border-stone-800 text-stone-400">
-                    <span>PowerShell (Downloads directly &amp; extracts to your Downloads folder):</span>
+                    <span>
+                      PowerShell (Downloads directly &amp; extracts to your
+                      Downloads folder):
+                    </span>
                     <button
-                      onClick={() => copyToClipboard(powerShellCommand, 'ps-full')}
+                      onClick={() =>
+                        copyToClipboard(powerShellCommand, "ps-full")
+                      }
                       className="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-sans font-bold flex items-center gap-1 transition-colors cursor-pointer"
                     >
-                      {copiedCommand === 'ps-full' ? (
+                      {copiedCommand === "ps-full" ? (
                         <>
                           <Check className="w-3 h-3 text-white" />
                           <span>Copied!</span>
@@ -423,20 +548,35 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
               {/* Solution 2: Windows Native tar.exe Command */}
               <div className="p-5 rounded-2xl bg-white border border-stone-200 text-stone-900 space-y-3">
                 <div className="font-bold flex items-center gap-2 text-stone-950 text-sm">
-                  <span className="w-6 h-6 rounded-lg bg-stone-800 text-white flex items-center justify-center text-xs font-black shadow-xs">2</span>
-                  <span>Method 2: Built-in Windows Command Prompt (tar.exe)</span>
+                  <span className="w-6 h-6 rounded-lg bg-stone-800 text-white flex items-center justify-center text-xs font-black shadow-xs">
+                    2
+                  </span>
+                  <span>
+                    Method 2: Built-in Windows Command Prompt (tar.exe)
+                  </span>
                 </div>
                 <p className="text-xs text-stone-600">
-                  Every Windows 10 and 11 PC has a built-in unzipper (<code className="font-mono bg-stone-100 px-1 py-0.5 rounded text-stone-800">tar.exe</code>) in System32 that extracts any zip instantly without File Explorer bugs:
+                  Every Windows 10 and 11 PC has a built-in unzipper (
+                  <code className="font-mono bg-stone-100 px-1 py-0.5 rounded text-stone-800">
+                    tar.exe
+                  </code>
+                  ) in System32 that extracts any zip instantly without File
+                  Explorer bugs:
                 </p>
                 <div className="bg-stone-950 text-stone-100 p-3 rounded-xl font-mono text-xs flex items-center justify-between border border-stone-800">
                   <span className="text-emerald-400">{windowsTarCommand}</span>
                   <button
-                    onClick={() => copyToClipboard(windowsTarCommand, 'tar-cmd')}
+                    onClick={() =>
+                      copyToClipboard(windowsTarCommand, "tar-cmd")
+                    }
                     className="text-stone-400 hover:text-white p-1 cursor-pointer"
                     title="Copy tar command"
                   >
-                    {copiedCommand === 'tar-cmd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copiedCommand === "tar-cmd" ? (
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -444,11 +584,15 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
               {/* Solution 3: Direct Browser Download in New Tab */}
               <div className="p-5 rounded-2xl bg-stone-50 border border-stone-200 text-stone-900 space-y-3">
                 <div className="font-bold flex items-center gap-2 text-stone-950 text-sm">
-                  <span className="w-6 h-6 rounded-lg bg-amber-700 text-white flex items-center justify-center text-xs font-black shadow-xs">3</span>
+                  <span className="w-6 h-6 rounded-lg bg-amber-700 text-white flex items-center justify-center text-xs font-black shadow-xs">
+                    3
+                  </span>
                   <span>Method 3: Direct Download in a New Browser Tab</span>
                 </div>
                 <p className="text-xs text-stone-600">
-                  Click the button below to trigger the download in a dedicated browser tab (ensuring no iframe security sandboxes interrupt the transfer):
+                  Click the button below to trigger the download in a dedicated
+                  browser tab (ensuring no iframe security sandboxes interrupt
+                  the transfer):
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <a
@@ -474,7 +618,7 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
             </div>
           )}
 
-          {activeTab === 'github' && (
+          {activeTab === "github" && (
             <div className="space-y-6">
               <div className="bg-gradient-to-r from-stone-900 to-stone-800 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-stone-700">
                 <div className="space-y-1 text-center sm:text-left">
@@ -482,7 +626,8 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
                     <span>How to Push to your GitHub Repository</span>
                   </h4>
                   <p className="text-xs text-stone-300">
-                    Follow these 4 simple steps to push this full codebase to your personal or organization GitHub repo.
+                    Follow these 4 simple steps to push this full codebase to
+                    your personal or organization GitHub repo.
                   </p>
                 </div>
                 <a
@@ -498,31 +643,60 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
               {/* Step 1 */}
               <div className="border border-stone-200 rounded-2xl p-5 bg-white space-y-3">
                 <div className="flex items-center gap-2 text-stone-900 font-bold text-sm">
-                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">1</span>
+                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">
+                    1
+                  </span>
                   <span>Create a New Repository on GitHub</span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed pl-8">
-                  Go to <a href="https://github.com/new" target="_blank" rel="noreferrer" className="text-amber-700 underline font-semibold inline-flex items-center gap-1">github.com/new <ExternalLink className="w-3 h-3" /></a>, enter a repository name (e.g., <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 font-mono">areva-paints</code>), leave &ldquo;Initialize with README&rdquo; unchecked, and click <strong>Create repository</strong>.
+                  Go to{" "}
+                  <a
+                    href="https://github.com/new"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-amber-700 underline font-semibold inline-flex items-center gap-1"
+                  >
+                    github.com/new <ExternalLink className="w-3 h-3" />
+                  </a>
+                  , enter a repository name (e.g.,{" "}
+                  <code className="bg-stone-100 px-1 py-0.5 rounded text-stone-800 font-mono">
+                    areva-paints
+                  </code>
+                  ), leave &ldquo;Initialize with README&rdquo; unchecked, and
+                  click <strong>Create repository</strong>.
                 </p>
               </div>
 
               {/* Step 2 */}
               <div className="border border-stone-200 rounded-2xl p-5 bg-white space-y-3">
                 <div className="flex items-center gap-2 text-stone-900 font-bold text-sm">
-                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">2</span>
-                  <span>Extract the ZIP and Open Terminal in the Extracted Folder</span>
+                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">
+                    2
+                  </span>
+                  <span>
+                    Extract the ZIP and Open Terminal in the Extracted Folder
+                  </span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed pl-8">
-                  Extract the downloaded zip, open Command Prompt or PowerShell inside the extracted folder:
+                  Extract the downloaded zip, open Command Prompt or PowerShell
+                  inside the extracted folder:
                 </p>
                 <div className="pl-8">
                   <div className="bg-stone-950 text-stone-100 p-3 rounded-xl font-mono text-xs flex items-center justify-between border border-stone-800">
-                    <span className="text-emerald-400">cd areva-paints-fullstack</span>
+                    <span className="text-emerald-400">
+                      cd areva-paints-fullstack
+                    </span>
                     <button
-                      onClick={() => copyToClipboard('cd areva-paints-fullstack', 'gh-cd')}
+                      onClick={() =>
+                        copyToClipboard("cd areva-paints-fullstack", "gh-cd")
+                      }
                       className="text-stone-400 hover:text-white p-1 cursor-pointer"
                     >
-                      {copiedCommand === 'gh-cd' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      {copiedCommand === "gh-cd" ? (
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -531,36 +705,77 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
               {/* Step 3 */}
               <div className="border border-stone-200 rounded-2xl p-5 bg-white space-y-3">
                 <div className="flex items-center gap-2 text-stone-900 font-bold text-sm">
-                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">3</span>
+                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">
+                    3
+                  </span>
                   <span>Initialize Git and Commit the Files</span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed pl-8">
-                  Run the following commands to initialize git and stage all project files:
+                  Run the following commands to initialize git and stage all
+                  project files:
                 </p>
                 <div className="pl-8 space-y-2">
                   <div className="bg-stone-950 text-stone-100 p-3.5 rounded-xl font-mono text-xs space-y-2 border border-stone-800">
                     <div className="flex items-center justify-between">
                       <span className="text-emerald-400">git init</span>
-                      <button onClick={() => copyToClipboard('git init', 'g-init')} className="text-stone-400 hover:text-white p-1 cursor-pointer">
-                        {copiedCommand === 'g-init' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <button
+                        onClick={() => copyToClipboard("git init", "g-init")}
+                        className="text-stone-400 hover:text-white p-1 cursor-pointer"
+                      >
+                        {copiedCommand === "g-init" ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-emerald-400">git add .</span>
-                      <button onClick={() => copyToClipboard('git add .', 'g-add')} className="text-stone-400 hover:text-white p-1 cursor-pointer">
-                        {copiedCommand === 'g-add' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <button
+                        onClick={() => copyToClipboard("git add .", "g-add")}
+                        className="text-stone-400 hover:text-white p-1 cursor-pointer"
+                      >
+                        {copiedCommand === "g-add" ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-amber-300">git commit -m &quot;feat: initial commit of Areva Paints fullstack application&quot;</span>
-                      <button onClick={() => copyToClipboard('git commit -m "feat: initial commit of Areva Paints fullstack application"', 'g-commit')} className="text-stone-400 hover:text-white p-1 cursor-pointer">
-                        {copiedCommand === 'g-commit' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span className="text-amber-300">
+                        git commit -m &quot;feat: initial commit of Areva Paints
+                        fullstack application&quot;
+                      </span>
+                      <button
+                        onClick={() =>
+                          copyToClipboard(
+                            'git commit -m "feat: initial commit of Areva Paints fullstack application"',
+                            "g-commit",
+                          )
+                        }
+                        className="text-stone-400 hover:text-white p-1 cursor-pointer"
+                      >
+                        {copiedCommand === "g-commit" ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sky-300">git branch -M main</span>
-                      <button onClick={() => copyToClipboard('git branch -M main', 'g-branch')} className="text-stone-400 hover:text-white p-1 cursor-pointer">
-                        {copiedCommand === 'g-branch' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <button
+                        onClick={() =>
+                          copyToClipboard("git branch -M main", "g-branch")
+                        }
+                        className="text-stone-400 hover:text-white p-1 cursor-pointer"
+                      >
+                        {copiedCommand === "g-branch" ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -570,24 +785,60 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
               {/* Step 4 */}
               <div className="border border-stone-200 rounded-2xl p-5 bg-white space-y-3">
                 <div className="flex items-center gap-2 text-stone-900 font-bold text-sm">
-                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">4</span>
+                  <span className="w-6 h-6 rounded-full bg-amber-800 text-white text-xs flex items-center justify-center font-bold">
+                    4
+                  </span>
                   <span>Link Remote and Push to GitHub</span>
                 </div>
                 <p className="text-xs text-stone-600 leading-relaxed pl-8">
-                  Replace <code className="bg-amber-100 text-amber-900 px-1 py-0.5 rounded font-mono font-bold">&lt;YOUR-USERNAME&gt;</code> and <code className="bg-amber-100 text-amber-900 px-1 py-0.5 rounded font-mono font-bold">&lt;YOUR-REPO-NAME&gt;</code> with your GitHub details:
+                  Replace{" "}
+                  <code className="bg-amber-100 text-amber-900 px-1 py-0.5 rounded font-mono font-bold">
+                    &lt;YOUR-USERNAME&gt;
+                  </code>{" "}
+                  and{" "}
+                  <code className="bg-amber-100 text-amber-900 px-1 py-0.5 rounded font-mono font-bold">
+                    &lt;YOUR-REPO-NAME&gt;
+                  </code>{" "}
+                  with your GitHub details:
                 </p>
                 <div className="pl-8 space-y-2">
                   <div className="bg-stone-950 text-stone-100 p-3.5 rounded-xl font-mono text-xs space-y-2 border border-stone-800">
                     <div className="flex items-center justify-between">
-                      <span className="text-amber-300">git remote add origin https://github.com/&lt;YOUR-USERNAME&gt;/&lt;YOUR-REPO-NAME&gt;.git</span>
-                      <button onClick={() => copyToClipboard('git remote add origin https://github.com/<YOUR-USERNAME>/<YOUR-REPO-NAME>.git', 'g-remote')} className="text-stone-400 hover:text-white p-1 cursor-pointer">
-                        {copiedCommand === 'g-remote' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span className="text-amber-300">
+                        git remote add origin
+                        https://github.com/&lt;YOUR-USERNAME&gt;/&lt;YOUR-REPO-NAME&gt;.git
+                      </span>
+                      <button
+                        onClick={() =>
+                          copyToClipboard(
+                            "git remote add origin https://github.com/<YOUR-USERNAME>/<YOUR-REPO-NAME>.git",
+                            "g-remote",
+                          )
+                        }
+                        className="text-stone-400 hover:text-white p-1 cursor-pointer"
+                      >
+                        {copiedCommand === "g-remote" ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <span className="text-emerald-400 font-bold">git push -u origin main</span>
-                      <button onClick={() => copyToClipboard('git push -u origin main', 'g-push')} className="text-stone-400 hover:text-white p-1 cursor-pointer">
-                        {copiedCommand === 'g-push' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span className="text-emerald-400 font-bold">
+                        git push -u origin main
+                      </span>
+                      <button
+                        onClick={() =>
+                          copyToClipboard("git push -u origin main", "g-push")
+                        }
+                        className="text-stone-400 hover:text-white p-1 cursor-pointer"
+                      >
+                        {copiedCommand === "g-push" ? (
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -595,7 +846,14 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
                 <div className="pl-8">
                   <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center gap-2">
                     <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Your full codebase is now on GitHub! Team members can clone it and run <code className="font-mono font-bold">npm install &amp;&amp; npm run dev</code>.</span>
+                    <span>
+                      Your full codebase is now on GitHub! Team members can
+                      clone it and run{" "}
+                      <code className="font-mono font-bold">
+                        npm install &amp;&amp; npm run dev
+                      </code>
+                      .
+                    </span>
                   </div>
                 </div>
               </div>
@@ -607,7 +865,10 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
         <div className="px-6 sm:px-8 py-4 bg-stone-100 border-t border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-stone-600">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>All downloads generated with MS-DOS Windows Explorer compatibility.</span>
+            <span>
+              All downloads generated with MS-DOS Windows Explorer
+              compatibility.
+            </span>
           </div>
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button

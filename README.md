@@ -33,7 +33,7 @@ A modern, high-performance web platform and digital studio for **Areva Paints**,
 
 6. **Project Quotation & Technical Specification Routing**:
    - Direct quote request modal with automatic routing to the nearest regional distributor.
-   - Unique tracking ticket generation (`ARV-REQ-XXXXX`).
+   - Unique tracking ticket generation (`ARV-REQ-<UUID>`).
    - Integrated with backend storage at `POST /api/enquiries`.
 
 7. **"Pop the Colour Bubbles" Color Play Arena**:
@@ -58,7 +58,7 @@ A modern, high-performance web platform and digital studio for **Areva Paints**,
   - Node.js (v18+ or v20+)
   - Express 4.x (`express`) with typed request/response handlers
   - `tsx` for direct TypeScript server execution (`tsx server.ts`)
-  - `archiver` for streaming project zip archive downloads
+  - `jszip` for explicit source archive packaging (admin-only downloads)
   - Vite Dev Server Middleware integration in development (`vite.middlewares`)
   - Production static bundle serving with fallback SPA routing
 
@@ -78,7 +78,7 @@ If you downloaded `areva-paints-fullstack.zip` on Windows 10 or 11:
 ### 1. Installation
 Navigate into the extracted `areva-paints-fullstack` directory and install dependencies:
 ```bash
-npm install
+npm ci
 ```
 
 ### 2. Run Development Server
@@ -116,9 +116,9 @@ npm run lint
 | `GET` | `/api/dealers` | Authorized regional dealer depots; filter: `?state=...` |
 | `POST` | `/api/calculator/estimate` | Calculate paintable sq ft, liters, and can distribution |
 | `POST` | `/api/enquiries` | Submit quotation or technical inquiry (returns ticket ID) |
-| `GET` | `/api/enquiries` | List all inquiries (administrative check) |
-| `GET` | `/api/project/download` | Stream complete project source code as `areva-paints-fullstack.zip` |
-| `GET` | `/api/project/info` | Repository structure, file count, and environment stats |
+| `GET` | `/api/enquiries` | List saved inquiries (admin authentication required) |
+| `GET` | `/api/project/download` | Admin-only project archive download |
+| `GET` | `/api/project/info` | Admin-only project architecture information |
 
 ---
 
@@ -135,3 +135,9 @@ npm run lint
 ## 📄 License & Brand
 © Areva Paints — Engineered for architectural brilliance and protective wall coatings.
 All rights reserved.
+
+## Security and storage
+
+See [the security review](docs/security-review.md) for implemented protections and deployment requirements. Content/accounts/history and enquiries use private JSON files on a persistent `CONTENT_DATA_DIR`; PostgreSQL/Supabase integration is still a prepared schema, not an active adapter. Source manifests and all ZIP downloads require an admin session. Archives are generated outside public/static builds in ignored `artifacts/source/`. `npm run build` builds the website only; source packaging is the separate `npm run package:source` command.
+
+Use `npm ci`, `npm run lint`, `npm test`, `npm run build` and `npm audit --audit-level=moderate` before release. GitHub Actions runs the same checks, including isolated PostgreSQL permission tests. Production requires HTTPS, the correct proxy setting, a private persistent data directory, backups and configured admin credentials. Adding a GoDaddy domain requires adding its exact HTTPS origin to `PUBLIC_SITE_ORIGINS` and rebuilding a separately hosted frontend with the intended `VITE_CONTENT_ORIGIN` when applicable.

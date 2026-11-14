@@ -1,3 +1,4 @@
+import { sensitiveRequestGuard } from "../server/security";
 import express from "express";
 import crypto from "node:crypto";
 import { promisify } from "node:util";
@@ -9,7 +10,17 @@ import {
   type StoredUser,
   type UserRole,
 } from "./user-types";
-const derive = promisify(crypto.scrypt);
+const scrypt = promisify(crypto.scrypt);
+let pendingHashes = 0;
+async function derive(password: string, salt: string, length: number) {
+  if (pendingHashes >= 4) throw Error("Password verification capacity reached");
+  pendingHashes++;
+  try {
+    return await scrypt(password, salt, length);
+  } finally {
+    pendingHashes--;
+  }
+}
 const sessions = new Map<
   string,
   { user: AccountUser; until: number; version: number; signature?: string }
@@ -28,7 +39,10 @@ const token = (req: express.Request, admin: boolean) =>
 function environmentUser(): { user: AccountUser; password: string } | null {
   const password =
     process.env.ADMIN_PASSWORD ||
-    (process.env.ADMIN_TEST_LOGIN === "true" ? "ArevaTest2026!" : "");
+    (process.env.NODE_ENV !== "production" &&
+    process.env.ADMIN_TEST_LOGIN === "true"
+      ? "ArevaTest2026!"
+      : "");
   if (password.length < 12) return null;
   const username = (process.env.ADMIN_USERNAME || "admin").trim();
   return {
@@ -97,22 +111,6 @@ export const requireAdmin: express.RequestHandler = (req, res, next) => {
     return res.status(401).json({ error: "Please sign in as an admin." });
   next();
 };
-function originGuard(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction,
-) {
-  res.setHeader("Cache-Control", "no-store");
-  if (
-    !["GET", "HEAD"].includes(req.method) &&
-    req.headers.origin &&
-    req.headers.origin !== `${req.protocol}://${req.get("host")}`
-  )
-    return res
-      .status(403)
-      .json({ error: "Cross-origin requests are not allowed." });
-  next();
-}
 async function passwordHash(password: string) {
   const passwordSalt = crypto.randomBytes(16).toString("hex");
   const key = (await derive(password, passwordSalt, 64)) as Buffer;
@@ -143,12 +141,25 @@ function login(admin: boolean): express.RequestHandler {
             "Set ADMIN_PASSWORD on the server to at least 12 characters, then restart to enable administration.",
         });
       const key = req.ip || "local",
-        now = Date.now(),
-        attempted = attempts.get(key);
-      if (attempted && attempted.until > now && attempted.count >= 8)
+        now = Date.now();
+      for (const [ip, attempt] of attempts)
+        if (attempt.until <= now) attempts.delete(ip);
+      if (!attempts.has(key) && attempts.size >= 4096) {
+        res.setHeader("Retry-After", "900");
+        return res
+          .status(429)
+          .json({ error: "Sign-in is busy. Please try again later." });
+      }
+      const attempted = attempts.get(key);
+      if (attempted && attempted.until > now && attempted.count >= 8) {
+        res.setHeader(
+          "Retry-After",
+          String(Math.ceil((attempted.until - now) / 1000)),
+        );
         return res
           .status(429)
           .json({ error: "Too many attempts. Try again in 15 minutes." });
+      }
       attempts.set(key, {
         count: attempted && attempted.until > now ? attempted.count + 1 : 1,
         until:
@@ -207,6 +218,17 @@ function login(admin: boolean): express.RequestHandler {
       attempts.delete(key);
       for (const [id, session] of sessions)
         if (session.until < Date.now()) sessions.delete(id);
+      if (sessions.size >= 2000) {
+        res.setHeader("Retry-After", "60");
+        return res
+          .status(503)
+          .json({ error: "Sign-in is busy. Please try again shortly." });
+      }
+      // Bound active sessions for each identity without changing other users' sessions.
+      const ownSessions = [...sessions].filter(
+        ([, session]) => session.user.id === user.id,
+      );
+      while (ownSessions.length >= 5) sessions.delete(ownSessions.shift()![0]);
       if (admin)
         recordActivity(
           activityEvent(user.username, "signed_in", "account", "Signed in"),
@@ -248,7 +270,7 @@ export const adminLogout: express.RequestHandler = (req, res) => {
   res.clearCookie("areva_admin", { path: "/" }).json({ success: true });
 };
 export const publicAccountRouter = express.Router();
-publicAccountRouter.use(originGuard);
+publicAccountRouter.use(sensitiveRequestGuard);
 publicAccountRouter.post("/login", login(false));
 publicAccountRouter.get("/session", (req, res) => {
   const user = currentUser(req, false);

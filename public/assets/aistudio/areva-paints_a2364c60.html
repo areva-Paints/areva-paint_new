@@ -471,7 +471,7 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
     <div style="display:flex;gap:.8rem;flex-wrap:wrap;align-items:center;background:color-mix(in srgb,var(--violet) 8%,var(--surface));padding:.9rem 1.1rem;border-radius:20px;border:1.5px solid var(--line)">
       <div style="display:flex;align-items:center;gap:.6rem;flex:1;min-width:240px">
         <span style="font-size:1.4rem">📍</span>
-        <input id="dealerPinInput" type="text" maxlength="6" placeholder="Enter 6-digit Pincode (e.g. 560038, 400058, 600010) or City" style="width:100%;border:0;background:transparent;font-size:1.15rem;font-weight:600;color:var(--ink);outline:none" aria-label="Search by Pincode or City">
+        <input id="dealerPinInput" type="text" maxlength="100" placeholder="Enter 6-digit Pincode (e.g. 560038, 400058, 600010) or City" style="width:100%;border:0;background:transparent;font-size:1.15rem;font-weight:600;color:var(--ink);outline:none" aria-label="Search by Pincode or City">
       </div>
       <button class="btn btn-main" id="btnSearchPin" type="button" style="padding:.7rem 1.6rem;font-size:1rem;display:inline-flex;align-items:center;gap:.4rem">🔍 Search Depots</button>
       <button class="btn btn-line" id="btnClearPin" type="button" style="padding:.7rem 1.2rem;font-size:1rem">Show All</button>
@@ -639,7 +639,7 @@ $("#today").textContent=new Date().toLocaleDateString("en-GB",{weekday:"long",da
    Shade list (C) and calculator rates (PR) live here. */
 /* platform features */
 const store={sv:[],hist:[],leads:[],books:[]};
-try{store.sv=JSON.parse(localStorage.getItem("av_sv")||"[]")}catch(e){}
+try{const saved=JSON.parse(localStorage.getItem("av_sv")||"[]");store.sv=Array.isArray(saved)?saved.filter(v=>typeof v==="string"&&v.length<=40).slice(0,5000):[]}catch(e){}
 const C=[
   ["Sunset Coral","AR101","#ff6b5e"],["Mango Zest","AR102","#ffb800"],["Lime Pop","AR103","#8bd450"],["Lagoon","AR104","#0fb5a2"],
   ["Sky Splash","AR105","#2d9cff"],["Royal Violet","AR106","#6c4cf5"],["Orchid Bloom","AR107","#ff4fa3"],["Terracotta Hearth","AR108","#c8623f"],
@@ -760,6 +760,7 @@ let activeState="All";
 function renderStateButtons(){
   $("#st").innerHTML=ST.map(s=>'<button class="chip" data-st="'+s+'" aria-pressed="'+(s===activeState)+'">'+s+'</button>').join("");
 }
+function escapeMarkup(value){const span=document.createElement("span");span.textContent=String(value);return span.innerHTML;}
 function searchDealers(q, st){
   const term=(q||"").trim().toLowerCase();
   const filtered=DEALERS.filter(d=>{
@@ -774,7 +775,7 @@ function searchDealers(q, st){
   const countEl=$("#dealerResultsCount");
   const dlEl=$("#dl");
   if(filtered.length>0){
-    countEl.innerHTML='Showing <b>'+filtered.length+'</b> authorized dealer depot'+(filtered.length>1?'s':'')+(term?' for "<b>'+term+'</b>"':'')+':';
+    countEl.innerHTML='Showing <b>'+filtered.length+'</b> authorized dealer depot'+(filtered.length>1?'s':'')+(term?' for "<b>'+escapeMarkup(term)+'</b>"':'')+':';
     dlEl.innerHTML=filtered.map(d=>`
       <div class="dealer-card">
         <div>
@@ -792,7 +793,7 @@ function searchDealers(q, st){
         </div>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:.8rem">
           <a class="btn btn-main" href="tel:${d.phone}" style="flex:1;text-align:center;padding:.5rem .8rem;font-size:.88rem;display:inline-flex;align-items:center;justify-content:center;gap:.3rem">📞 ${d.phone}</a>
-          <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${d.phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent('Hello '+d.name+', I am looking for Areva Paints in '+d.city+' (PIN '+d.pin+').')}" style="padding:.5rem .9rem;font-size:.88rem;display:inline-flex;align-items:center;gap:.3rem">💬 WhatsApp</a>
+          <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/${d.phone.replace(/[^0-9]/g,'')}?text=${encodeURIComponent('Hello '+d.name+', I am looking for Areva Paints in '+d.city+' (PIN '+d.pin+').').replace(/'/g,'%27')}" style="padding:.5rem .9rem;font-size:.88rem;display:inline-flex;align-items:center;gap:.3rem">💬 WhatsApp</a>
         </div>
       </div>
     `).join("");
@@ -803,7 +804,7 @@ function searchDealers(q, st){
         <div style="display:flex;align-items:center;gap:.8rem">
           <span style="font-size:2.2rem">📍</span>
           <div>
-            <h4 style="font-size:1.35rem;margin:0 0 .2rem;color:#b8284f">No Authorized Dealer in Pincode "${term || st}" Yet</h4>
+            <h4 style="font-size:1.35rem;margin:0 0 .2rem;color:#b8284f">No Authorized Dealer in Pincode "${escapeMarkup(term || st)}" Yet</h4>
             <p style="margin:0;font-size:.95rem;color:var(--ink)">We do not have a retail store in this pincode yet, but <b>Areva Paints ships factory-direct with door delivery across India</b>!</p>
           </div>
         </div>
@@ -816,7 +817,7 @@ function searchDealers(q, st){
           <div style="background:#fff;border-radius:16px;padding:1rem;border:1px solid var(--line)">
             <b style="display:block;margin-bottom:.3rem;color:var(--ink)">💬 WhatsApp Head Office</b>
             <p style="font-size:.85rem;color:var(--muted);margin:0 0 .6rem">Get shade cards, price list and dispatch confirmation:</p>
-            <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/919876543210?text=${encodeURIComponent('Hello Areva Paints Head Office, I am looking for paints in pincode '+term+'. Please guide me on direct dispatch or nearest store.')}" style="display:inline-flex;align-items:center;gap:.4rem;width:100%;justify-content:center;padding:.6rem 1rem">Chat on WhatsApp</a>
+            <a class="btn btn-wa" target="_blank" rel="noopener" href="https://wa.me/919876543210?text=${encodeURIComponent('Hello Areva Paints Head Office, I am looking for paints in pincode '+term+'. Please guide me on direct dispatch or nearest store.').replace(/'/g,'%27')}" style="display:inline-flex;align-items:center;gap:.4rem;width:100%;justify-content:center;padding:.6rem 1rem">Chat on WhatsApp</a>
           </div>
           <div style="background:#fff;border-radius:16px;padding:1rem;border:1px solid var(--line)">
             <b style="display:block;margin-bottom:.3rem;color:var(--ink)">📝 Submit Delivery Enquiry</b>

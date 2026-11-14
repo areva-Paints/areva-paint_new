@@ -1,5 +1,11 @@
-import { OPTIONAL_PRODUCT_DETAILS } from '../data/productDetails';
-import { COLOUR_FAMILIES, LEGACY_SHADE_FAMILIES, SHADE_TONES, normalizeShade } from '../data/shadeFamilies';
+import { sensitiveRequestGuard } from "../server/security";
+import { OPTIONAL_PRODUCT_DETAILS } from "../data/productDetails";
+import {
+  COLOUR_FAMILIES,
+  LEGACY_SHADE_FAMILIES,
+  SHADE_TONES,
+  normalizeShade,
+} from "../data/shadeFamilies";
 import {
   adminLogin,
   adminLogout,
@@ -30,21 +36,7 @@ import {
 } from "./activity-types";
 
 export const contentRouter = express.Router();
-contentRouter.use("/admin", (_req, res, next) => {
-  res.setHeader("Cache-Control", "no-store");
-  next();
-});
-contentRouter.use("/admin", (req, res, next) => {
-  if (
-    !["GET", "HEAD"].includes(req.method) &&
-    req.headers.origin &&
-    req.headers.origin !== `${req.protocol}://${req.get("host")}`
-  )
-    return res
-      .status(403)
-      .json({ error: "Cross-origin requests are not allowed." });
-  next();
-});
+contentRouter.use("/admin", sensitiveRequestGuard);
 contentRouter.use("/auth", publicAccountRouter);
 contentRouter.post("/admin/login", adminLogin);
 contentRouter.post("/admin/logout", adminLogout);
@@ -123,13 +115,28 @@ function validate(c: SiteContent) {
     typeof v === "string" && v.length <= max;
   const nonempty = (v: unknown, max = 3000) =>
     text(v, max) && (v as string).trim().length > 0;
-  const image = (v: unknown) =>
-    text(v, 2048) &&
-    (/^\/(?!\/)[^\s<>"']*$/.test(v as string) ||
-      /^https:\/\/[^\s<>"']+$/.test(v as string));
+  const image = (v: unknown) => {
+    if (!text(v, 2048) || /[\s\\<>"'\x00-\x1f\x7f]/.test(v as string))
+      return false;
+    if (/^\/(?!\/)/.test(v as string)) return true;
+    try {
+      const url = new URL(v as string);
+      return (
+        url.protocol === "https:" &&
+        Boolean(url.hostname) &&
+        !url.username &&
+        !url.password
+      );
+    } catch {
+      return false;
+    }
+  };
+  const record = (v: unknown): v is Record<string, unknown> =>
+    Boolean(v) && typeof v === "object" && !Array.isArray(v);
   const ids = (items: { id: string }[]) =>
-    items.every((x) => nonempty(x.id, 100) && /^[\w-]+$/.test(x.id)) &&
-    new Set(items.map((x) => x.id)).size === items.length;
+    items.every(
+      (x) => record(x) && nonempty(x.id, 100) && /^[\w-]+$/.test(x.id),
+    ) && new Set(items.map((x) => x.id)).size === items.length;
   const webLink = (v: string) => {
     if (!text(v, 2048) || !/^https:\/\/[^\s<>"']+$/i.test(v)) return false;
     try {
@@ -218,18 +225,34 @@ function validate(c: SiteContent) {
         "Each ad needs a title, Digital or Social media channel, and an image or HTTPS video/post link. Description is optional.",
       );
   }
-  if (!Array.isArray(c.galleryReviews) || c.galleryReviews.length > 100 || !ids(c.galleryReviews))
+  if (
+    !Array.isArray(c.galleryReviews) ||
+    c.galleryReviews.length > 100 ||
+    !ids(c.galleryReviews)
+  )
     throw Error("Keep up to 100 reviews, each with a unique identifier.");
   for (const review of c.galleryReviews) {
     review.detail ??= "";
     review.image ??= "";
-    if (!nonempty(review.name, 150) || !text(review.detail, 200) || !nonempty(review.text, 2000) || !text(review.image, 2048) || (review.image && !image(review.image)))
-      throw Error("Each review needs a reviewer name and review text. Add a valid image and location/description if required.");
+    if (
+      !nonempty(review.name, 150) ||
+      !text(review.detail, 200) ||
+      !nonempty(review.text, 2000) ||
+      !text(review.image, 2048) ||
+      (review.image && !image(review.image))
+    )
+      throw Error(
+        "Each review needs a reviewer name and review text. Add a valid image and location/description if required.",
+      );
   }
-  const families = new Set<string>([...COLOUR_FAMILIES, ...LEGACY_SHADE_FAMILIES]);
+  const families = new Set<string>([
+    ...COLOUR_FAMILIES,
+    ...LEGACY_SHADE_FAMILIES,
+  ]);
   const codes = new Set<string>();
   for (const colour of c.colours) {
     if (
+      !record(colour) ||
       !nonempty(colour.name, 150) ||
       typeof colour.code !== "string" ||
       !/^[A-Za-z0-9][A-Za-z0-9 _-]{0,39}$/.test(colour.code) ||
@@ -253,13 +276,17 @@ function validate(c: SiteContent) {
   for (const card of c.shadeCards)
     if (
       !nonempty(card.title, 150) ||
-      (card.family !== undefined && card.family !== "All Shades" && !COLOUR_FAMILIES.includes(card.family)) ||
+      (card.family !== undefined &&
+        card.family !== "All Shades" &&
+        !COLOUR_FAMILIES.includes(card.family)) ||
       !validTones(card.tones) ||
       typeof card.url !== "string" ||
       !/^\/uploads\/[a-f0-9-]+\.pdf$/.test(card.url) ||
       !fs.existsSync(path.join(dataDir, "uploads", path.basename(card.url)))
     )
-      throw Error("Shade cards need a title, an uploaded PDF and valid family/tone tags.");
+      throw Error(
+        "Shade cards need a title, an uploaded PDF and valid family/tone tags.",
+      );
   if (!ids(c.products) || !ids(c.dealers) || !ids(c.landingImages))
     throw Error("Each entry needs a unique identifier.");
   if (!c.products.some((p) => p.coverageSqFtPerLiter > 0))
@@ -310,7 +337,7 @@ function validate(c: SiteContent) {
     )
       throw Error("Invalid coverage unit or calculation basis.");
     if (
-      !p.specs ||
+      !record(p.specs) ||
       ![
         "dryingTime",
         "recoatTime",
@@ -326,8 +353,23 @@ function validate(c: SiteContent) {
       p.specs.warrantyYears > 100
     )
       throw Error("Invalid technical details.");
-    if ((p.specs.coverageText !== undefined && !text(p.specs.coverageText, 300)) || (p.specs.dilution !== undefined && !text(p.specs.dilution, 300)) || (p.specs.warrantyLabel !== undefined && !text(p.specs.warrantyLabel, 100)) || !['bases','packing'].every(key => p.specs[key] === undefined || (Array.isArray(p.specs[key]) && p.specs[key].length <= (key === 'bases' ? 30 : 20) && p.specs[key].every(value => nonempty(value, 100)))))
-      throw Error("Invalid product coverage text, dilution, bases, packing or warranty label.");
+    if (
+      (p.specs.coverageText !== undefined &&
+        !text(p.specs.coverageText, 300)) ||
+      (p.specs.dilution !== undefined && !text(p.specs.dilution, 300)) ||
+      (p.specs.warrantyLabel !== undefined &&
+        !text(p.specs.warrantyLabel, 100)) ||
+      !["bases", "packing"].every(
+        (key) =>
+          p.specs[key] === undefined ||
+          (Array.isArray(p.specs[key]) &&
+            p.specs[key].length <= (key === "bases" ? 30 : 20) &&
+            p.specs[key].every((value) => nonempty(value, 100))),
+      )
+    )
+      throw Error(
+        "Invalid product coverage text, dilution, bases, packing or warranty label.",
+      );
   }
   for (const d of c.dealers)
     if (
@@ -375,7 +417,13 @@ function validate(c: SiteContent) {
   }
 }
 function validTones(tones: unknown): boolean {
-  return tones === undefined || (Array.isArray(tones) && tones.length <= SHADE_TONES.length && new Set(tones).size === tones.length && tones.every(t => SHADE_TONES.includes(t)));
+  return (
+    tones === undefined ||
+    (Array.isArray(tones) &&
+      tones.length <= SHADE_TONES.length &&
+      new Set(tones).size === tones.length &&
+      tones.every((t) => SHADE_TONES.includes(t)))
+  );
 }
 contentRouter.put("/admin/content", (req, res) => {
   try {
@@ -387,21 +435,38 @@ contentRouter.put("/admin/content", (req, res) => {
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);
-    const previousProducts = new Map(current.products.map(product=>[product.id,product]));
-    c.products = c.products.map(product=>{
+    const previousProducts = new Map(
+      current.products.map((product) => [product.id, product]),
+    );
+    c.products = c.products.map((product) => {
       const previous = previousProducts.get(product.id);
       const specs = { ...product.specs };
       for (const key of OPTIONAL_PRODUCT_DETAILS) {
-        if (specs[key] === undefined && previous?.specs[key] !== undefined) (specs as any)[key] = previous.specs[key];
+        if (specs[key] === undefined && previous?.specs[key] !== undefined)
+          (specs as any)[key] = previous.specs[key];
       }
       return { ...product, specs };
     });
-    const previousShades = new Map(current.colours.map(shade => [shade.code.toUpperCase(), shade]));
-    c.colours = c.colours.map(shade => normalizeShade({
-      ...shade,
-      tones: shade.tones ?? previousShades.get(shade.code.toUpperCase())?.tones,
-    }));
-    c.shadeCards = c.shadeCards.map(card => { const old = current.shadeCards.find(previous => previous.id === card.id); return { ...card, family: card.family ?? old?.family ?? "All Shades", tones: card.tones ?? old?.tones ?? [] }; });
+    const previousShades = new Map(
+      current.colours.map((shade) => [shade.code.toUpperCase(), shade]),
+    );
+    c.colours = c.colours.map((shade) =>
+      normalizeShade({
+        ...shade,
+        tones:
+          shade.tones ?? previousShades.get(shade.code.toUpperCase())?.tones,
+      }),
+    );
+    c.shadeCards = c.shadeCards.map((card) => {
+      const old = current.shadeCards.find(
+        (previous) => previous.id === card.id,
+      );
+      return {
+        ...card,
+        family: card.family ?? old?.family ?? "All Shades",
+        tones: card.tones ?? old?.tones ?? [],
+      };
+    });
     if (c.revision !== current.revision)
       return res.status(409).json({
         error:
@@ -443,11 +508,32 @@ contentRouter.put("/admin/content", (req, res) => {
         updatedAt: unchanged ? previous.updatedAt : now,
       };
     });
-    const galleryReviews = c.galleryReviews.map(review => {
-      const previous = current.galleryReviews.find(item => item.id === review.id);
-      const fields = { id: review.id, name: review.name.trim(), detail: review.detail.trim(), text: review.text.trim(), image: review.image.trim() };
-      const unchanged = previous && JSON.stringify(fields) === JSON.stringify({ id: previous.id, name: previous.name, detail: previous.detail, text: previous.text, image: previous.image });
-      return { ...fields, createdAt: previous?.createdAt || now, updatedAt: unchanged ? previous.updatedAt : now };
+    const galleryReviews = c.galleryReviews.map((review) => {
+      const previous = current.galleryReviews.find(
+        (item) => item.id === review.id,
+      );
+      const fields = {
+        id: review.id,
+        name: review.name.trim(),
+        detail: review.detail.trim(),
+        text: review.text.trim(),
+        image: review.image.trim(),
+      };
+      const unchanged =
+        previous &&
+        JSON.stringify(fields) ===
+          JSON.stringify({
+            id: previous.id,
+            name: previous.name,
+            detail: previous.detail,
+            text: previous.text,
+            image: previous.image,
+          });
+      return {
+        ...fields,
+        createdAt: previous?.createdAt || now,
+        updatedAt: unchanged ? previous.updatedAt : now,
+      };
     });
     const next = {
       galleryReviews,
@@ -528,6 +614,19 @@ function uploadedActivity(
     ),
   );
 }
+function uploadCapacity(dir: string, bytes: number) {
+  const configured = Number(process.env.UPLOAD_STORAGE_MB || "512");
+  const limit =
+    Number.isFinite(configured) && configured > 0
+      ? configured * 1024 * 1024
+      : 512 * 1024 * 1024;
+  let used = 0;
+  for (const name of fs.readdirSync(dir)) {
+    const stat = fs.lstatSync(path.join(dir, name));
+    if (stat.isFile()) used += stat.size;
+  }
+  return used + bytes <= limit;
+}
 contentRouter.post("/admin/pdf-upload", (req, res) => {
   const match =
     typeof req.body.data === "string" &&
@@ -549,9 +648,15 @@ contentRouter.post("/admin/pdf-upload", (req, res) => {
       .status(400)
       .json({ error: "The file is not a valid PDF, or exceeds 5 MB." });
   const dir = path.join(dataDir, "uploads");
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const name = crypto.randomUUID() + ".pdf";
-  fs.writeFileSync(path.join(dir, name), bytes);
+  if (!uploadCapacity(dir, bytes.length))
+    return res
+      .status(507)
+      .json({
+        error: "Upload storage is full. Contact the website administrator.",
+      });
+  fs.writeFileSync(path.join(dir, name), bytes, { flag: "wx", mode: 0o600 });
   uploadedActivity(
     req,
     "/uploads/" + name,
@@ -587,9 +692,15 @@ contentRouter.post("/admin/upload", (req, res) => {
       .status(400)
       .json({ error: "Image content does not match its file type." });
   const dir = path.join(dataDir, "uploads");
-  fs.mkdirSync(dir, { recursive: true });
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const name = crypto.randomUUID() + "." + match[1];
-  fs.writeFileSync(path.join(dir, name), bytes);
+  if (!uploadCapacity(dir, bytes.length))
+    return res
+      .status(507)
+      .json({
+        error: "Upload storage is full. Contact the website administrator.",
+      });
+  fs.writeFileSync(path.join(dir, name), bytes, { flag: "wx", mode: 0o600 });
   uploadedActivity(
     req,
     "/uploads/" + name,
@@ -620,9 +731,13 @@ contentRouter.use("/content/legacy-image", (req, res) => {
 });
 export function uploads() {
   return express.static(path.join(dataDir, "uploads"), {
+    dotfiles: "deny",
+    index: false,
     setHeaders(res, file) {
-      if (file.endsWith(".pdf"))
+      if (file.endsWith(".pdf")) {
         res.setHeader("Content-Disposition", "attachment");
+        res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
+      }
       res.setHeader("X-Content-Type-Options", "nosniff");
     },
   });

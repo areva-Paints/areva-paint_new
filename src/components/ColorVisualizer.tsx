@@ -1,19 +1,23 @@
-import { ColourCollectionHeading, ShadeLibrary } from './ShadeLibrary';
+import { escapeMarkup } from "../data/safeMarkup";
+import { ColourCollectionHeading, ShadeLibrary } from "./ShadeLibrary";
 
-import { useSiteContent } from '../admin/ContentContext';
-import React, { useState, useRef, useEffect } from 'react';
-import { 
-  RotateCcw, 
-  Undo2, 
-  Upload, 
-  Sliders, 
-  Printer, 
+import { useSiteContent } from "../admin/ContentContext";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  RotateCcw,
+  Undo2,
+  Upload,
+  Sliders,
+  Printer,
   Palette,
   MessageSquare,
-  Camera
-} from 'lucide-react';
-import { ColorShade, RoomPreset } from '../types';
-import { COLOR_SHADES as DEFAULT_SHADES, ROOM_PRESETS } from '../data/paintsData';
+  Camera,
+} from "lucide-react";
+import { ColorShade, RoomPreset } from "../types";
+import {
+  COLOR_SHADES as DEFAULT_SHADES,
+  ROOM_PRESETS,
+} from "../data/paintsData";
 
 interface ColorVisualizerProps {
   selectedColorHex: string;
@@ -43,29 +47,44 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   const [history, setHistory] = useState<ImageData[]>([]);
   const [savedColors, setSavedColors] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem('areva_saved_shades') || '["AR108", "AR112"]');
+      const saved: unknown = JSON.parse(
+        localStorage.getItem("areva_saved_shades") || '["AR108", "AR112"]',
+      );
+      return Array.isArray(saved)
+        ? saved
+            .filter(
+              (value): value is string =>
+                typeof value === "string" && value.length <= 40,
+            )
+            .slice(0, 5000)
+        : [];
     } catch {
-      return ['AR108', 'AR112'];
+      return ["AR108", "AR112"];
     }
   });
 
-  const [appliedColors, setAppliedColors] = useState<Array<{ name: string; hex: string }>>([
-    { name: selectedColorName, hex: selectedColorHex }
-  ]);
+  const [appliedColors, setAppliedColors] = useState<
+    Array<{ name: string; hex: string }>
+  >([{ name: selectedColorName, hex: selectedColorHex }]);
 
-  const [lastTappedCoords, setLastTappedCoords] = useState<{ x: number; y: number } | null>(null);
+  const [lastTappedCoords, setLastTappedCoords] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const [isHoldingOriginal, setIsHoldingOriginal] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string>('Tap any wall to apply current shade.');
+  const [statusMessage, setStatusMessage] = useState<string>(
+    "Tap any wall to apply current shade.",
+  );
 
   // Current active shade object
   const currentShade = COLOR_SHADES.find(
-    (c) => c.hex.toLowerCase() === selectedColorHex.toLowerCase()
+    (c) => c.hex.toLowerCase() === selectedColorHex.toLowerCase(),
   ) || {
-    code: 'CUSTOM',
-    name: selectedColorName || 'Custom Shade',
+    code: "CUSTOM",
+    name: selectedColorName || "Custom Shade",
     hex: selectedColorHex,
-    family: 'Classic Neutrals' as const,
-    goesWellWith: ['#f4efe6', '#26305a', '#b9bfcc'],
+    family: "Classic Neutrals" as const,
+    goesWellWith: ["#f4efe6", "#26305a", "#b9bfcc"],
   };
 
   // Load preset room or custom photo into canvas
@@ -75,8 +94,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const origCanvas = originalCanvasRef.current;
     if (!canvas || !origCanvas) return;
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const origCtx = origCanvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const origCtx = origCanvas.getContext("2d", { willReadFrequently: true });
     if (!ctx || !origCtx) return;
 
     let isSubscribed = true;
@@ -94,13 +113,15 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       origCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
       setHistory([]);
-      setStatusMessage(`Loaded ${activePreset.name}. Pick a shade from the palette, then tap any wall to paint.`);
+      setStatusMessage(
+        `Loaded ${activePreset.name}. Pick a shade from the palette, then tap any wall to paint.`,
+      );
     };
 
     // Safe fetch blob first to ensure clean non-tainted canvas, fallback to Image
     fetch(activePreset.imageUrl)
       .then((res) => {
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) throw new Error("HTTP " + res.status);
         return res.blob();
       })
       .then((blob) => {
@@ -118,10 +139,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
     function fallbackImage(src: string) {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      img.crossOrigin = "anonymous";
       img.onload = () => setupCanvas(img);
       img.onerror = () => {
-        setStatusMessage(`Could not load ${activePreset.name}. Try uploading your own room photo.`);
+        setStatusMessage(
+          `Could not load ${activePreset.name}. Try uploading your own room photo.`,
+        );
       };
       img.src = src;
     }
@@ -133,7 +156,9 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
   // When selectedColorHex changes: Inform user to tap any wall surface with newly selected shade
   useEffect(() => {
-    setStatusMessage(`Selected ${selectedColorName} (${selectedColorHex}). Tap any wall area to paint.`);
+    setStatusMessage(
+      `Selected ${selectedColorName} (${selectedColorHex}). Tap any wall area to paint.`,
+    );
   }, [selectedColorHex, selectedColorName]);
 
   // Handle Photo Upload
@@ -142,16 +167,24 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onerror = () => setStatusMessage('Could not read this photo. Please choose a JPG, PNG, or WebP image.');
+    reader.onerror = () =>
+      setStatusMessage(
+        "Could not read this photo. Please choose a JPG, PNG, or WebP image.",
+      );
     reader.onload = (event) => {
       const img = new Image();
-      img.onerror = () => setStatusMessage('Could not open this photo. Please try another image.');
+      img.onerror = () =>
+        setStatusMessage(
+          "Could not open this photo. Please try another image.",
+        );
       img.onload = () => {
         const canvas = canvasRef.current;
         const origCanvas = originalCanvasRef.current;
         if (!canvas || !origCanvas) return;
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        const origCtx = origCanvas.getContext('2d', { willReadFrequently: true });
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        const origCtx = origCanvas.getContext("2d", {
+          willReadFrequently: true,
+        });
         if (!ctx || !origCtx) return;
 
         const maxDim = 960;
@@ -169,12 +202,16 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         setLastTappedCoords(null);
         setHistory([]);
         setAppliedColors([]);
-        setStatusMessage('Your photo is loaded! Tap on any wall surface to paint it in ' + selectedColorName + '.');
+        setStatusMessage(
+          "Your photo is loaded! Tap on any wall surface to paint it in " +
+            selectedColorName +
+            ".",
+        );
       };
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
-    e.target.value = '';
+    e.target.value = "";
   };
 
   // Intelligent Luminance-Preserving Flood Fill Wall Paint
@@ -183,8 +220,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const origCanvas = originalCanvasRef.current;
     if (!canvas || !origCanvas) return;
 
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    const origCtx = origCanvas.getContext('2d', { willReadFrequently: true });
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    const origCtx = origCanvas.getContext("2d", { willReadFrequently: true });
     if (!ctx || !origCtx) return;
 
     const width = canvas.width;
@@ -201,7 +238,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const clampY = Math.max(2, Math.min(height - 3, Math.floor(y)));
 
     // Sample a 5x5 neighborhood to compute robust reference seed values (eliminates sensor noise/JPEG artifacts)
-    let sumR = 0, sumG = 0, sumB = 0, validSamples = 0;
+    let sumR = 0,
+      sumG = 0,
+      sumB = 0,
+      validSamples = 0;
     for (let dy = -2; dy <= 2; dy++) {
       for (let dx = -2; dx <= 2; dx++) {
         const sIdx = ((clampY + dy) * width + (clampX + dx)) * 4;
@@ -218,9 +258,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const seedNormR = seedR / seedSum;
     const seedNormG = seedG / seedSum;
 
-    const seedLum = Math.max(0.08, (0.299 * seedR + 0.587 * seedG + 0.114 * seedB) / 255);
+    const seedLum = Math.max(
+      0.08,
+      (0.299 * seedR + 0.587 * seedG + 0.114 * seedB) / 255,
+    );
 
-    const cleanHex = selectedColorHex.replace('#', '');
+    const cleanHex = selectedColorHex.replace("#", "");
     const targetInt = parseInt(cleanHex, 16);
     const targetR = (targetInt >> 16) & 255;
     const targetG = (targetInt >> 8) & 255;
@@ -228,12 +271,13 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
     const effectiveTol = Math.max(16, tolerance || 28);
     const tolSq = effectiveTol * effectiveTol * 3.6;
-    const chromaTol = 0.12 + (effectiveTol / 140);
+    const chromaTol = 0.12 + effectiveTol / 140;
     const stepTolSq = 44 * 44 * 3;
 
     const visited = new Uint8Array(width * height);
     const queue = new Int32Array(width * height);
-    let qStart = 0, qEnd = 0;
+    let qStart = 0,
+      qEnd = 0;
 
     const seedPos = clampY * width + clampX;
     queue[qEnd++] = seedPos;
@@ -247,7 +291,9 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       const py = Math.floor(p / width);
       const idx = p * 4;
 
-      const pr = d[idx], pg = d[idx + 1], pb = d[idx + 2];
+      const pr = d[idx],
+        pg = d[idx + 1],
+        pb = d[idx + 2];
       const pixelLum = (0.299 * pr + 0.587 * pg + 0.114 * pb) / 255;
       const lumRatio = pixelLum / seedLum;
       const factor = Math.min(1.45, Math.max(0.3, 0.4 + 0.6 * lumRatio));
@@ -261,7 +307,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         px > 0 ? p - 1 : -1,
         px < width - 1 ? p + 1 : -1,
         py > 0 ? p - width : -1,
-        py < height - 1 ? p + width : -1
+        py < height - 1 ? p + width : -1,
       ];
 
       for (let n = 0; n < 4; n++) {
@@ -272,20 +318,27 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         // are reconsidered by many neighboring pixels, making the flood fill extremely slow.
         visited[np] = 1;
         const ni = np * 4;
-        const nr = d[ni], ng = d[ni + 1], nb = d[ni + 2];
+        const nr = d[ni],
+          ng = d[ni + 1],
+          nb = d[ni + 2];
 
         // Edge step tolerance: do not cross strong wall/object boundaries.
-        const sdr = nr - pr, sdg = ng - pg, sdb = nb - pb;
+        const sdr = nr - pr,
+          sdg = ng - pg,
+          sdb = nb - pb;
         if (sdr * sdr + sdg * sdg + sdb * sdb > stepTolSq) continue;
 
         // Chromaticity & color distance
-        const dr = nr - seedR, dg = ng - seedG, db = nb - seedB;
+        const dr = nr - seedR,
+          dg = ng - seedG,
+          db = nb - seedB;
         const distSq = dr * dr + dg * dg + db * db;
 
         const nSum = nr + ng + nb + 0.001;
         const nNormR = nr / nSum;
         const nNormG = ng / nSum;
-        const cDist = Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
+        const cDist =
+          Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
 
         if (distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.8)) {
           queue[qEnd++] = np;
@@ -295,7 +348,16 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
     if (paintedPixels < 20) {
       // Retry in small neighborhood
-      const offsets = [[-3, -3], [3, -3], [-3, 3], [3, 3], [0, -4], [0, 4], [-4, 0], [4, 0]];
+      const offsets = [
+        [-3, -3],
+        [3, -3],
+        [-3, 3],
+        [3, 3],
+        [0, -4],
+        [0, 4],
+        [-4, 0],
+        [4, 0],
+      ];
       let recovered = false;
       for (const [ox, oy] of offsets) {
         const nx = clampX + ox;
@@ -308,16 +370,22 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         }
       }
       if (!recovered) {
-        setStatusMessage('Point was too small or on an edge. Try tapping directly on an open wall surface.');
+        setStatusMessage(
+          "Point was too small or on an edge. Try tapping directly on an open wall surface.",
+        );
         return;
       }
     }
 
     ctx.putImageData(currentImageData, 0, 0);
-    setStatusMessage(`Painted wall with ${selectedColorName}. Tap another area or try another shade.`);
+    setStatusMessage(
+      `Painted wall with ${selectedColorName}. Tap another area or try another shade.`,
+    );
 
     setAppliedColors((prev) => {
-      const exists = prev.some((c) => c.hex.toLowerCase() === selectedColorHex.toLowerCase());
+      const exists = prev.some(
+        (c) => c.hex.toLowerCase() === selectedColorHex.toLowerCase(),
+      );
       if (!exists) {
         return [...prev, { name: selectedColorName, hex: selectedColorHex }];
       }
@@ -346,8 +414,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     handleCanvasInteraction(e.clientX, e.clientY);
   };
 
-  const handleCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.pointerType === 'touch' || e.pointerType === 'pen') {
+  const handleCanvasPointerDown = (
+    e: React.PointerEvent<HTMLCanvasElement>,
+  ) => {
+    if (e.pointerType === "touch" || e.pointerType === "pen") {
       handleCanvasInteraction(e.clientX, e.clientY);
     }
   };
@@ -356,29 +426,34 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     if (history.length === 0) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const prevImageData = history[history.length - 1];
     ctx.putImageData(prevImageData, 0, 0);
     setHistory((prev) => prev.slice(0, -1));
-    setStatusMessage('Reverted last paint stroke.');
+    setStatusMessage("Reverted last paint stroke.");
   };
 
   const handleReset = () => {
     const canvas = canvasRef.current;
     const origCanvas = originalCanvasRef.current;
     if (!canvas || !origCanvas) return;
-    const ctx = canvas.getContext('2d');
-    const origCtx = origCanvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
+    const origCtx = origCanvas.getContext("2d");
     if (!ctx || !origCtx) return;
 
-    const origData = origCtx.getImageData(0, 0, origCanvas.width, origCanvas.height);
+    const origData = origCtx.getImageData(
+      0,
+      0,
+      origCanvas.width,
+      origCanvas.height,
+    );
     ctx.putImageData(origData, 0, 0);
     setHistory([]);
     setAppliedColors([]);
     setLastTappedCoords(null);
-    setStatusMessage('Reset to original photo.');
+    setStatusMessage("Reset to original photo.");
   };
 
   const toggleSaveColor = (code: string) => {
@@ -387,7 +462,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       : [...savedColors, code];
     setSavedColors(next);
     try {
-      localStorage.setItem('areva_saved_shades', JSON.stringify(next));
+      localStorage.setItem("areva_saved_shades", JSON.stringify(next));
     } catch {}
   };
 
@@ -395,14 +470,14 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const printWindow = window.open('', '_blank');
+    const printWindow = window.open("", "_blank");
     if (!printWindow) return;
 
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-    const dateStr = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.95);
+    const dateStr = new Date().toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
     });
 
     const colorsHtml = appliedColors
@@ -410,11 +485,15 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         (c) => `
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
           <span style="width:24px;height:24px;border-radius:4px;border:1px solid #ddd;background:${c.hex};display:inline-block;"></span>
-          <span style="font-weight:600;font-size:14px;color:#1c1917;">${c.name} (${c.hex})</span>
-        </div>`
+          <span style="font-weight:600;font-size:14px;color:#1c1917;">${escapeMarkup(c.name)} (${escapeMarkup(c.hex)})</span>
+        </div>`,
       )
-      .join('');
+      .join("");
 
+    printWindow.opener = null;
+    printWindow.addEventListener("load", () => printWindow.print(), {
+      once: true,
+    });
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>
@@ -438,7 +517,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
           </div>
           <div class="card">
             <h3 style="margin-top:0;font-size:16px;">Colours Applied in Visualizer</h3>
-            ${colorsHtml || '<p style="color:#78716c;font-size:13px;">Current shade: ' + currentShade.name + ' (' + currentShade.hex + ')</p>'}
+            ${colorsHtml || '<p style="color:#78716c;font-size:13px;">Current shade: ' + escapeMarkup(currentShade.name) + " (" + escapeMarkup(currentShade.hex) + ")</p>"}
             <div style="margin-top:14px;font-size:13px;color:#57534e;">
               <strong>Recommended Topcoat:</strong> Areva Sheen Pro Interior Emulsion (Soft Sheen finish) or Lumina LusterFinish for Exterior.
             </div>
@@ -446,9 +525,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
           <div class="footer">
             Note: On-screen digital previews may vary slightly from real dried paint coatings. We recommend testing a physical shade card prior to full wall coverage. © 2026 Areva Paints.
           </div>
-          <script>
-            window.onload = function() { window.print(); }
-          </script>
         </body>
       </html>
     `);
@@ -456,10 +532,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   };
 
   return (
-    <section id="visualizer" className="py-14 lg:py-20 bg-stone-100 border-b border-stone-200">
+    <section
+      id="visualizer"
+      className="py-14 lg:py-20 bg-stone-100 border-b border-stone-200"
+    >
       <div className="page-gradient-banner">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
           {/* Section Header */}
           <div className="page-gradient-heading max-w-3xl mb-8">
             <div className="flex items-center gap-2 text-xs font-semibold text-amber-700 tracking-wider uppercase mb-1.5">
@@ -470,26 +548,33 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               See Areva shades on your walls in real time.
             </h2>
             <p className="text-stone-600 text-base mt-2">
-              Switch between architectural presets or upload a photo of your own room. Tap any surface to apply your chosen shade with realistic lighting preservation, then export a painter specification card or request a dealer quote.
+              Switch between architectural presets or upload a photo of your own
+              room. Tap any surface to apply your chosen shade with realistic
+              lighting preservation, then export a painter specification card or
+              request a dealer quote.
             </p>
           </div>
-
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <ColourCollectionHeading total={COLOR_SHADES.length} />
         {/* Studio Workspace: Split Grid */}
         <div className="colour-studio-grid">
-          
           {/* Room preview and painting controls */}
           <div className="colour-room-panel space-y-4">
-            <p className="colour-painting-label">Painting with: <strong>{currentShade.name} ({currentShade.code})</strong></p>
-            
+            <p className="colour-painting-label">
+              Painting with:{" "}
+              <strong>
+                {currentShade.name} ({currentShade.code})
+              </strong>
+            </p>
+
             {/* Room Selector Chips */}
             <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
               <div className="flex items-center gap-2 shrink-0">
                 {ROOM_PRESETS.map((preset) => {
-                  const isCurrent = !isCustomPhoto && activePreset.id === preset.id;
+                  const isCurrent =
+                    !isCustomPhoto && activePreset.id === preset.id;
                   return (
                     <button
                       key={preset.id}
@@ -499,8 +584,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                       }}
                       className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
                         isCurrent
-                          ? 'bg-stone-900 text-white shadow-sm'
-                          : 'bg-white text-stone-700 border border-stone-200 hover:bg-stone-50'
+                          ? "bg-stone-900 text-white shadow-sm"
+                          : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
                       }`}
                     >
                       {preset.name}
@@ -524,8 +609,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   onClick={() => fileInputRef.current?.click()}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all whitespace-nowrap ${
                     isCustomPhoto
-                      ? 'bg-amber-700 text-white shadow-sm'
-                      : 'bg-white text-amber-800 border border-amber-300 hover:bg-amber-50'
+                      ? "bg-amber-700 text-white shadow-sm"
+                      : "bg-white text-amber-800 border border-amber-300 hover:bg-amber-50"
                   }`}
                 >
                   <Upload className="w-3.5 h-3.5" />
@@ -543,7 +628,9 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               {/* Status Note */}
               <div className="hidden sm:flex items-center gap-1 text-[11px] text-stone-500 shrink-0">
                 <span>Active:</span>
-                <span className="font-bold text-stone-900">{currentShade.name}</span>
+                <span className="font-bold text-stone-900">
+                  {currentShade.name}
+                </span>
                 <span
                   className="w-3 h-3 rounded-full border border-black/20 ml-0.5 inline-block"
                   style={{ backgroundColor: currentShade.hex }}
@@ -553,7 +640,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
             {/* Interactive Canvas Container */}
             <div className="relative rounded-2xl overflow-hidden bg-stone-950 border border-stone-300 shadow-xl select-none group">
-              
               {/* Painted Canvas */}
               <canvas
                 ref={canvasRef}
@@ -562,7 +648,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                 className="w-full h-auto block cursor-crosshair touch-manipulation max-h-[540px] object-contain mx-auto"
                 style={{
                   clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
-                  filter: isHoldingOriginal ? 'opacity(0)' : 'opacity(1)',
+                  filter: isHoldingOriginal ? "opacity(0)" : "opacity(1)",
                 }}
               />
 
@@ -607,10 +693,11 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
             {/* Canvas Toolbar & Comparison Slider */}
             <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs space-y-3">
-              
               {/* Slider Row */}
               <div className="flex items-center gap-4">
-                <span className="text-xs font-semibold text-stone-600 whitespace-nowrap">Original (Before)</span>
+                <span className="text-xs font-semibold text-stone-600 whitespace-nowrap">
+                  Original (Before)
+                </span>
                 <input
                   type="range"
                   min="0"
@@ -620,7 +707,9 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   className="w-full accent-amber-600 cursor-pointer h-2 bg-stone-200 rounded-lg"
                   aria-label="Before and after comparison slider"
                 />
-                <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">Painted (After)</span>
+                <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">
+                  Painted (After)
+                </span>
               </div>
 
               {/* Tool Buttons */}
@@ -658,13 +747,17 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                       className="w-20 accent-stone-700 h-1.5 bg-stone-200 rounded"
                       title="Adjust wall edge detection range"
                     />
-                    <span className="font-mono text-[11px] tabular-nums">{tolerance}</span>
+                    <span className="font-mono text-[11px] tabular-nums">
+                      {tolerance}
+                    </span>
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
-                    onClick={() => onRequestQuote(currentShade.name, currentShade.code)}
+                    onClick={() =>
+                      onRequestQuote(currentShade.name, currentShade.code)
+                    }
                     className="p-2 text-stone-800 border border-stone-200 hover:bg-stone-50 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-medium"
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
@@ -679,20 +772,22 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   </button>
                 </div>
               </div>
-
             </div>
-
           </div>
 
           {/* Palette filters and shade library */}
           <div className="colour-shade-panel space-y-4">
-            
-            <ShadeLibrary shades={COLOR_SHADES} cards={siteContent?.shadeCards || []} onSelect={onSelectColor} selectedHex={selectedColorHex} savedCodes={savedColors} onToggleSave={toggleSaveColor} />
+            <ShadeLibrary
+              shades={COLOR_SHADES}
+              cards={siteContent?.shadeCards || []}
+              onSelect={onSelectColor}
+              selectedHex={selectedColorHex}
+              savedCodes={savedColors}
+              onToggleSave={toggleSaveColor}
+            />
           </div>
-
         </div>
-
       </div>
-</section>
+    </section>
   );
 };

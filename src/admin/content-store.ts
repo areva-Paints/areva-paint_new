@@ -1,4 +1,5 @@
-import { normalizeShade } from '../data/shadeFamilies';
+import { writePrivateJson } from "../server/storage";
+import { normalizeShade } from "../data/shadeFamilies";
 import type { StoredUser } from "./user-types";
 import fs from "node:fs";
 import path from "node:path";
@@ -77,12 +78,20 @@ export function readContent(): SiteContent {
     ...content
   } = JSON.parse(fs.readFileSync(file, "utf8"));
   return {
-    ...content,
+    // Allowlist public fields; future private store metadata must never be spread here.
+    revision: content.revision,
+    products: content.products,
+    dealers: content.dealers,
+    landingImages: content.landingImages,
     galleryProjects: content.galleryProjects ?? [],
     galleryAds: content.galleryAds ?? [],
     galleryReviews: content.galleryReviews ?? [],
     colours: (content.colours ?? COLOR_SHADES).map(normalizeShade),
-    shadeCards: (content.shadeCards ?? []).map(card => ({ ...card, family: card.family ?? "All Shades", tones: card.tones ?? [] })),
+    shadeCards: (content.shadeCards ?? []).map((card) => ({
+      ...card,
+      family: card.family ?? "All Shades",
+      tones: card.tones ?? [],
+    })),
   };
 }
 export function readActivity(): ActivityStore {
@@ -105,16 +114,11 @@ export function saveContent(
     startedAt: history.startedAt || events[0]?.at || null,
     events: [...history.events, ...events],
   };
-  fs.mkdirSync(dataDir, { recursive: true });
-  const file = path.join(dataDir, "content.json");
-  fs.writeFileSync(
-    file + ".tmp",
-    JSON.stringify({ ...content, adminHistory, users }, null, 2),
-    {
-      mode: 0o600,
-    },
-  );
-  fs.renameSync(file + ".tmp", file);
+  writePrivateJson(path.join(dataDir, "content.json"), {
+    ...content,
+    adminHistory,
+    users,
+  });
 }
 
 export function recordActivity(event: ActivityEvent) {

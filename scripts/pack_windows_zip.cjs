@@ -5,6 +5,8 @@ const JSZip = require('jszip');
 async function buildWindowsZip() {
   const rootDir = process.cwd();
   const publicDir = path.join(rootDir, 'public');
+  const outputDir = path.join(rootDir, 'artifacts', 'source');
+  fs.mkdirSync(outputDir, { recursive: true, mode: 0o700 });
 
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
@@ -26,7 +28,8 @@ async function buildWindowsZip() {
     const items = fs.readdirSync(dirPath);
     for (const item of items) {
       const fullPath = path.join(dirPath, item);
-      const stat = fs.statSync(fullPath);
+      const stat = fs.lstatSync(fullPath);
+      if (stat.isSymbolicLink() || item.startsWith('.')) continue;
 
       if (stat.isDirectory()) {
         const nextZipPrefix = zipFolderPrefix ? `${zipFolderPrefix}/${item}` : item;
@@ -78,13 +81,13 @@ async function buildWindowsZip() {
       platform: 'DOS',
     });
 
-    fs.writeFileSync(outputPath, buffer);
+    fs.writeFileSync(outputPath, buffer, { mode: 0o600 });
     console.log(`Generated ${outputPath} (${buffer.length} bytes)`);
   }
 
-  await generateArchive(path.join(publicDir, 'areva-paints-fullstack.zip'), false);
-  await generateArchive(path.join(publicDir, 'areva-paints-code.zip'), true);
+  await generateArchive(path.join(outputDir, 'areva-paints-fullstack.zip'), false);
+  await generateArchive(path.join(outputDir, 'areva-paints-code.zip'), true);
   console.log('All archives built successfully with MS-DOS compatibility!');
 }
 
-buildWindowsZip().catch(console.error);
+buildWindowsZip().catch(error => { console.error(error); process.exitCode = 1; });
