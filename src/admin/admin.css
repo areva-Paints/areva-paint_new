@@ -35,6 +35,10 @@
   display: flex;
   min-height: 100vh;
   font-size: 14px;
+  background-color: #f1ebf8;
+  background-image:
+    radial-gradient(ellipse at top right, #e9ddf8 0%, transparent 55%),
+    linear-gradient(135deg, #f1ebf8 0%, #f7f3fc 55%, #edf6f3 100%);
 }
 .adm-sidebar {
   width: 246px;
