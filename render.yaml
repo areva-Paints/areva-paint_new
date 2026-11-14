@@ -29,3 +29,7 @@ services:
         value: https://areva-paint-new.onrender.com,https://areva-paint-new-admin.onrender.com
       - key: UPLOAD_STORAGE_MB
         value: "512"
+      - key: WARRANTY_OTP_MODE
+        value: "demo"
+      - key: WARRANTY_STORAGE_MB
+        value: "128"

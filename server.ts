@@ -1,3 +1,5 @@
+import "dotenv/config";
+import { warrantyRouter, warrantyAdminRouter } from "./src/server/warranty";
 import {
   securityHeaders,
   publicCors,
@@ -12,7 +14,6 @@ import {
   filterShades,
 } from "./src/data/shadeFamilies";
 import { requireAdmin } from "./src/admin/accounts";
-import "dotenv/config";
 import { contentRouter, uploads } from "./src/admin/routes";
 import { readContent, dataDir } from "./src/admin/content-store";
 import { legacyPage } from "./src/admin/legacy-page";
@@ -85,6 +86,7 @@ app.use(
   rateLimit(30, 60000),
   express.json({ limit: "8mb" }),
 );
+app.use("/api/warranty", warrantyRouter);
 app.use("/api/admin/content", express.json({ limit: "10mb" }));
 app.use("/api", express.json({ limit: "64kb" }));
 app.use("/api", (req, res, next) => {
@@ -95,6 +97,7 @@ app.use("/api", (req, res, next) => {
     return res.status(400).json({ error: "Send a JSON object." });
   next();
 });
+app.use("/api/admin/warranties", warrantyAdminRouter);
 app.use("/api", contentRouter);
 app.use("/uploads", uploads());
 app.get(
@@ -361,12 +364,10 @@ app.post(
       typeof productId !== "string" ||
       productId.length > 100
     )
-      return res
-        .status(400)
-        .json({
-          error:
-            "Enter valid positive dimensions, 0–1,000 doors/windows and 1–10 coats.",
-        });
+      return res.status(400).json({
+        error:
+          "Enter valid positive dimensions, 0–1,000 doors/windows and 1–10 coats.",
+      });
     const product = readContent().products.find((p) => p.id === productId);
     if (!product)
       return res

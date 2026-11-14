@@ -1,18 +1,18 @@
 # Areva Paints SQL database layout
 
-Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **19 tables**, including the Gallery reviews addition (13 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
+Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **20 tables**, including Gallery reviews and Warranty Registration (14 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
 
 Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries now persist privately in `CONTENT_DATA_DIR/enquiries.json`.
 
-**Using Supabase instead:** follow [supabase-setup.md](supabase-setup.md) and its single [supabase-setup.sql](../database/supabase-setup.sql) file. That alternative creates the same 19 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
+**Using Supabase instead:** follow [supabase-setup.md](supabase-setup.md) and its single [supabase-setup.sql](../database/supabase-setup.sql) file. That alternative creates the same 20 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
 
 Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004 and 005 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005 and 006 in order. Back up and rehearse either route on staging first.
 
 ## Database access guardrails (14 November 2026)
 
-Fresh `schema.sql` now enables row-level security on all 19 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
+Fresh `schema.sql` now enables row-level security on all 20 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
 
 For an existing installation that already has migrations 001–004, review and apply [005-private-access-guardrails.sql](../database/migrations/005-private-access-guardrails.sql) once. It revokes prior direct application-table access and preserves unrelated tables. If both `areva.users` and `public.users` exist, it stops for inspection. The migration changes permissions; rehearse it against a backup and assess any existing integrations. No SQL has been applied to the live project during this review.
 
@@ -28,6 +28,8 @@ erDiagram
   products ||--|{ product_pack_sizes : has
   products ||--o{ product_surfaces : recommends
   dealers ||--o{ dealer_badges : offers
+  products |o--o{ warranty_registrations : product_snapshot
+  dealers |o--o{ warranty_registrations : dealer_snapshot
   colours ||--o{ colour_pairings : complements
   gallery_projects ||--|{ gallery_photos : contains
   products o|--o{ enquiries : requested
@@ -244,6 +246,12 @@ The product editor exposes all public technical fields. `sheen` is now free text
 | created_at, updated_at timestamptz | `createdAt`, `updatedAt`; assigned/preserved by the server |
 
 Existing databases use `database/migrations/003-gallery-reviews.sql` once. It detects a `public` or private `areva` install, stops if both exist, creates this table and permits `galleryReviews` activity events. The private-schema path enables RLS and revokes browser-role access to the new table. Fresh schema/setup already includes it. Import `galleryReviews[]` in the same content/history transaction; up to 100 reviews, optional images use the existing 25 MiB upload path. Preserve rows when older clients omit the section. This is an SQL design update, not a live migration or backend connection.
+
+### 20. warranty_registrations — private customer submissions
+
+See [warranty-registration.md](warranty-registration.md) for the complete form/API/storage mapping. Columns capture customer/session mobile and optional contact fields, product/category/warranty snapshots, purchase date/quantity/packing/batch/shade, dealer/invoice fields, property/application fields, notes/consent, reference, verification/status and private receipt metadata/storage key. `id`, `submission_id` and `receipt_id` are UUIDs. Quantity/area and warranty years use numeric; purchase/completion use date. Empty optional dealer reference, application date and area map to NULL.
+
+Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, submission_id)` prevents duplicate retries; references and receipt IDs/keys are unique. RLS and revoked API-role permissions keep these records behind the backend. Checks prohibit verified or approved demo entries. Existing 19-table installations use migration 006 once; fresh setup includes it. Receipt files are private assets, not public URLs. Current website registrations persist in `warranties.json`; the SQL adapter/import and private file migration remain separate work.
 
 ## Defaults, ordering and limits
 

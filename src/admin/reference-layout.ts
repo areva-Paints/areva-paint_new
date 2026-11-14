@@ -36,6 +36,7 @@ export function referenceLayout(html: string, content: SiteContent) {
         <li><a href="#visualizer" data-ref-nav="visualizer">Colour Visualizer</a></li>
         <li><a href="#calculator" data-ref-nav="calculator">Paint Calculator</a></li>
         <li><a href="#gallery" data-ref-nav="gallery">Gallery</a></li>
+        <li><a href="/warranty" target="_top">Warranty Registration</a></li>
         <li><details class="ref-more"><summary>More</summary><div>
           <a href="#services" data-ref-nav="services">Services</a><a href="#about" data-ref-nav="about">About Areva</a>
           <a href="#portals" data-ref-nav="portals">Authorised dealers</a><a href="#certs">Documents</a><a href="#contact" data-ref-nav="contact">Contact</a>

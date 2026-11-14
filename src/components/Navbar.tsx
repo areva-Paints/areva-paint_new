@@ -1,3 +1,4 @@
+import { contentUrl } from '../site-content';
 import { AccountAccess } from "./AccountAccess";
 import React, { useState } from "react";
 import {
@@ -108,6 +109,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Gallery
             </a>
+            <a href={contentUrl('/warranty')} className="hover:text-stone-950 transition-colors whitespace-nowrap py-1">Warranty Registration</a>
             <a
               href="#calculator"
               onClick={(e) => {
@@ -284,6 +286,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               Gallery
             </a>
+            <a href={contentUrl('/warranty')} className="hover:text-stone-950 transition-colors whitespace-nowrap py-1">Warranty Registration</a>
             <a
               href="#calculator"
               onClick={() => {

@@ -176,4 +176,11 @@ See [security-review.md](docs/security-review.md). Admin/auth writes require JSO
 
 Enquiries submitted to the API now persist privately in `CONTENT_DATA_DIR/enquiries.json`, with validated contact fields, UUID ticket IDs and a five-request/15-minute per-IP limit. There is no automatic SMS/email delivery. Include this file with the full private content file and uploads in backups. Existing process-memory enquiries cannot be recovered retrospectively. Image/PDF uploads share a configurable 512 MiB budget; capacity errors preserve existing media and require an operator to review storage.
 
-Use one Node process with persistent private storage. Session/rate-limit maps are local to that process. The SQL schema and migration 005 include private-access guardrails, but no database connection or live migration was performed. Changing a SQL file alone does not move the site's records. Warranty registration/OTP remains on hold.
+Use one Node process with persistent private storage. Session/rate-limit maps are local to that process. The SQL schema and migration 005 include private-access guardrails, but no database connection or live migration was performed. Changing a SQL file alone does not move the site's records. Warranty Registration now has a separately documented demo-only entry flow; real OTP delivery remains deferred.
+
+
+## Warranty registrations
+
+Open **Warranty registrations** to search the private registration table by reference, customer/mobile, product/type, dealer/invoice, batch, site or notes. Filter by product type and select **View details** to read all fields and download the private purchase receipt. This view is separate from CMS Save changes. Demo entries are pending review and explicitly unverified; no approval/certificate is issued.
+
+The public **Warranty Registration** tab opens `/warranty`: mobile → displayed demo code **123456** → full product/dealer/site form → required private receipt → reference confirmation. No SMS/WhatsApp message is sent. Back up `warranties.json`, `warranty-uploads.json` and `warranty-receipts/` under the persistent data directory. Fresh SQL now has 20 tables; existing 19-table installations need migration 006. The website still uses JSON until the database adapter is implemented. See [warranty-registration.md](docs/warranty-registration.md) for all fields, guardrails, configuration and the later Meta integration.

@@ -13,7 +13,7 @@ async function verify(db, name) {
     `SELECT count(*)::int AS count FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname=$1 AND c.relkind='r' AND c.relrowsecurity`,
     [name],
   );
-  assert.equal(result.rows[0].count, 19);
+  assert.equal(result.rows[0].count, 20);
   for (const role of ["anon", "authenticated", "service_role"]) {
     const access = await db.query(
       `SELECT has_table_privilege($1, $2, 'SELECT') AS read, has_table_privilege($1, $2, 'INSERT') AS write, has_function_privilege($1, $3, 'EXECUTE') AS execute`,

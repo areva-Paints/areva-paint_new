@@ -9,8 +9,8 @@ The HTTPS project URL is a Data API address, not a PostgreSQL login or permissio
 
 1. Open [this project's SQL Editor](https://supabase.com/dashboard/project/osljojzwulmjoqbnubia/sql/new) while signed in with database-management access.
 2. Start a new query and paste the complete contents of [supabase-setup.sql](../database/supabase-setup.sql). Run it using the project database-owner role, normally `postgres`.
-3. Run **once**. The script creates a new `areva` schema, all 19 reviewed tables and the eight categories in one transaction. It deliberately stops if `areva` already exists; inspect any existing data rather than dropping it or rerunning setup. It does not alter existing `public`, `auth` or `storage` tables.
-4. The final queries should report **19 tables**, **8 categories**, and **19 tables with row-level security enabled**. In Table Editor, select the **areva** schema to see the tables.
+3. Run **once**. The script creates a new `areva` schema, all 20 reviewed tables and the eight categories in one transaction. It deliberately stops if `areva` already exists; inspect any existing data rather than dropping it or rerunning setup. It does not alter existing `public`, `auth` or `storage` tables.
+4. The final queries should report **20 tables**, **8 categories**, and **20 tables with row-level security enabled**. In Table Editor, select the **areva** schema to see the tables.
 
 This file already includes the full schema and category seed. Do not also run `schema.sql`, `seed-categories.sql` or the old 15-table upgrade in this setup flow. If an earlier proposal has already been applied in `public` or another schema, stop and plan its migration instead of creating a competing copy.
 
@@ -28,9 +28,9 @@ Before applying, the operator must connect and check the current database role, 
 
 ## Existing data and website integration
 
-The script inserts category definitions only. Products, dealers, colours, galleries, created accounts, passwords and history are **not imported**. Supabase Auth users are not copied into `areva.users` or made website admins. Back up the full private `content.json` and uploads, then follow the mappings and import requirements in [database-layout.md](database-layout.md).
+The script inserts category definitions only. Products, dealers, colours, galleries, created accounts, passwords and history are **not imported**. Supabase Auth users are not copied into `areva.users` or made website admins. Back up the full private `content.json`, enquiry/warranty files and all public/private uploads, then follow the mappings and import requirements in [database-layout.md](database-layout.md).
 
-The application still uses private JSON files for content and enquiries. Its PostgreSQL adapter/import remains to be implemented. A future adapter must use qualified `areva.*` table names or set a trusted search path for every pooled connection, preserve account verification/history transactions, and return only public content to visitors. Setting `DATABASE_URL` alone does not change current application storage. Uploaded image/PDF files also need persistent disk or a separately implemented Supabase Storage integration; this SQL does not migrate them.
+The application still uses private JSON files for content, enquiries and warranty registrations. Its PostgreSQL adapter/import remains to be implemented. A future adapter must use qualified `areva.*` table names or set a trusted search path for every pooled connection, preserve account verification/history transactions, and return only public content to visitors. Setting `DATABASE_URL` alone does not change current application storage. Uploaded image/PDF files also need persistent disk or a separately implemented Supabase Storage integration; this SQL does not migrate them.
 
 For GoDaddy hosting, the Node.js/Express backend can connect to Supabase PostgreSQL over an authenticated TLS connection; hosting still needs Node support. The public frontend must not receive the database password or privileged connection string.
 
@@ -43,3 +43,7 @@ node scripts/prepare_supabase_sql.cjs
 ```
 
 The generator only prepares the local SQL file from the reviewed sources; it never executes it. This setup targets a new Areva schema in an existing Supabase project, not an automatic upgrade of an existing Areva installation.
+
+## Warranty Registration upgrade
+
+An existing 19-table Areva installation needs [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once, after migrations 001–005. The new fresh setup has 20 tables; never rerun it on an existing installation. See [warranty-registration.md](warranty-registration.md) for private receipt storage, JSON persistence and the future SQL adapter.

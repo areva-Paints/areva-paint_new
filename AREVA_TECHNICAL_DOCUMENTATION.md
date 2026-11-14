@@ -502,19 +502,19 @@ These are observations for technical handover. This document does not implement 
 
 ## 12. PostgreSQL column dictionary and relationships
 
-Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **19 tables**, including the Gallery reviews addition (13 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
+Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **20 tables**, including Gallery reviews and Warranty Registration (14 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
 
 Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries now persist privately in `CONTENT_DATA_DIR/enquiries.json`.
 
-**Using Supabase instead:** follow [supabase-setup.md](docs/supabase-setup.md) and its single [supabase-setup.sql](database/supabase-setup.sql) file. That alternative creates the same 19 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
+**Using Supabase instead:** follow [supabase-setup.md](docs/supabase-setup.md) and its single [supabase-setup.sql](database/supabase-setup.sql) file. That alternative creates the same 20 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
 
 Use [schema.sql](database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005 and 006 in order. Back up and rehearse either route on staging first.
 
 ### Database access guardrails (14 November 2026)
 
-Fresh `schema.sql` now enables row-level security on all 19 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
+Fresh `schema.sql` now enables row-level security on all 20 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
 
 For an existing installation that already has migrations 001–004, review and apply [005-private-access-guardrails.sql](database/migrations/005-private-access-guardrails.sql) once. It revokes prior direct application-table access and preserves unrelated tables. If both `areva.users` and `public.users` exist, it stops for inspection. The migration changes permissions; rehearse it against a backup and assess any existing integrations. No SQL has been applied to the live project during this review.
 
@@ -530,6 +530,8 @@ erDiagram
   products ||--|{ product_pack_sizes : has
   products ||--o{ product_surfaces : recommends
   dealers ||--o{ dealer_badges : offers
+  products |o--o{ warranty_registrations : product_snapshot
+  dealers |o--o{ warranty_registrations : dealer_snapshot
   colours ||--o{ colour_pairings : complements
   gallery_projects ||--|{ gallery_photos : contains
   products o|--o{ enquiries : requested
@@ -746,6 +748,12 @@ The product editor exposes all public technical fields. `sheen` is now free text
 | created_at, updated_at timestamptz | `createdAt`, `updatedAt`; assigned/preserved by the server |
 
 Existing databases use `database/migrations/003-gallery-reviews.sql` once. It detects a `public` or private `areva` install, stops if both exist, creates this table and permits `galleryReviews` activity events. The private-schema path enables RLS and revokes browser-role access to the new table. Fresh schema/setup already includes it. Import `galleryReviews[]` in the same content/history transaction; up to 100 reviews, optional images use the existing 25 MiB upload path. Preserve rows when older clients omit the section. This is an SQL design update, not a live migration or backend connection.
+
+#### 20. warranty_registrations — private customer submissions
+
+See [warranty-registration.md](docs/warranty-registration.md) for the complete form/API/storage mapping. Columns capture customer/session mobile and optional contact fields, product/category/warranty snapshots, purchase date/quantity/packing/batch/shade, dealer/invoice fields, property/application fields, notes/consent, reference, verification/status and private receipt metadata/storage key. `id`, `submission_id` and `receipt_id` are UUIDs. Quantity/area and warranty years use numeric; purchase/completion use date. Empty optional dealer reference, application date and area map to NULL.
+
+Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, submission_id)` prevents duplicate retries; references and receipt IDs/keys are unique. RLS and revoked API-role permissions keep these records behind the backend. Checks prohibit verified or approved demo entries. Existing 19-table installations use migration 006 once; fresh setup includes it. Receipt files are private assets, not public URLs. Current website registrations persist in `warranties.json`; the SQL adapter/import and private file migration remain separate work.
 
 ### Defaults, ordering and limits
 
@@ -1068,6 +1076,62 @@ CREATE INDEX activity_events_action_idx ON activity_events(action, event_sequenc
 CREATE INDEX activity_events_entry_idx ON activity_events(section, entity_id, event_sequence DESC)
   WHERE action IN ('created', 'updated') AND entity_id <> '';
 
+-- Customer submissions and private receipt metadata; never exposed to browser database roles.
+CREATE TABLE warranty_registrations (
+  id uuid PRIMARY KEY,
+  reference varchar(100) NOT NULL UNIQUE CHECK (btrim(reference) <> ''),
+  submission_id uuid NOT NULL,
+  mobile varchar(13) NOT NULL CHECK (mobile ~ '^\+91[6-9][0-9]{9}$'),
+  verification_mode varchar(12) NOT NULL CHECK (verification_mode IN ('demo', 'whatsapp')),
+  mobile_verified boolean NOT NULL DEFAULT false,
+  status varchar(20) NOT NULL DEFAULT 'pending_review'
+    CHECK (status IN ('pending_review', 'needs_information', 'approved', 'rejected')),
+  customer_name varchar(150) NOT NULL CHECK (btrim(customer_name) <> ''),
+  email varchar(160) NOT NULL DEFAULT '',
+  alternate_mobile varchar(25) NOT NULL DEFAULT '',
+  product_id varchar(100) REFERENCES products(id) ON DELETE SET NULL,
+  product_name varchar(150) NOT NULL CHECK (btrim(product_name) <> ''),
+  category_id varchar(100) NOT NULL,
+  category_name varchar(100) NOT NULL,
+  warranty_years numeric NOT NULL DEFAULT 0 CHECK (warranty_years BETWEEN 0 AND 100),
+  warranty_label varchar(100) NOT NULL DEFAULT '',
+  purchase_date date NOT NULL,
+  quantity numeric NOT NULL CHECK (quantity > 0 AND quantity <= 100000),
+  pack_size varchar(100) NOT NULL CHECK (btrim(pack_size) <> ''),
+  batch_number varchar(100) NOT NULL DEFAULT '',
+  shade varchar(150) NOT NULL DEFAULT '',
+  dealer_id varchar(100) REFERENCES dealers(id) ON DELETE SET NULL,
+  dealer_name varchar(200) NOT NULL CHECK (btrim(dealer_name) <> ''),
+  dealer_phone varchar(25) NOT NULL DEFAULT '',
+  dealer_address varchar(500) NOT NULL CHECK (btrim(dealer_address) <> ''),
+  dealer_city varchar(150) NOT NULL CHECK (btrim(dealer_city) <> ''),
+  invoice_number varchar(100) NOT NULL CHECK (btrim(invoice_number) <> ''),
+  site_address varchar(500) NOT NULL CHECK (btrim(site_address) <> ''),
+  city varchar(150) NOT NULL CHECK (btrim(city) <> ''),
+  state varchar(150) NOT NULL CHECK (btrim(state) <> ''),
+  pin_code varchar(6) NOT NULL CHECK (pin_code ~ '^[0-9]{6}$'),
+  application_date date CHECK (application_date IS NULL OR application_date >= purchase_date),
+  painted_area numeric CHECK (painted_area > 0 AND painted_area <= 100000),
+  applicator_name varchar(150) NOT NULL DEFAULT '',
+  applicator_phone varchar(25) NOT NULL DEFAULT '',
+  notes varchar(2000) NOT NULL DEFAULT '',
+  contact_consent boolean NOT NULL CHECK (contact_consent),
+  receipt_id uuid NOT NULL UNIQUE,
+  receipt_name varchar(150) NOT NULL CHECK (btrim(receipt_name) <> ''),
+  receipt_mime varchar(30) NOT NULL CHECK (receipt_mime IN ('application/pdf','image/png','image/jpeg','image/webp')),
+  receipt_bytes integer NOT NULL CHECK (receipt_bytes BETWEEN 12 AND 5242880),
+  -- Private storage key only, not a public URL. Actual files need private persistent storage.
+  receipt_file_key varchar(100) NOT NULL UNIQUE CHECK (receipt_file_key ~ '^[a-f0-9-]{36}\.(pdf|png|jpeg|webp)$'),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (mobile, submission_id),
+  CHECK (verification_mode <> 'demo' OR NOT mobile_verified),
+  CHECK (status <> 'approved' OR (mobile_verified AND verification_mode <> 'demo'))
+);
+CREATE INDEX warranty_registrations_created_idx ON warranty_registrations(created_at DESC);
+CREATE INDEX warranty_registrations_mobile_idx ON warranty_registrations(mobile);
+CREATE INDEX warranty_registrations_invoice_idx ON warranty_registrations(lower(invoice_number));
+CREATE INDEX warranty_registrations_product_idx ON warranty_registrations(category_id, product_id);
+
 -- Private application tables: access is through the authenticated Express backend.
 -- No browser policies or broad grants are created. The owner can administer data.
 DO $$
@@ -1080,7 +1144,7 @@ BEGIN
     'categories', 'products', 'product_pack_sizes', 'product_surfaces',
     'dealers', 'dealer_badges', 'landing_images', 'colours', 'colour_pairings',
     'shade_cards', 'gallery_projects', 'gallery_photos', 'gallery_ads', 'gallery_reviews',
-    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events'
+    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations'
   ] LOOP
     IF to_regclass(format('%I.%I', app_schema, target)) IS NULL THEN
       RAISE EXCEPTION 'Missing table %.%; apply earlier migrations before hardening.', app_schema, target;
@@ -1278,4 +1342,9 @@ COMMIT;
 
 ## Security review — 14 November 2026
 
-See [security-review.md](docs/security-review.md) for findings, implemented controls, validation and remaining production work. Source APIs/ZIPs now require admin authentication; enquiries are private durable JSON; public content is allowlisted; request limits and production browser headers are enforced; fresh SQL and migration 005 restrict application-table access. No live Supabase migration or deployment was performed. Warranty registration remains deferred.
+See [security-review.md](docs/security-review.md) for findings, implemented controls, validation and remaining production work. Source APIs/ZIPs now require admin authentication; enquiries are private durable JSON; public content is allowlisted; request limits and production browser headers are enforced; fresh SQL and migration 005 restrict application-table access. No live Supabase migration or deployment was performed. Warranty Registration now uses the separately documented demo entry flow; real OTP delivery remains deferred.
+
+
+## Warranty Registration — 14 November 2026
+
+See [the warranty guide](docs/warranty-registration.md) for routes, form fields, private receipt handling, admin search, scoped demo sessions and migration 006. Fresh SQL includes 20 tables. Runtime registrations persist on the existing private volume; neither SQL connectivity nor Meta WhatsApp delivery is active. Demo entries remain unverified and pending review.

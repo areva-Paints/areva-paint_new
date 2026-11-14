@@ -1,5 +1,6 @@
-import { ProductTechnicalFields } from './ProductTechnicalFields';
-import { GalleryReviewsManager } from './GalleryReviewsManager';
+import { WarrantyManager } from "../warranty/WarrantyManager";
+import { ProductTechnicalFields } from "./ProductTechnicalFields";
+import { GalleryReviewsManager } from "./GalleryReviewsManager";
 import { UsersManager } from "./UsersManager";
 import type { AccountUser } from "./user-types";
 import {
@@ -48,8 +49,16 @@ type Tab =
   | "colours"
   | "galleryProjects"
   | "history"
-  | "users";
+  | "users"
+  | "warranties";
 const sections = [
+  {
+    id: "warranties" as Tab,
+    label: "Warranty registrations",
+    icon: ShieldCheck,
+    description:
+      "Search customer registrations, product and dealer details, and private purchase receipts.",
+  },
   {
     id: "users" as Tab,
     label: "Users",
@@ -160,9 +169,9 @@ export function AdminPage() {
   useEffect(() => {
     if (authenticated && !uploading) void refreshActivity();
   }, [authenticated, uploading, content?.revision]);
-  const [galleryView, setGalleryView] = useState<"projects" | "ads" | "reviews">(
-    "projects",
-  );
+  const [galleryView, setGalleryView] = useState<
+    "projects" | "ads" | "reviews"
+  >("projects");
   const [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [editor, setEditor] = useState<Product | Dealer | LandingImage | null>(
@@ -431,7 +440,13 @@ export function AdminPage() {
         type={type}
         required={required}
         maxLength={type === "number" ? undefined : 500}
-        min={type === "number" ? key === "coverageSqFtPerLiter" ? 0 : 1 : undefined}
+        min={
+          type === "number"
+            ? key === "coverageSqFtPerLiter"
+              ? 0
+              : 1
+            : undefined
+        }
         max={type === "number" ? 10000 : undefined}
         step={type === "number" ? "any" : undefined}
         value={(editor as any)?.[key] ?? ""}
@@ -545,7 +560,8 @@ export function AdminPage() {
     ? tab === "colours" ||
       tab === "galleryProjects" ||
       tab === "history" ||
-      tab === "users"
+      tab === "users" ||
+      tab === "warranties"
       ? []
       : content[tab]
     : [];
@@ -554,7 +570,7 @@ export function AdminPage() {
       ? ["galleryProjects", "galleryAds", "galleryPhotos", "galleryReviews"]
       : tab === "colours"
         ? ["colours", "shadeCards"]
-        : tab === "history" || tab === "users"
+        : tab === "history" || tab === "users" || tab === "warranties"
           ? []
           : [tab];
   const sectionUpdatedAt = sectionKeys
@@ -592,13 +608,14 @@ export function AdminPage() {
               {s.label}
               <span>
                 {content
-                  ? s.id === "users"
+                  ? s.id === "users" || s.id === "warranties"
                     ? null
                     : s.id === "history"
                       ? activity?.totalEvents || 0
                       : s.id === "galleryProjects"
                         ? content.galleryProjects.length +
-                          (content.galleryAds?.length || 0) + (content.galleryReviews?.length || 0)
+                          (content.galleryAds?.length || 0) +
+                          (content.galleryReviews?.length || 0)
                         : content[s.id].length
                   : 0}
               </span>
@@ -646,7 +663,8 @@ export function AdminPage() {
             {tab !== "colours" &&
               tab !== "galleryProjects" &&
               tab !== "history" &&
-              tab !== "users" && (
+              tab !== "users" &&
+              tab !== "warranties" && (
                 <button className="adm-primary" onClick={add}>
                   <Plus size={17} />
                   Add{" "}
@@ -701,7 +719,7 @@ export function AdminPage() {
               {error}
             </div>
           )}
-          {tab !== "history" && tab !== "users" && (
+          {tab !== "history" && tab !== "users" && tab !== "warranties" && (
             <div className="adm-activity-summary" role="status">
               {activityError ||
                 (sectionUpdatedAt ? (
@@ -714,7 +732,9 @@ export function AdminPage() {
                 ))}
             </div>
           )}
-          {tab === "users" ? (
+          {tab === "warranties" ? (
+            <WarrantyManager />
+          ) : tab === "users" ? (
             <UsersManager
               currentUser={currentAdmin}
               onChange={() => void refreshActivity()}
@@ -739,7 +759,15 @@ export function AdminPage() {
                   event.preventDefault();
                   const views = ["projects", "ads", "reviews"] as const;
                   const index = views.indexOf(galleryView);
-                  const next = event.key === "Home" ? 0 : event.key === "End" ? views.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + views.length) % views.length;
+                  const next =
+                    event.key === "Home"
+                      ? 0
+                      : event.key === "End"
+                        ? views.length - 1
+                        : (index +
+                            (event.key === "ArrowRight" ? 1 : -1) +
+                            views.length) %
+                          views.length;
                   const nextView = views[next];
                   setGalleryView(nextView);
                   setError("");
@@ -778,7 +806,21 @@ export function AdminPage() {
                 >
                   Ads <span>{content.galleryAds?.length || 0}</span>
                 </button>
-                <button type="button" id="adm-gallery-reviews-tab" role="tab" tabIndex={galleryView === "reviews" ? 0 : -1} aria-selected={galleryView === "reviews"} aria-controls="adm-gallery-reviews-panel" disabled={uploading || busy} onClick={() => { setGalleryView("reviews"); setError(""); }}>Reviews <span>{content.galleryReviews?.length || 0}</span></button>
+                <button
+                  type="button"
+                  id="adm-gallery-reviews-tab"
+                  role="tab"
+                  tabIndex={galleryView === "reviews" ? 0 : -1}
+                  aria-selected={galleryView === "reviews"}
+                  aria-controls="adm-gallery-reviews-panel"
+                  disabled={uploading || busy}
+                  onClick={() => {
+                    setGalleryView("reviews");
+                    setError("");
+                  }}
+                >
+                  Reviews <span>{content.galleryReviews?.length || 0}</span>
+                </button>
               </div>
               <div
                 id="adm-gallery-projects-panel"
@@ -812,8 +854,21 @@ export function AdminPage() {
                   />
                 )}
               </div>
-              <div id="adm-gallery-reviews-panel" role="tabpanel" aria-labelledby="adm-gallery-reviews-tab" hidden={galleryView !== "reviews"}>
-                {galleryView === "reviews" && <GalleryReviewsManager content={content} onChange={update} onPublish={persist} onBusy={setUploading} publishError={error} />}
+              <div
+                id="adm-gallery-reviews-panel"
+                role="tabpanel"
+                aria-labelledby="adm-gallery-reviews-tab"
+                hidden={galleryView !== "reviews"}
+              >
+                {galleryView === "reviews" && (
+                  <GalleryReviewsManager
+                    content={content}
+                    onChange={update}
+                    onPublish={persist}
+                    onBusy={setUploading}
+                    publishError={error}
+                  />
+                )}
               </div>
             </>
           ) : tab === "colours" && content ? (
@@ -1023,13 +1078,15 @@ export function AdminPage() {
           <div className="adm-tip">
             <ShieldCheck size={18} />
             <p>
-              {tab === "history" || tab === "users"
-                ? "Activity is recorded automatically after successful actions. This history is visible only to signed-in admins."
-                : tab === "landingImages"
-                  ? "Images appear in this order in the homepage carousel. With no custom images, the original homepage slides remain."
-                  : tab === "products"
-                    ? "Edit a product to set its coverage, material unit, area calculation and recommended coats. These settings also update the paint calculator."
-                    : "Changes stay in this workspace until you select Save changes."}
+              {tab === "warranties"
+                ? "Warranty registrations are saved separately from website content. Receipts are private and available only to signed-in admins."
+                : tab === "history" || tab === "users"
+                  ? "Activity is recorded automatically after successful actions. This history is visible only to signed-in admins."
+                  : tab === "landingImages"
+                    ? "Images appear in this order in the homepage carousel. With no custom images, the original homepage slides remain."
+                    : tab === "products"
+                      ? "Edit a product to set its coverage, material unit, area calculation and recommended coats. These settings also update the paint calculator."
+                      : "Changes stay in this workspace until you select Save changes."}
             </p>
           </div>
         </main>
@@ -1166,8 +1223,18 @@ export function AdminPage() {
                           ))}
                         </select>
                       </Field>
-                      <Field label="Finish / sheen" hint="Free text, for example High Sheen, Soft Sheen or Matt.">
-                        <input required maxLength={100} value={(editor as Product).sheen} onChange={event=>patch("sheen",event.target.value)}/>
+                      <Field
+                        label="Finish / sheen"
+                        hint="Free text, for example High Sheen, Soft Sheen or Matt."
+                      >
+                        <input
+                          required
+                          maxLength={100}
+                          value={(editor as Product).sheen}
+                          onChange={(event) =>
+                            patch("sheen", event.target.value)
+                          }
+                        />
                       </Field>
                       {input(
                         "coverageSqFtPerLiter",
@@ -1234,7 +1301,15 @@ export function AdminPage() {
                         Feature this product in the catalog
                       </label>
                     </>
-                    <ProductTechnicalFields key={editor.id} product={editor as Product} onChange={changes=>setEditor(current=>({...current,...changes} as Product))}/>
+                    <ProductTechnicalFields
+                      key={editor.id}
+                      product={editor as Product}
+                      onChange={(changes) =>
+                        setEditor(
+                          (current) => ({ ...current, ...changes }) as Product,
+                        )
+                      }
+                    />
                     <div className="adm-coverage-preview">
                       <Droplets size={21} />
                       <div>
