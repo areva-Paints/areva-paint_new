@@ -1,3 +1,4 @@
+import { OPTIONAL_PRODUCT_DETAILS } from '../data/productDetails';
 import { COLOUR_FAMILIES, LEGACY_SHADE_FAMILIES, SHADE_TONES, normalizeShade } from '../data/shadeFamilies';
 import {
   adminLogin,
@@ -284,13 +285,7 @@ function validate(c: SiteContent) {
         "Products need a name, description, valid image, category, nonnegative coverage and 1–10 coats.",
       );
     if (
-      ![
-        "Ultra Matte",
-        "Soft Sheen",
-        "Satin Silk",
-        "High Gloss",
-        "Textured",
-      ].includes(p.sheen) ||
+      !nonempty(p.sheen, 100) ||
       !["Zero VOC (<5g/L)", "Low VOC (<30g/L)", "Standard"].includes(
         p.vocLevel,
       ) ||
@@ -331,6 +326,8 @@ function validate(c: SiteContent) {
       p.specs.warrantyYears > 100
     )
       throw Error("Invalid technical details.");
+    if ((p.specs.coverageText !== undefined && !text(p.specs.coverageText, 300)) || (p.specs.dilution !== undefined && !text(p.specs.dilution, 300)) || (p.specs.warrantyLabel !== undefined && !text(p.specs.warrantyLabel, 100)) || !['bases','packing'].every(key => p.specs[key] === undefined || (Array.isArray(p.specs[key]) && p.specs[key].length <= (key === 'bases' ? 30 : 20) && p.specs[key].every(value => nonempty(value, 100)))))
+      throw Error("Invalid product coverage text, dilution, bases, packing or warranty label.");
   }
   for (const d of c.dealers)
     if (
@@ -390,6 +387,15 @@ contentRouter.put("/admin/content", (req, res) => {
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);
+    const previousProducts = new Map(current.products.map(product=>[product.id,product]));
+    c.products = c.products.map(product=>{
+      const previous = previousProducts.get(product.id);
+      const specs = { ...product.specs };
+      for (const key of OPTIONAL_PRODUCT_DETAILS) {
+        if (specs[key] === undefined && previous?.specs[key] !== undefined) (specs as any)[key] = previous.specs[key];
+      }
+      return { ...product, specs };
+    });
     const previousShades = new Map(current.colours.map(shade => [shade.code.toUpperCase(), shade]));
     c.colours = c.colours.map(shade => normalizeShade({
       ...shade,

@@ -1,3 +1,4 @@
+import { getProductDisplayDetails, productWarrantyText } from '../data/productDetails';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ColourCollectionHeading, ShadeLibrary } from '../components/ShadeLibrary';
@@ -37,27 +38,7 @@ export function legacyPage() {
     esc(p.name),
     cats.indexOf(p.categoryId),
     esc(p.description),
-    [
-      esc(p.tagline),
-      p.coverageSqFtPerLiter > 0
-        ? `${p.coverageSqFtPerLiter} sq ft/${p.coverageUnit || "L"} per coat`
-        : "Coverage awaiting confirmation",
-      `${p.recommendedCoats} recommended coats`,
-      ...(p.availableSizes.length
-        ? [
-            `Pack sizes: ${p.availableSizes.join(", ")} ${p.coverageUnit || "L"}`,
-          ]
-        : []),
-      ...Object.entries({
-        Finish: p.sheen,
-        "Drying time": p.specs.dryingTime,
-        "Recoat time": p.specs.recoatTime,
-        Application: p.specs.applicationMethod,
-        "Surface preparation": p.specs.surfacePreparation,
-      })
-        .filter(([, v]) => v)
-        .map(([key, v]) => esc(`${key}: ${v}`)),
-    ],
+    [esc(p.tagline), ...getProductDisplayDetails(p).map(([label,value])=>esc(`${label}: ${value}`)), ...Object.entries({ Finish: p.sheen, 'Recoat time': p.specs.recoatTime, 'Thinner / cleaning medium': p.specs.thinnedWith, 'Surface preparation': p.specs.surfacePreparation, 'Recommended surfaces': p.specs.recommendedSurfaces.join(', '), 'VOC level': p.vocLevel, Washability: p.washability, Warranty: productWarrantyText(p) }).filter(([,value])=>value).map(([label,value])=>esc(`${label}: ${value}`))],
     esc(p.image),
   ]);
   const coverage = c.products

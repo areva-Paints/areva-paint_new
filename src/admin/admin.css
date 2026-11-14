@@ -1448,3 +1448,7 @@
 .adm-shade-tones small { flex-basis: 100%; color: #8a7d95; }
 .adm-pdf-row:has(.adm-shade-metadata) { flex-wrap: wrap; }
 .adm-pdf-row > .adm-shade-metadata { flex-basis: 100%; order: 2; }
+
+.adm-product-technical { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e4dfea; }
+.adm-product-technical > h3 { margin: 0 0 18px; color: #361052; }
+.adm-product-technical .adm-checkbox { margin-top: 18px; }

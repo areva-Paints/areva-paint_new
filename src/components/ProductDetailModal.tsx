@@ -1,3 +1,5 @@
+import { productCoverageText, productPacking } from '../data/productDetails';
+import { ProductWarrantyBadge } from './ProductSummaryHeading';
 import React from 'react';
 import { Product } from '../types';
 import { X, Clock, Droplet, Layers, Paintbrush, FileText, MessageSquare, Eye, Printer } from 'lucide-react';
@@ -78,30 +80,32 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
                 <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200">
                   <span className="text-stone-400 block text-[10px] uppercase font-semibold">Coverage Rate</span>
-                  <span className="font-bold text-stone-900 font-mono">{product.coverageSqFtPerLiter > 0 ? `${product.coverageSqFtPerLiter} sq ft / ${product.coverageUnit || 'L'}` : 'Coverage not configured'}</span>
+                  <span className="font-bold text-stone-900 font-mono">{productCoverageText(product)}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200">
                   <span className="text-stone-400 block text-[10px] uppercase font-semibold">Environmental</span>
                   <span className="font-bold text-stone-900">{product.vocLevel}</span>
                 </div>
                 <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200">
-                  <span className="text-stone-400 block text-[10px] uppercase font-semibold">Warranty</span>
-                  <span className="font-bold text-stone-900">{product.specs.warrantyYears} Years Performance</span>
+                  <span className="text-stone-400 block text-[10px] uppercase font-semibold">Washability</span>
+                  <span className="font-bold text-stone-900">{product.washability}</span>
                 </div>
+                {product.specs.warrantyYears > 0 && <ProductWarrantyBadge product={product}/>}
               </div>
 
               {/* Available Sizes */}
-              <div className="flex items-center gap-2 text-xs">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className="text-stone-500 font-semibold">Standard Pack Sizes:</span>
-                <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-stone-900">
-                  {product.availableSizes.map((sz) => (
-                    <span key={sz} className="px-2 py-0.5 rounded bg-stone-100 border border-stone-200">
-                      {sz} {product.coverageUnit === 'kg' ? 'kg' : 'Litres'}
+                <div className="flex flex-wrap items-center gap-1.5 font-mono text-[11px] font-bold text-stone-900 min-w-0">
+                  {productPacking(product).map((sz) => (
+                    <span key={sz} className="px-2 py-0.5 rounded bg-stone-100 border border-stone-200 max-w-full [overflow-wrap:anywhere]">
+                      {sz}
                     </span>
                   ))}
                 </div>
               </div>
 
+              {product.specs.bases?.length > 0 && <p className="text-xs text-stone-600"><strong>Bases:</strong> {product.specs.bases.join(', ')}</p>}
               {/* Selected Tint Preview */}
               {product.tintable && (
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50/60 border border-amber-200 text-xs">
@@ -127,6 +131,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
               <div className="space-y-1">
+                <span className="font-semibold text-stone-800">Application method</span>
+                <p className="text-stone-600">{product.specs.applicationMethod || 'Ask for technical guidance'}</p>
+              </div>
+              <div className="space-y-1">
                 <span className="font-semibold text-stone-800 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5 text-stone-500" /> Drying & Recoat
                 </span>
@@ -137,7 +145,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 <span className="font-semibold text-stone-800 flex items-center gap-1.5">
                   <Droplet className="w-3.5 h-3.5 text-stone-500" /> Thinning / Dilution
                 </span>
-                <p className="text-stone-600 pl-5">{product.specs.thinnedWith}</p>
+                <p className="text-stone-600 pl-5">{[product.specs.dilution, product.specs.thinnedWith].filter(Boolean).join(" · ") || "Ask for technical guidance"}</p>
               </div>
 
               <div className="space-y-1">

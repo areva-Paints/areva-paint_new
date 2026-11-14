@@ -1,3 +1,4 @@
+import { ProductTechnicalFields } from './ProductTechnicalFields';
 import { GalleryReviewsManager } from './GalleryReviewsManager';
 import { UsersManager } from "./UsersManager";
 import type { AccountUser } from "./user-types";
@@ -430,7 +431,7 @@ export function AdminPage() {
         type={type}
         required={required}
         maxLength={type === "number" ? undefined : 500}
-        min={type === "number" ? 1 : undefined}
+        min={type === "number" ? key === "coverageSqFtPerLiter" ? 0 : 1 : undefined}
         max={type === "number" ? 10000 : undefined}
         step={type === "number" ? "any" : undefined}
         value={(editor as any)?.[key] ?? ""}
@@ -1165,21 +1166,8 @@ export function AdminPage() {
                           ))}
                         </select>
                       </Field>
-                      <Field label="Finish / sheen">
-                        <select
-                          value={(editor as Product).sheen}
-                          onChange={(e) => patch("sheen", e.target.value)}
-                        >
-                          {[
-                            "Ultra Matte",
-                            "Soft Sheen",
-                            "Satin Silk",
-                            "High Gloss",
-                            "Textured",
-                          ].map((x) => (
-                            <option key={x}>{x}</option>
-                          ))}
-                        </select>
+                      <Field label="Finish / sheen" hint="Free text, for example High Sheen, Soft Sheen or Matt.">
+                        <input required maxLength={100} value={(editor as Product).sheen} onChange={event=>patch("sheen",event.target.value)}/>
                       </Field>
                       {input(
                         "coverageSqFtPerLiter",
@@ -1246,6 +1234,7 @@ export function AdminPage() {
                         Feature this product in the catalog
                       </label>
                     </>
+                    <ProductTechnicalFields key={editor.id} product={editor as Product} onChange={changes=>setEditor(current=>({...current,...changes} as Product))}/>
                     <div className="adm-coverage-preview">
                       <Droplets size={21} />
                       <div>

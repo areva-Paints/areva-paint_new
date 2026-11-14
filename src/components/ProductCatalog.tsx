@@ -1,3 +1,5 @@
+import { getProductDisplayDetails } from '../data/productDetails';
+import { ProductSummaryHeading } from './ProductSummaryHeading';
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useEffect, useRef, useState } from 'react';
 import type { Product } from '../types';
@@ -153,21 +155,11 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
 
         <div className="pc-product-list">
           {filteredProducts.map((product) => {
-            const unit = product.coverageUnit || 'L';
-            const specifications = [
-              ['FINISH', product.sheen],
-              ['COVERAGE', product.coverageSqFtPerLiter > 0 ? `${product.coverageSqFtPerLiter} sq ft/${unit}/coat` : 'Ask for technical guidance'],
-              ['PACK SIZES', product.availableSizes.map((size) => `${size} ${unit}`).join(' · ')],
-              ['RECOMMENDED COATS', product.recommendedCoats > 0 ? String(product.recommendedCoats) : ''],
-              ['DRYING TIME', product.specs.dryingTime],
-              ['APPLICATION', product.specs.applicationMethod],
-            ].filter(([, value]) => value);
+            const specifications = getProductDisplayDetails(product);
             return (
               <article className="pc-product-row" key={product.id}>
                 <div className="pc-details">
-                  <span className="pc-product-category">{product.categoryName}</span>
-                  <h3>{product.name}</h3>
-                  {product.sheen && <p className="pc-finish">{product.sheen}</p>}
+                  <ProductSummaryHeading product={product}/>
                   <p className="pc-product-description">{product.description || product.tagline}</p>
                   <dl className="pc-specifications">
                     {specifications.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}

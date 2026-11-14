@@ -1,3 +1,5 @@
+import { getProductDisplayDetails } from '../data/productDetails';
+import { ProductSummaryHeading } from '../components/ProductSummaryHeading';
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DreamsHero } from "../components/DreamsHero";
@@ -19,7 +21,7 @@ const escapeHtml = (value: string) =>
 export function referenceLayout(html: string, content: SiteContent) {
   html = html.replace(
     "</head>",
-    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/page-gradient.css"></head>',
+    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"></head>',
   );
   const logo =
     html.match(/<a class="logo"[^>]*>(<img[^>]+>)<\/a>/)?.[1] || "Areva Paints";
@@ -124,30 +126,13 @@ export function referenceLayout(html: string, content: SiteContent) {
     );
   }
   const specs = content.products.map((p) => {
-    const fields = [
-      ["FINISH", p.sheen],
-      [
-        "COVERAGE",
-        p.coverageSqFtPerLiter > 0
-          ? `${p.coverageSqFtPerLiter} sq ft/${p.coverageUnit || "L"}/coat`
-          : "Ask for technical guidance",
-      ],
-      [
-        "PACK SIZES",
-        p.availableSizes
-          ?.map((n) => `${n} ${p.coverageUnit || "L"}`)
-          .join(" · "),
-      ],
-      ["RECOMMENDED COATS", String(p.recommendedCoats)],
-      ["DRYING TIME", p.specs.dryingTime],
-      ["APPLICATION", p.specs.applicationMethod],
-    ].filter(([, value]) => value);
+    const fields = getProductDisplayDetails(p);
     return `<dl class="ref-product-specs">${fields.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>`;
   });
   const json = JSON.stringify(specs).replace(/</g, "\\u003c");
   html = html.replace(
     "const $ =",
-    () => `const REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
+    () => `const REFERENCE_PRODUCT_HEADER_HTML=${JSON.stringify(content.products.map(product=>renderToStaticMarkup(createElement(ProductSummaryHeading, { product, level: "h4" })))).replace(/</g,"\\u003c")};\nconst REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
   );
   html = html.replace(
     /<h2>Products for every surface<\/h2>[\s\S]*?<div class="tiles" id="tiles"><\/div>/,
@@ -165,7 +150,7 @@ export function referenceLayout(html: string, content: SiteContent) {
   $("#listTitle").textContent=sel.c===null?"All products":"Our "+cats[sel.c][0];
   $("#showAll").hidden=sel.c===null;
   $("#showAll").textContent="All product types";
-  $("#grid").innerHTML=list.map(([p,i])=>{const c=cats[p[1]];return '<article class="card ref-category-product"><div class="product-copy"><span class="tag">'+c[0]+'</span><h4>'+p[0]+'</h4><p>'+p[2]+'</p>'+(REFERENCE_PRODUCT_SPEC_HTML[i]||'')+'<button class="btn btn-line" data-p="'+i+'">View specifications &amp; photo</button></div><div class="ref-badge-panel"><button type="button" class="ref-product-badge ref-flip-badge" data-product-flip data-product-name="'+p[0]+'" aria-label="Show product photo for '+p[0]+'" aria-pressed="false"'+(p[4]?'':' disabled')+'><span class="ref-flip-inner" aria-hidden="true"><span class="ref-flip-face ref-flip-front"><span class="ref-badge-brand">AREVA<small>PAINTS</small></span><strong>'+p[0].replace(/^Areva\\s+/i,'')+'</strong></span>'+(p[4]?'<span class="ref-flip-face ref-flip-back"><img class="ref-flip-photo" src="'+p[4]+'" alt="" loading="lazy" decoding="async"></span>':'')+'</span></button></div></article>'}).join("")||'<div class="ref-catalog-empty"><h3>New products are on the way</h3><p>Contact our team for guidance on this product category.</p><a class="btn btn-main" href="#contact">Enquire now</a></div>';
+  $("#grid").innerHTML=list.map(([p,i])=>{const c=cats[p[1]];return '<article class="card ref-category-product"><div class="product-copy">'+(REFERENCE_PRODUCT_HEADER_HTML[i]||'')+'<p>'+p[2]+'</p>'+(REFERENCE_PRODUCT_SPEC_HTML[i]||'')+'<button class="btn btn-line" data-p="'+i+'">View specifications &amp; photo</button></div><div class="ref-badge-panel"><button type="button" class="ref-product-badge ref-flip-badge" data-product-flip data-product-name="'+p[0]+'" aria-label="Show product photo for '+p[0]+'" aria-pressed="false"'+(p[4]?'':' disabled')+'><span class="ref-flip-inner" aria-hidden="true"><span class="ref-flip-face ref-flip-front"><span class="ref-badge-brand">AREVA<small>PAINTS</small></span><strong>'+p[0].replace(/^Areva\\s+/i,'')+'</strong></span>'+(p[4]?'<span class="ref-flip-face ref-flip-back"><img class="ref-flip-photo" src="'+p[4]+'" alt="" loading="lazy" decoding="async"></span>':'')+'</span></button></div></article>'}).join("")||'<div class="ref-catalog-empty"><h3>New products are on the way</h3><p>Contact our team for guidance on this product category.</p><a class="btn btn-main" href="#contact">Enquire now</a></div>';
 }`,
   );
   const categoryData = JSON.stringify(

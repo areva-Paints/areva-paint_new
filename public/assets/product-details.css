@@ -1,0 +1,90 @@
+/* Shared product heading and configured warranty badge; product images retain their layout. */
+.product-summary-heading {
+  display: flex;
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+.product-summary-identity {
+  flex: 1;
+  min-width: 0;
+}
+#products .product-summary-heading .product-summary-category {
+  display: block;
+  margin-bottom: 14px;
+  color: #fff;
+  font:
+    700 10px/1.5 Arial,
+    sans-serif;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+#products .product-summary-heading .product-summary-name,
+.areva-reference-site #products.pc-catalog .product-summary-heading .product-summary-name {
+  margin: 0;
+  color: #fff;
+  font:
+    700 clamp(28px, 2.8vw, 40px)/1.2 Arial,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+#products .product-summary-heading .product-summary-finish {
+  margin: 16px 0 0;
+  color: #f9ca59;
+  font:
+    600 15px/1.5 Arial,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.product-warranty-badge {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  flex: 0 0 145px;
+  max-width: 100%;
+  min-height: 110px;
+  padding: 18px 14px;
+  border: 1px solid #e5b436;
+  border-radius: 12px;
+  color: #ffcd55;
+  background: #292a2e;
+  text-align: center;
+  box-sizing: border-box;
+}
+.product-warranty-badge strong {
+  color: #ffcd55;
+  font:
+    700 26px/1.2 Arial,
+    sans-serif;
+  overflow-wrap: anywhere;
+}
+.product-warranty-badge span {
+  color: #ffcd55;
+  font:
+    700 10px/1.5 Arial,
+    sans-serif;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .product-summary-heading {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .product-summary-identity {
+    flex: 1 1 200px;
+  }
+  .product-warranty-badge {
+    flex-basis: 125px;
+    min-height: 95px;
+    padding: 14px 12px;
+  }
+  .product-warranty-badge strong {
+    font-size: 23px;
+  }
+}

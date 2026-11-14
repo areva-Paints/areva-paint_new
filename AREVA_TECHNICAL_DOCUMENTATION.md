@@ -195,7 +195,7 @@ The admin has seven sidebar sections:
 | Activity history | Admin-only saved actions, uploads, dates, grouped tabs, filters and pagination |
 | Users | Admin-only creation of Admin/Customer/Architect/Builder accounts, reset passwords and disable/enable |
 | Landing images | Image, optional caption/subtitle/recommended product text, order and removal |
-| Products | Name, category, photo, descriptions, technical specs, pack sizes, coverage, units, area basis, coats and featured state |
+| Products | Name, category, photo, descriptions, all technical specs, free-text finish/coverage/dilution, bases/packing lists, numeric calculator settings, tintable/featured and warranty fields |
 | Authorised dealers | Business/contact/location/PIN details and service badges |
 | Colours & shade cards | Individual shades, name/code search, ten families, six tone tags, classified PDF uploads and reviewed text imports |
 | Gallery | Projects, Ads and Reviews subtabs; albums, ad creatives or reviewer name/text with optional image |
@@ -557,7 +557,7 @@ The illustrated home cards use `src/data/categoryArt.ts`, `CategorySceneCard.tsx
 | coverage_unit | varchar(2) | `L` or `kg` |
 | calculation_basis | varchar(5) | `wall` or `floor` |
 | recommended_coats | smallint | 1–10 coats |
-| sheen | varchar(30) | Current finish choices, such as Soft Sheen |
+| sheen | varchar(100) | Free-text finish, such as High Sheen or Soft Sheen |
 | voc_level | varchar(30) | Current VOC choices |
 | washability | varchar(30) | Current washability choices |
 | tintable | boolean | Supports tinting |
@@ -715,6 +715,12 @@ Read pages by `event_sequence DESC`, matching the current reversed append-only a
 
 There is deliberately no entity/user FK on the event snapshots: deleted products/photos and the environment admin must remain visible, and old shared usernames cannot be assigned retrospectively to individual staff. Preserve events when deleting content. Content edits, user mutations and their events each commit atomically; failed validations/conflicts create no corresponding saved-change events. An uploaded file may remain after a failed DB write because file storage and SQL do not share a transaction; return an error and reconcile orphan files rather than reporting a successful logged upload. There is no retention trimming, history-edit/delete API or tamper-proof audit guarantee in the current app. Keep history tables and queries outside public serialization.
 
+### Product display details and warranty — 14 November 2026
+
+The product editor exposes all public technical fields. `sheen` is now free text (`varchar(100)`, nonblank). Additional `products` columns map to optional `specs` properties: `coverage_text varchar(300)` → `specs.coverageText`; `dilution varchar(300)` → `specs.dilution`; `bases varchar(100)[]` → `specs.bases` (up to 30 entries); `packing varchar(100)[]` → `specs.packing` (up to 20 entries); `warranty_label varchar(100)` → `specs.warrantyLabel`. Strings default to empty and arrays to empty arrays. The API rejects blank list items, excessive lengths and invalid numeric pack sizes. Comma-separated input is an editor convenience; arrays are stored without losing base codes such as `017`.
+
+`specs.warrantyYears` continues to map to `warranty_years` (0–100). Positive values show the gold duration/label badge at the top-right of the dark product summary; zero hides it. An empty label uses Performance warranty*. Free display coverage and packing labels do not replace numeric calculator coverage or `product_pack_sizes`. Existing numeric values supply display fallbacks when overrides are blank. Preserve the new optional properties if older clients omit them; empty strings/arrays clear overrides. Existing installations apply `database/migrations/004-product-display-details.sql` once, in either `public` or private `areva`; fresh setup includes it. No live database connection/import is implemented by this change.
+
 ### 19. gallery_reviews — Gallery customer reviews
 
 | SQL column | API field / meaning |
@@ -794,7 +800,7 @@ CREATE TABLE products (
   coverage_unit varchar(2) NOT NULL DEFAULT 'L' CHECK (coverage_unit IN ('L', 'kg')),
   calculation_basis varchar(5) NOT NULL DEFAULT 'wall' CHECK (calculation_basis IN ('wall', 'floor')),
   recommended_coats smallint NOT NULL DEFAULT 2 CHECK (recommended_coats BETWEEN 1 AND 10),
-  sheen varchar(30) NOT NULL CHECK (sheen IN ('Ultra Matte', 'Soft Sheen', 'Satin Silk', 'High Gloss', 'Textured')),
+  sheen varchar(100) NOT NULL CHECK (btrim(sheen) <> ''),
   voc_level varchar(30) NOT NULL CHECK (voc_level IN ('Zero VOC (<5g/L)', 'Low VOC (<30g/L)', 'Standard')),
   washability varchar(30) NOT NULL CHECK (washability IN ('Class 1 (Scrubbable)', 'High Washable', 'Wipeable', 'Specialist')),
   tintable boolean NOT NULL DEFAULT false,
@@ -803,6 +809,11 @@ CREATE TABLE products (
   recoat_time text NOT NULL DEFAULT '',
   thinned_with text NOT NULL DEFAULT '',
   warranty_years numeric NOT NULL DEFAULT 0 CHECK (warranty_years BETWEEN 0 AND 100),
+  coverage_text varchar(300) NOT NULL DEFAULT '',
+  dilution varchar(300) NOT NULL DEFAULT '',
+  bases varchar(100)[] NOT NULL DEFAULT '{}' CHECK (cardinality(bases) <= 30 AND array_position(bases, NULL) IS NULL),
+  packing varchar(100)[] NOT NULL DEFAULT '{}' CHECK (cardinality(packing) <= 20 AND array_position(packing, NULL) IS NULL),
+  warranty_label varchar(100) NOT NULL DEFAULT '',
   surface_preparation text NOT NULL DEFAULT '',
   application_method text NOT NULL DEFAULT '',
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0),

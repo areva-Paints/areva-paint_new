@@ -10,7 +10,7 @@ export interface Product {
   coverageSqFtPerLiter: number;
   coverageUnit?: 'L' | 'kg';
   calculationBasis?: 'wall' | 'floor';
-  sheen: 'Ultra Matte' | 'Soft Sheen' | 'Satin Silk' | 'High Gloss' | 'Textured';
+  sheen: string;
   vocLevel: 'Zero VOC (<5g/L)' | 'Low VOC (<30g/L)' | 'Standard';
   washability: 'Class 1 (Scrubbable)' | 'High Washable' | 'Wipeable' | 'Specialist';
   recommendedCoats: number;
@@ -18,6 +18,11 @@ export interface Product {
   image: string;
   featured?: boolean;
   specs: {
+    coverageText?: string;
+    dilution?: string;
+    bases?: string[];
+    packing?: string[];
+    warrantyLabel?: string;
     dryingTime: string;
     recoatTime: string;
     thinnedWith: string;
