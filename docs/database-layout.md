@@ -8,7 +8,7 @@ Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. Thi
 
 Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006 and 007 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007 and 008 in order. Back up and rehearse either route on staging first.
 
 ## Database access guardrails (14 November 2026)
 
@@ -258,6 +258,12 @@ Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, 
 `version integer DEFAULT 1` protects review edits against stale writes. `review_notes varchar(2000)`, `reviewed_by text`, `reviewed_at timestamptz`, `approval_confirmed boolean` and `review_history jsonb` preserve current and historical decisions. Review history is an array of server-generated event IDs/status/actor/time/notes/confirmation. Registration and receipt fields are preserved. Purchase-date and status/created-date indexes support the future SQL adapter's date/status queries. Registration date filtering must use inclusive IST day boundaries, not the database connection's default timezone.
 
 Migration 007 replaces only the old approval guard, preserving the status enum, demo-verification prohibition, RLS and existing data. Legacy rows get empty metadata/version 1; the migration does not invent past reviewers. Real verified approvals that satisfied the old rule remain valid. Manual demo approval requires explicit confirmation and reviewer metadata while `mobile_verified` remains false. No live migration is performed by code changes.
+
+### Final review locking and PDF reports — 15 November 2026
+
+Migration 008 adds `prevent_final_warranty_review_changes()` and the `warranty_registrations_final_review` trigger. Approved/rejected review fields (status, notes, reviewer/time, confirmation, review history and version) cannot change afterward. Existing rows are preserved, and product/dealer FK deletion cleanup is allowed. The function uses an explicit safe search path and revoked browser-role execute privileges. Fresh schema/setup include it; no additional table is created.
+
+The private backend generates PDF reports from stored snapshots and review metadata after final save. PDFs are no-store attachments available only to admins and are not public assets or database blobs. There is no extra PDF URL/byte column to migrate. A future SQL adapter must preserve finality, status/version concurrency, review history and the private download boundary. No live database migration is performed here.
 
 ## Defaults, ordering and limits
 

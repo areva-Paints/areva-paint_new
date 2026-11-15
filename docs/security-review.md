@@ -74,3 +74,8 @@ The latest schema has 20 RLS tables. Warranty registrations use a separate priva
 ## Warranty manual review — 15 November 2026
 
 Admin-only review updates are now supported with strict field allowlisting, required confirmation/existing receipt for approval, required reasons for rejection/information requests, session-derived actor/time, optimistic versions and atomic review history. Demo sessions cannot perform reviews and manual approval never changes mobile verification. Status and inclusive IST registration/purchase date filters combine with existing search/category filters. Migration 007 preserves RLS and the prohibition on verified demo phones while allowing a recorded manual approval. No live database change, external message or certificate is generated.
+
+
+## Final decision and PDF safeguards — 15 November 2026
+
+Approved/rejected reviews are now read-only in the UI/API, with migration-008 trigger protection for SQL-backed deployments. Reports are generated from saved snapshots, contain no active PDF scripts or public receipt links, require an admin session and recheck that session after generation. Finality and the mobile-verification flag are independent; approval still does not convert demo OTP to verified. Jobs are concurrency/rate-limited and do not use an external rendering service. A failed download does not reverse the saved decision. Bundled font assets are licensed and remain outside public static assets; dependency audit after adding PDFKit/fontkit reported zero known vulnerabilities.

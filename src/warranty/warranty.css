@@ -761,3 +761,49 @@
     padding: 16px;
   }
 }
+
+.wr-result-banner {
+  margin: 0 0 22px;
+  padding: 14px 18px;
+  border: 1px solid #bbdfcc;
+  border-radius: 10px;
+  background: #e6f5ec;
+  color: #216344;
+  font-size: 13px;
+}
+.wr-result-banner:focus {
+  outline: none;
+}
+.wr-admin .wr-report-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 9px;
+}
+.wr-final-review {
+  margin: 22px 0;
+  padding: 22px;
+  border: 1px solid #ded0eb;
+  background: #faf7fd;
+  border-radius: 12px;
+}
+.wr-final-review > h3 {
+  margin-top: 0;
+}
+.wr-final-review > p {
+  font-size: 12px;
+  color: #766180;
+}
+@media (max-width: 650px) {
+  .wr-final-review {
+    padding: 16px;
+  }
+}
+
+.wr-result-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

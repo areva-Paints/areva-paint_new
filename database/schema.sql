@@ -355,6 +355,35 @@ CREATE INDEX warranty_registrations_product_idx ON warranty_registrations(catego
 CREATE INDEX warranty_registrations_purchase_idx ON warranty_registrations(purchase_date);
 CREATE INDEX warranty_registrations_status_created_idx ON warranty_registrations(status, created_at DESC);
 
+CREATE FUNCTION prevent_final_warranty_review_changes() RETURNS trigger
+LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  IF OLD.status IN ('approved', 'rejected') AND
+    ROW(NEW.status, NEW.review_notes, NEW.reviewed_by, NEW.reviewed_at,
+        NEW.approval_confirmed, NEW.review_history, NEW.version)
+      IS DISTINCT FROM
+    ROW(OLD.status, OLD.review_notes, OLD.reviewed_by, OLD.reviewed_at,
+        OLD.approval_confirmed, OLD.review_history, OLD.version)
+  THEN
+    RAISE EXCEPTION 'Final warranty decisions cannot be changed.' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER warranty_registrations_final_review
+  BEFORE UPDATE OF status, review_notes, reviewed_by, reviewed_at, approval_confirmed, review_history, version
+  ON warranty_registrations
+  FOR EACH ROW EXECUTE FUNCTION prevent_final_warranty_review_changes();
+REVOKE ALL ON FUNCTION prevent_final_warranty_review_changes() FROM PUBLIC;
+DO $$
+DECLARE role_name text;
+BEGIN
+  FOR role_name IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated', 'service_role') LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %I.prevent_final_warranty_review_changes() FROM %I', current_schema(), role_name);
+  END LOOP;
+END;
+$$;
+
 -- Private application tables: access is through the authenticated Express backend.
 -- No browser policies or broad grants are created. The owner can administer data.
 DO $$

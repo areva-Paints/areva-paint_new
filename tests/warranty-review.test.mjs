@@ -262,49 +262,107 @@ test("admin manual review preserves demo verification, records history and appli
       1,
     );
     assert.equal((await get("?status=pending_review")).total, 3);
-    const rejected = await (
-      await request(
-        url,
-        {
-          status: "rejected",
-          notes: "Receipt needs correction <script>text only</script>",
-          expectedVersion: 2,
-          approvalConfirmed: false,
-        },
-        cookie,
-      )
-    ).json();
-    assert.equal(rejected.registration.status, "rejected");
-    assert.equal(rejected.registration.version, 3);
-    assert.equal(rejected.registration.approvalConfirmed, false);
-    assert.equal(rejected.registration.reviewHistory.length, 2);
-    assert.equal(rejected.registration.reviewHistory[0].status, "approved");
-    const pending = await (
-      await request(
-        url,
-        {
-          status: "needs_information",
-          notes: "Upload the complete invoice",
-          expectedVersion: 3,
-          approvalConfirmed: false,
-        },
-        cookie,
-      )
-    ).json();
-    assert.equal(pending.registration.status, "needs_information");
-    assert.equal(pending.registration.version, 4);
+    assert.equal(
+      (
+        await request(
+          url,
+          {
+            status: "rejected",
+            notes: "Attempt to change final decision",
+            expectedVersion: 2,
+            approvalConfirmed: false,
+          },
+          cookie,
+        )
+      ).status,
+      409,
+      "Approved decisions are final",
+    );
+    const secondUrl = "/api/admin/warranties/" + last.id;
+    const pending = (
+      await (
+        await request(
+          secondUrl,
+          {
+            status: "needs_information",
+            notes: "Upload the complete invoice",
+            expectedVersion: 1,
+            approvalConfirmed: false,
+          },
+          cookie,
+        )
+      ).json()
+    ).registration;
+    assert.equal(pending.status, "needs_information");
+    assert.equal(pending.version, 2);
+    const rejected = (
+      await (
+        await request(
+          secondUrl,
+          {
+            status: "rejected",
+            notes: "Receipt needs correction <script>text only</script>",
+            expectedVersion: 2,
+            approvalConfirmed: false,
+          },
+          cookie,
+        )
+      ).json()
+    ).registration;
+    assert.equal(rejected.status, "rejected");
+    assert.equal(rejected.version, 3);
+    assert.equal(rejected.reviewHistory.length, 2);
+    assert.equal(
+      (
+        await request(
+          secondUrl,
+          {
+            status: "needs_information",
+            notes: "Try reopening",
+            expectedVersion: 3,
+            approvalConfirmed: false,
+          },
+          cookie,
+        )
+      ).status,
+      409,
+      "Rejected decisions are final",
+    );
+    const report = await request(url + "/report.pdf", undefined, cookie);
+    assert.equal(report.status, 200);
+    assert.match(report.headers.get("content-type"), /application\/pdf/);
+    assert.match(report.headers.get("content-disposition"), /attachment/);
+    assert.equal(report.headers.get("cache-control"), "no-store");
+    assert.equal(
+      Buffer.from(await report.arrayBuffer())
+        .subarray(0, 5)
+        .toString(),
+      "%PDF-",
+    );
+    assert.equal((await request(url + "/report.pdf")).status, 401);
+    assert.equal(
+      (
+        await request(
+          "/api/admin/warranties/" + before.id + "/report.pdf",
+          undefined,
+          cookie,
+        )
+      ).status,
+      409,
+      "Unreviewed records do not have a final decision report",
+    );
     await stop();
     await start();
     cookie = await login();
     const restored = (await (await request(url, undefined, cookie)).json())
       .registration;
-    assert.equal(restored.version, 4);
-    assert.equal(restored.reviewHistory.length, 3);
+    assert.equal(restored.version, 2);
+    assert.equal(restored.reviewHistory.length, 1);
     assert.equal(restored.mobileVerified, false);
     assert.equal(
       (
         await get(
-          "?dateBy=purchase&from=2026-11-14&to=2026-11-14&status=needs_information",
+          "?dateBy=purchase&from=2026-11-14&to=2026-11-14&status=approved",
         )
       ).total,
       1,

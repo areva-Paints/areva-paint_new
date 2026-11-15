@@ -11,6 +11,7 @@ import {
 import { warrantyApi } from "./api";
 import {
   WARRANTY_STATUSES,
+  isFinalWarrantyStatus,
   type WarrantyRegistration,
   type WarrantyStatus,
 } from "./types";
@@ -51,7 +52,50 @@ export function WarrantyManager() {
     [busy, setBusy] = useState(true),
     [error, setError] = useState(""),
     [selected, setSelected] = useState<WarrantyRegistration | null>(null);
+  const [lastFinal, setLastFinal] = useState<WarrantyRegistration | null>(null);
+  const [listNotice, setListNotice] = useState(""),
+    [pdfError, setPdfError] = useState(""),
+    [pdfBusy, setPdfBusy] = useState(false);
+  const noticeRef = useRef<HTMLParagraphElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (listNotice && !selected) noticeRef.current?.focus();
+  }, [listNotice, selected]);
+  async function downloadPdf(row: WarrantyRegistration) {
+    setPdfBusy(true);
+    setPdfError("");
+    try {
+      const response = await fetch(
+        "/api/admin/warranties/" + row.id + "/report.pdf",
+        { cache: "no-store" },
+      );
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw Error(error.error || "The PDF could not be generated.");
+      }
+      if (!response.headers.get("content-type")?.includes("application/pdf"))
+        throw Error("The server did not return a PDF.");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob),
+        anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "Areva-Warranty-" + row.reference + ".pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+      return true;
+    } catch (error) {
+      setPdfError(
+        "Decision saved. " +
+          (error as Error).message +
+          " Use Download decision PDF to try again.",
+      );
+      return false;
+    } finally {
+      setPdfBusy(false);
+    }
+  }
   useEffect(() => {
     let active = true;
     setBusy(true);
@@ -99,6 +143,7 @@ export function WarrantyManager() {
   }, [selected]);
   function openReview(row: WarrantyRegistration) {
     setSelected(row);
+    setPdfError("");
     setDecision(row.status);
     setReviewNotes(row.reviewNotes || "");
     setApprovalConfirmed(row.approvalConfirmed || false);
@@ -138,6 +183,23 @@ export function WarrantyManager() {
         },
         "PATCH",
       );
+      if (isFinalWarrantyStatus(data.registration.status)) {
+        setLastFinal(data.registration);
+        setSelected(null);
+        setReviewSaving(false);
+        setRefresh((v) => v + 1);
+        setListNotice(
+          WARRANTY_STATUSES[data.registration.status] +
+            ": decision saved. Generating decision PDF…",
+        );
+        const downloaded = await downloadPdf(data.registration);
+        setListNotice(
+          WARRANTY_STATUSES[data.registration.status] +
+            ": decision saved." +
+            (downloaded ? " Decision PDF download started." : ""),
+        );
+        return;
+      }
       setSelected(data.registration);
       setRefresh((v) => v + 1);
       setReviewNotice(
@@ -173,6 +235,31 @@ export function WarrantyManager() {
   }
   return (
     <section className="wr-admin" aria-label="Warranty registrations">
+      {listNotice && (
+        <p
+          className="wr-result-banner"
+          role="status"
+          tabIndex={-1}
+          ref={noticeRef}
+        >
+          {listNotice}
+          {lastFinal && (
+            <button
+              type="button"
+              className="adm-secondary"
+              disabled={pdfBusy}
+              onClick={() => void downloadPdf(lastFinal)}
+            >
+              Download decision PDF
+            </button>
+          )}
+        </p>
+      )}
+      {pdfError && (
+        <p className="wr-error" role="alert">
+          {pdfError}
+        </p>
+      )}
       <div className="wr-admin-toolbar">
         <label className="wr-admin-search">
           <Search size={18} />
@@ -344,8 +431,24 @@ export function WarrantyManager() {
                     onClick={() => openReview(row)}
                     aria-label={"View registration for " + row.customerName}
                   >
-                    View / review
+                    {isFinalWarrantyStatus(row.status)
+                      ? "View details"
+                      : "View / review"}
                   </button>
+                  {isFinalWarrantyStatus(row.status) && (
+                    <button
+                      type="button"
+                      className="adm-secondary wr-report-button"
+                      disabled={pdfBusy}
+                      onClick={() => void downloadPdf(row)}
+                      aria-label={
+                        "Download decision PDF for " + row.customerName
+                      }
+                    >
+                      <Download size={15} />
+                      {pdfBusy ? "Generating PDF…" : "Decision PDF"}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -394,7 +497,9 @@ export function WarrantyManager() {
         className="wr-details"
         ref={dialog}
         aria-labelledby="wr-details-title"
-        onClose={() => setSelected(null)}
+        onClose={() => {
+          if (!reviewSaving) setSelected(null);
+        }}
         onCancel={(event) => {
           if (reviewSaving) event.preventDefault();
         }}
@@ -421,109 +526,154 @@ export function WarrantyManager() {
                 {WARRANTY_STATUSES[selected.status]} · Demo verification ·
                 Mobile ownership not verified
               </p>
-              <form className="wr-review-form" onSubmit={saveReview}>
-                <h3>Review & approval</h3>
-                <p>
-                  Review the purchase details and attached receipt before making
-                  a decision. Approval is a manual admin decision; it does not
-                  verify the mobile number or assign a warranty start date.
-                </p>
-                {reviewError && (
-                  <p className="wr-error" role="alert">
-                    {reviewError}
-                  </p>
-                )}
-                {reviewNotice && (
-                  <p className="wr-review-notice" role="status">
-                    {reviewNotice}
-                  </p>
-                )}
-                <label className="wr-field">
-                  Review decision
-                  <select
-                    disabled={reviewSaving}
-                    value={decision}
-                    onChange={(e) => {
-                      setDecision(e.target.value as WarrantyStatus);
-                      setApprovalConfirmed(false);
-                      setReviewNotice("");
-                    }}
-                  >
-                    {Object.entries(WARRANTY_STATUSES).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="wr-field">
-                  Review notes
-                  {["rejected", "needs_information"].includes(decision)
-                    ? " *"
-                    : ""}
-                  <textarea
-                    disabled={reviewSaving}
-                    required={["rejected", "needs_information"].includes(
-                      decision,
+              {isFinalWarrantyStatus(selected.status) ? (
+                <section
+                  className="wr-final-review"
+                  aria-label="Saved final decision"
+                >
+                  <h3>Saved final decision</h3>
+                  {pdfError && (
+                    <p className="wr-error" role="alert">
+                      {pdfError}
+                    </p>
+                  )}
+                  <dl className="wr-detail-grid">
+                    {field("Decision", WARRANTY_STATUSES[selected.status])}
+                    {field("Reviewed by", selected.reviewedBy)}
+                    {field(
+                      "Review date",
+                      selected.reviewedAt
+                        ? new Date(selected.reviewedAt).toLocaleString(
+                            "en-IN",
+                            { timeZone: "Asia/Kolkata" },
+                          ) + " IST"
+                        : "Not recorded",
                     )}
-                    maxLength={2000}
-                    rows={3}
-                    value={reviewNotes}
-                    onChange={(e) => setReviewNotes(e.target.value)}
-                    placeholder="Add the reason, purchase checks or information needed…"
-                  />
-                </label>
-                {decision === "needs_information" && (
-                  <p className="wr-admin-meta">
-                    This saves the follow-up status and notes; no SMS or
-                    WhatsApp message is sent.
-                  </p>
-                )}
-                {decision === "approved" && (
-                  <label className="wr-consent">
-                    <input
-                      type="checkbox"
-                      disabled={reviewSaving}
-                      required
-                      checked={approvalConfirmed}
-                      onChange={(e) => setApprovalConfirmed(e.target.checked)}
-                    />
-                    <span>
-                      I reviewed the purchase details and receipt. I understand
-                      that the mobile number has not been OTP verified.
-                    </span>
-                  </label>
-                )}
-                <div className="wr-inline-actions">
-                  <button className="wr-primary" disabled={reviewSaving}>
-                    {reviewSaving
-                      ? "Saving review…"
-                      : decision === "approved"
-                        ? "Approve registration"
-                        : decision === "rejected"
-                          ? "Reject registration"
-                          : decision === "needs_information"
-                            ? "Request information"
-                            : "Save review"}
-                  </button>
+                    {field("Review notes", selected.reviewNotes)}
+                  </dl>
+                  <p>This decision is saved and read-only.</p>
                   <button
                     type="button"
-                    disabled={reviewSaving}
-                    onClick={() => void reloadReview()}
+                    className="wr-primary"
+                    disabled={pdfBusy}
+                    onClick={() => void downloadPdf(selected)}
                   >
-                    Reload latest record
+                    <Download size={17} />
+                    {pdfBusy ? "Generating PDF…" : "Download decision PDF"}
                   </button>
-                </div>
-                {selected.reviewedAt && (
-                  <p className="wr-admin-meta">
-                    Last reviewed by <strong>{selected.reviewedBy}</strong> ·{" "}
-                    {new Date(selected.reviewedAt).toLocaleString("en-IN", {
-                      timeZone: "Asia/Kolkata",
-                    })}{" "}
-                    IST
+                </section>
+              ) : (
+                <form className="wr-review-form" onSubmit={saveReview}>
+                  <h3>Review & approval</h3>
+                  <p>
+                    Review the purchase details and attached receipt before
+                    making a decision. Approval is a manual admin decision; it
+                    does not verify the mobile number or assign a warranty start
+                    date.
                   </p>
-                )}
-              </form>
+                  {reviewError && (
+                    <p className="wr-error" role="alert">
+                      {reviewError}
+                    </p>
+                  )}
+                  {reviewNotice && (
+                    <p className="wr-review-notice" role="status">
+                      {reviewNotice}
+                    </p>
+                  )}
+                  <label className="wr-field">
+                    Review decision
+                    <select
+                      disabled={reviewSaving}
+                      value={decision}
+                      onChange={(e) => {
+                        setDecision(e.target.value as WarrantyStatus);
+                        setApprovalConfirmed(false);
+                        setReviewNotice("");
+                      }}
+                    >
+                      {Object.entries(WARRANTY_STATUSES).map(
+                        ([value, label]) => (
+                          <option key={value} value={value}>
+                            {label}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+                  <label className="wr-field">
+                    Review notes
+                    {["rejected", "needs_information"].includes(decision)
+                      ? " *"
+                      : ""}
+                    <textarea
+                      disabled={reviewSaving}
+                      required={["rejected", "needs_information"].includes(
+                        decision,
+                      )}
+                      maxLength={2000}
+                      rows={3}
+                      value={reviewNotes}
+                      onChange={(e) => setReviewNotes(e.target.value)}
+                      placeholder="Add the reason, purchase checks or information needed…"
+                    />
+                  </label>
+                  {decision === "needs_information" && (
+                    <p className="wr-admin-meta">
+                      This saves the follow-up status and notes; no SMS or
+                      WhatsApp message is sent.
+                    </p>
+                  )}
+                  {decision === "approved" && (
+                    <label className="wr-consent">
+                      <input
+                        type="checkbox"
+                        disabled={reviewSaving}
+                        required
+                        checked={approvalConfirmed}
+                        onChange={(e) => setApprovalConfirmed(e.target.checked)}
+                      />
+                      <span>
+                        I reviewed the purchase details and receipt. I
+                        understand that the mobile number has not been OTP
+                        verified.
+                      </span>
+                    </label>
+                  )}
+                  <div className="wr-inline-actions">
+                    <button
+                      className="wr-primary"
+                      disabled={reviewSaving || pdfBusy}
+                    >
+                      {reviewSaving
+                        ? "Saving review…"
+                        : decision === "approved"
+                          ? "Approve registration"
+                          : decision === "rejected"
+                            ? "Reject registration"
+                            : decision === "needs_information"
+                              ? "Request information"
+                              : "Save review"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={reviewSaving}
+                      onClick={() => void reloadReview()}
+                    >
+                      Reload latest record
+                    </button>
+                  </div>
+                  {selected.reviewedAt && (
+                    <p className="wr-admin-meta">
+                      Last reviewed by <strong>{selected.reviewedBy}</strong> ·{" "}
+                      {new Date(selected.reviewedAt).toLocaleString("en-IN", {
+                        timeZone: "Asia/Kolkata",
+                      })}{" "}
+                      IST
+                    </p>
+                  )}
+                </form>
+              )}
               <h3>Customer & site</h3>
               <dl className="wr-detail-grid">
                 {field("Customer", selected.customerName)}

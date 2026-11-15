@@ -13,6 +13,9 @@ export interface WarrantyReview {
   notes: string;
   approvalConfirmed: boolean;
 }
+export function isFinalWarrantyStatus(status: WarrantyStatus): boolean {
+  return status === "approved" || status === "rejected";
+}
 export const DEMO_OTP = "123456";
 export interface ReceiptInfo {
   id: string;

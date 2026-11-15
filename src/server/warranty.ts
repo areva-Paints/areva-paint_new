@@ -1,3 +1,4 @@
+import { createWarrantyPdf } from "./warranty-pdf";
 import express from "express";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -10,6 +11,7 @@ import { rateLimit, sensitiveRequestGuard } from "./security";
 import {
   DEMO_OTP,
   WARRANTY_STATUSES,
+  isFinalWarrantyStatus,
   type WarrantyStatus,
   type ReceiptInfo,
   type WarrantyRegistration,
@@ -663,13 +665,6 @@ warrantyAdminRouter.patch("/:id", rateLimit(60, 60000), (req, res) => {
       error:
         "Another admin has reviewed this registration. Reload the latest record before saving.",
     });
-  if (status === "approved" && !fs.existsSync(receiptPath(previous.receipt)))
-    return res
-      .status(409)
-      .json({
-        error:
-          "The receipt file is missing. Restore the purchase receipt before approving this registration.",
-      });
   const approvalConfirmed = status === "approved";
   if (
     previous.status === status &&
@@ -677,6 +672,18 @@ warrantyAdminRouter.patch("/:id", rateLimit(60, 60000), (req, res) => {
     previous.approvalConfirmed === approvalConfirmed
   )
     return res.json({ registration: publicRow(previous) });
+  if (isFinalWarrantyStatus(previous.status))
+    return res
+      .status(409)
+      .json({
+        error:
+          "This registration already has a final decision. Approval and rejection details cannot be changed.",
+      });
+  if (status === "approved" && !fs.existsSync(receiptPath(previous.receipt)))
+    return res.status(409).json({
+      error:
+        "The receipt file is missing. Restore the purchase receipt before approving this registration.",
+    });
   const actor = currentUser(req)!.username,
     at = new Date().toISOString();
   const next: Row = {
@@ -696,6 +703,51 @@ warrantyAdminRouter.patch("/:id", rateLimit(60, 60000), (req, res) => {
   writePrivateJson(storeFile(), rows);
   res.json({ registration: publicRow(next) });
 });
+let activeReports = 0;
+warrantyAdminRouter.get(
+  "/:id/report.pdf",
+  rateLimit(30, 60000),
+  async (req, res, next) => {
+    let started = false;
+    try {
+      const row = uuid(req.params.id)
+        ? readWarranties().find((row) => row.id === req.params.id)
+        : null;
+      if (!row)
+        return res.status(404).json({ error: "Registration not found." });
+      if (!isFinalWarrantyStatus(row.status))
+        return res
+          .status(409)
+          .json({
+            error: "A decision PDF is available after approval or rejection.",
+          });
+      if (activeReports >= 2) {
+        res.setHeader("Retry-After", "5");
+        return res
+          .status(503)
+          .json({ error: "PDF generation is busy. Please try again shortly." });
+      }
+      activeReports++;
+      started = true;
+      const pdf = await createWarrantyPdf(row);
+      // A logout or account revocation during generation must also revoke this response.
+      if (!currentUser(req))
+        return res.status(401).json({ error: "Please sign in as an admin." });
+      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="Areva-Warranty-' + row.reference + '.pdf"',
+      );
+      res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
+      res.send(pdf);
+    } catch (error) {
+      next(error);
+    } finally {
+      if (started) activeReports--;
+    }
+  },
+);
 warrantyAdminRouter.get("/:id/receipt", (req, res) => {
   const row = uuid(req.params.id)
     ? readWarranties().find((row) => row.id === req.params.id)

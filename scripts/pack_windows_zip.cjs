@@ -14,6 +14,7 @@ async function buildWindowsZip() {
 
   const rootFiles = [
     'package.json',
+    'package-lock.json',
     'tsconfig.json',
     'vite.config.ts',
     'server.ts',
@@ -67,6 +68,10 @@ async function buildWindowsZip() {
     if (fs.existsSync(srcDir)) {
       addFolderRecursively(zip, srcDir, 'src', isLightweight ? ['.jpg', '.png'] : []);
     }
+
+    // Server PDF generation needs the licensed fonts in source packages too.
+    const serverAssets = path.join(rootDir, 'assets');
+    if (fs.existsSync(serverAssets)) addFolderRecursively(zip, serverAssets, 'assets');
 
     // Add public (excluding any zip files)
     if (fs.existsSync(publicDir)) {

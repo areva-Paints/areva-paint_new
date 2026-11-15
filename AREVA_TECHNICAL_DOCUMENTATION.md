@@ -510,7 +510,7 @@ Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. Thi
 
 Use [schema.sql](database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006 and 007 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007 and 008 in order. Back up and rehearse either route on staging first.
 
 ### Database access guardrails (14 November 2026)
 
@@ -760,6 +760,12 @@ Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, 
 `version integer DEFAULT 1` protects review edits against stale writes. `review_notes varchar(2000)`, `reviewed_by text`, `reviewed_at timestamptz`, `approval_confirmed boolean` and `review_history jsonb` preserve current and historical decisions. Review history is an array of server-generated event IDs/status/actor/time/notes/confirmation. Registration and receipt fields are preserved. Purchase-date and status/created-date indexes support the future SQL adapter's date/status queries. Registration date filtering must use inclusive IST day boundaries, not the database connection's default timezone.
 
 Migration 007 replaces only the old approval guard, preserving the status enum, demo-verification prohibition, RLS and existing data. Legacy rows get empty metadata/version 1; the migration does not invent past reviewers. Real verified approvals that satisfied the old rule remain valid. Manual demo approval requires explicit confirmation and reviewer metadata while `mobile_verified` remains false. No live migration is performed by code changes.
+
+#### Final review locking and PDF reports — 15 November 2026
+
+Migration 008 adds `prevent_final_warranty_review_changes()` and the `warranty_registrations_final_review` trigger. Approved/rejected review fields (status, notes, reviewer/time, confirmation, review history and version) cannot change afterward. Existing rows are preserved, and product/dealer FK deletion cleanup is allowed. The function uses an explicit safe search path and revoked browser-role execute privileges. Fresh schema/setup include it; no additional table is created.
+
+The private backend generates PDF reports from stored snapshots and review metadata after final save. PDFs are no-store attachments available only to admins and are not public assets or database blobs. There is no extra PDF URL/byte column to migrate. A future SQL adapter must preserve finality, status/version concurrency, review history and the private download boundary. No live database migration is performed here.
 
 ### Defaults, ordering and limits
 
@@ -1157,6 +1163,35 @@ CREATE INDEX warranty_registrations_product_idx ON warranty_registrations(catego
 CREATE INDEX warranty_registrations_purchase_idx ON warranty_registrations(purchase_date);
 CREATE INDEX warranty_registrations_status_created_idx ON warranty_registrations(status, created_at DESC);
 
+CREATE FUNCTION prevent_final_warranty_review_changes() RETURNS trigger
+LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS $$
+BEGIN
+  IF OLD.status IN ('approved', 'rejected') AND
+    ROW(NEW.status, NEW.review_notes, NEW.reviewed_by, NEW.reviewed_at,
+        NEW.approval_confirmed, NEW.review_history, NEW.version)
+      IS DISTINCT FROM
+    ROW(OLD.status, OLD.review_notes, OLD.reviewed_by, OLD.reviewed_at,
+        OLD.approval_confirmed, OLD.review_history, OLD.version)
+  THEN
+    RAISE EXCEPTION 'Final warranty decisions cannot be changed.' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+CREATE TRIGGER warranty_registrations_final_review
+  BEFORE UPDATE OF status, review_notes, reviewed_by, reviewed_at, approval_confirmed, review_history, version
+  ON warranty_registrations
+  FOR EACH ROW EXECUTE FUNCTION prevent_final_warranty_review_changes();
+REVOKE ALL ON FUNCTION prevent_final_warranty_review_changes() FROM PUBLIC;
+DO $$
+DECLARE role_name text;
+BEGIN
+  FOR role_name IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon', 'authenticated', 'service_role') LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %I.prevent_final_warranty_review_changes() FROM %I', current_schema(), role_name);
+  END LOOP;
+END;
+$$;
+
 -- Private application tables: access is through the authenticated Express backend.
 -- No browser policies or broad grants are created. The owner can administer data.
 DO $$
@@ -1378,3 +1413,8 @@ See [the warranty guide](docs/warranty-registration.md) for routes, form fields,
 ## Warranty review controls — 15 November 2026
 
 The admin registration view supports manual approval/rejection/information requests with confirmation, notes, authenticated reviewer/time, private review history and stale-write protection. Search now combines product/status filters with inclusive registration-date (IST) or purchase-date ranges. Migration 007 adds review metadata and adjusts the approval guard without marking demo phones verified. Runtime storage remains private JSON; no live database or provider integration is changed.
+
+
+## Final warranty decisions and decision PDFs — 15 November 2026
+
+Final Approved/Rejected decisions save before the dialog closes and the PDF download begins. The backend blocks further review changes; pending/information-needed records remain editable. PDFKit/fontkit and local licensed Noto fonts generate branded, multi-page private reports from saved record/review snapshots. The original receipt stays separate. Admin-only report endpoints recheck access and limit jobs; failed downloads preserve the decision and can be retried. Migration 008 adds matching SQL finality without a new table. The live database, OTP provider and deployment were not modified by this local implementation.
