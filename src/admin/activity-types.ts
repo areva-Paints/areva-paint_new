@@ -8,6 +8,7 @@ export const ACTIVITY_SECTIONS = {
   galleryPhotos: "Project photos",
   galleryAds: "Gallery ads",
   galleryReviews: "Gallery reviews",
+  certifications: "Certifications and documents",
   uploads: "Uploads",
   website: "Website",
   account: "Admin account",
@@ -21,7 +22,12 @@ export const ACTIVITY_TABS = [
   {
     id: "gallery",
     label: "Gallery",
-    sections: ["galleryProjects", "galleryPhotos", "galleryAds", "galleryReviews"],
+    sections: [
+      "galleryProjects",
+      "galleryPhotos",
+      "galleryAds",
+      "galleryReviews",
+    ],
   },
   {
     id: "colours",
@@ -30,6 +36,11 @@ export const ACTIVITY_TABS = [
   },
   { id: "landingImages", label: "Landing images", sections: ["landingImages"] },
   { id: "products", label: "Products", sections: ["products"] },
+  {
+    id: "certifications",
+    label: "Certifications and documents",
+    sections: ["certifications"],
+  },
   { id: "dealers", label: "Authorised dealers", sections: ["dealers"] },
 ] as const;
 export type ActivityTab = (typeof ACTIVITY_TABS)[number]["id"];

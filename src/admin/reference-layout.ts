@@ -1,5 +1,6 @@
 import { getProductDisplayDetails } from '../data/productDetails';
 import { ProductSummaryHeading } from '../components/ProductSummaryHeading';
+import { ProductDocumentDownloads } from '../components/CertificationCards';
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DreamsHero } from "../components/DreamsHero";
@@ -128,12 +129,15 @@ export function referenceLayout(html: string, content: SiteContent) {
   }
   const specs = content.products.map((p) => {
     const fields = getProductDisplayDetails(p);
-    return `<dl class="ref-product-specs">${fields.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>`;
+    return `<dl class="ref-product-specs">${fields.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` + renderToStaticMarkup(createElement(ProductDocumentDownloads, { content, productId: p.id }));
   });
   const json = JSON.stringify(specs).replace(/</g, "\\u003c");
+  const documentHtml = JSON.stringify(content.products.map((product) => renderToStaticMarkup(createElement(ProductDocumentDownloads, { content, productId: product.id })))).replace(/</g, "\\u003c");
+  html = html.replace('<ul id="dSec"></ul></div>', '<ul id="dSec"></ul></div><div id="refProductDocuments"></div>');
+  html = html.replace('$("#dSec").innerHTML = p[3].map(s=>"<li>"+s+"</li>").join("");', '$("#dSec").innerHTML = p[3].map(s=>"<li>"+s+"</li>").join(""); $("#refProductDocuments").innerHTML=REFERENCE_PRODUCT_DOC_HTML[i]||"";');
   html = html.replace(
     "const $ =",
-    () => `const REFERENCE_PRODUCT_HEADER_HTML=${JSON.stringify(content.products.map(product=>renderToStaticMarkup(createElement(ProductSummaryHeading, { product, level: "h4" })))).replace(/</g,"\\u003c")};\nconst REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
+    () => `const REFERENCE_PRODUCT_DOC_HTML=${documentHtml};\nconst REFERENCE_PRODUCT_HEADER_HTML=${JSON.stringify(content.products.map(product=>renderToStaticMarkup(createElement(ProductSummaryHeading, { product, level: "h4" })))).replace(/</g,"\\u003c")};\nconst REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
   );
   html = html.replace(
     /<h2>Products for every surface<\/h2>[\s\S]*?<div class="tiles" id="tiles"><\/div>/,

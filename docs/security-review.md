@@ -79,3 +79,7 @@ Admin-only review updates are now supported with strict field allowlisting, requ
 ## Final decision and PDF safeguards — 15 November 2026
 
 Approved/rejected reviews are now read-only in the UI/API, with migration-008 trigger protection for SQL-backed deployments. Reports are generated from saved snapshots, contain no active PDF scripts or public receipt links, require an admin session and recheck that session after generation. Finality and the mobile-verification flag are independent; approval still does not convert demo OTP to verified. Jobs are concurrency/rate-limited and do not use an external rendering service. A failed download does not reverse the saved decision. Bundled font assets are licensed and remain outside public static assets; dependency audit after adding PDFKit/fontkit reported zero known vulnerabilities.
+
+## Certifications and document cards — 15 November 2026
+
+Admin-only PDF uploads and revision-protected CMS saves manage the new cards. Server validation restricts references to existing uploaded PDFs, limits cards/attachments/text/dates/product links and strips unrecognised fields. Hidden cards are excluded from public JSON and generated HTML. Uploaded document files are public downloads; hiding a card is not file-access revocation. Public fields render as text in a shared React/legacy renderer; PDF responses retain attachment, sandbox and nosniff headers. New SQL tables have RLS and revoked browser/API-role privileges, but the running store remains private JSON and no live SQL was changed.

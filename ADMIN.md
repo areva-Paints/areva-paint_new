@@ -196,3 +196,7 @@ Use **Review status**, **Date field**, **From date** and **To date** alongside s
 ### Final decisions and PDFs — 15 November 2026
 
 Saving **Approved** or **Rejected** now closes the details dialog and returns to the registrations list, with automatic Decision PDF download. Final records show **View details** and **Decision PDF**; the decision form is no longer shown and further status/note edits are blocked by the backend. Pending review/Needs information remain reviewable. The PDF contains all saved registration details, decision/review notes, reviewer/time and history. Receipts remain separate private downloads. If generation fails, the decision stays saved and **Download decision PDF** can be retried from the confirmation banner or record. Existing SQL installations after migration 007 need migration 008; fresh setup includes it.
+
+## Certifications and documents
+
+Open **Certifications and documents → Add document** to create a card with heading, description, type, optional issuer/reference/dates, linked products and up to five PDFs (5 MiB each). **Save document card** saves immediately; use **Show on website** to publish/hide it. Arrows and removal are saved with **Save changes**. Public cards and product download links use the same saved data. Uploads have public URLs; private warranty receipts remain separate. See [the documents guide](docs/certifications-and-documents.md).

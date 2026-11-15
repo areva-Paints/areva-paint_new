@@ -1,4 +1,5 @@
 import { ProjectGallery } from './components/ProjectGallery';
+import { Certifications } from './components/Certifications';
 import './reference-theme.css';
 import React, { useState, useEffect } from 'react';
 import { Product } from './types';
@@ -142,6 +143,7 @@ export default function App() {
             />
             <ProjectGallery />
             <DealersAndServices />
+            <Certifications />
           </div>
 
           {/* Right Column: Attached HTML Page View */}
@@ -241,6 +243,7 @@ export default function App() {
             <ProjectGallery />
             {/* Dealers & On-Site Technical Services */}
             <DealersAndServices />
+            <Certifications />
 
             {/* Grand Vibrant Multi-Gradient Call-to-Action Banner */}
             <GrandCtaBanner

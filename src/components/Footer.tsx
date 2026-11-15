@@ -82,6 +82,7 @@ export const Footer: React.FC<FooterProps> = ({
                 </button>
               </li>
               <li><a href="#gallery" className="hover:text-white transition-colors">Project gallery</a></li>
+              <li><a href="#certs" className="hover:text-white transition-colors">Certifications and documents</a></li>
               <li>
                 <a href="#dealers" className="hover:text-white transition-colors">
                   Authorized Depot Stockists

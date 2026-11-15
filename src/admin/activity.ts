@@ -129,6 +129,7 @@ export function contentActivity(
     "galleryProjects",
     "galleryAds",
     "galleryReviews",
+    "certifications",
   ] as const)
     compare(
       section,

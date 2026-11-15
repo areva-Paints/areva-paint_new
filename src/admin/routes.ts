@@ -1,4 +1,5 @@
 import { sensitiveRequestGuard } from "../server/security";
+import { prepareCertifications } from "./certification-store";
 import { OPTIONAL_PRODUCT_DETAILS } from "../data/productDetails";
 import {
   COLOUR_FAMILIES,
@@ -21,6 +22,7 @@ import crypto from "node:crypto";
 import {
   dataDir,
   readContent,
+  readPublicContent,
   saveContent,
   readActivity,
   recordActivity,
@@ -107,7 +109,7 @@ contentRouter.get("/admin/session", (req, res) =>
 );
 contentRouter.get("/content", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
-  res.json(readContent());
+  res.json(readPublicContent());
 });
 contentRouter.get("/admin/content", (_req, res) => res.json(readContent()));
 function validate(c: SiteContent) {
@@ -432,6 +434,7 @@ contentRouter.put("/admin/content", (req, res) => {
     c.galleryProjects ??= current.galleryProjects;
     c.galleryAds ??= current.galleryAds;
     c.galleryReviews ??= current.galleryReviews;
+    if (c.certifications === undefined) c.certifications = current.certifications;
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);
@@ -473,6 +476,13 @@ contentRouter.put("/admin/content", (req, res) => {
           "Someone else saved changes. Reload this page before editing again.",
       });
     const now = new Date().toISOString();
+    const certifications = prepareCertifications(
+      c.certifications,
+      current.certifications,
+      c.products,
+      current.products,
+      now,
+    );
     const galleryProjects = c.galleryProjects.map((project) => {
       const previous = current.galleryProjects.find((p) => p.id === project.id);
       const fields = {
@@ -536,6 +546,7 @@ contentRouter.put("/admin/content", (req, res) => {
       };
     });
     const next = {
+      certifications,
       galleryReviews,
       galleryProjects,
       galleryAds: c.galleryAds.map((ad) => {
@@ -594,6 +605,7 @@ function uploadedActivity(
       "galleryAds",
       "galleryReviews",
       "shadeCards",
+      "certifications",
     ].includes(req.body.section)
       ? req.body.section
       : "uploads";
@@ -609,7 +621,7 @@ function uploadedActivity(
       adminActor(req),
       "uploaded",
       section,
-      name || (pdf ? "PDF shade card uploaded" : "Image uploaded"),
+      name || (pdf ? "PDF uploaded" : "Image uploaded"),
       { fileUrl: url, bytes },
     ),
   );
@@ -632,9 +644,7 @@ contentRouter.post("/admin/pdf-upload", (req, res) => {
     typeof req.body.data === "string" &&
     req.body.data.match(/^data:application\/pdf;base64,([A-Za-z0-9+/=]+)$/);
   if (!match)
-    return res
-      .status(400)
-      .json({ error: "Choose a PDF shade card up to 5 MB." });
+    return res.status(400).json({ error: "Choose a PDF up to 5 MB." });
   const bytes = Buffer.from(match[1], "base64");
   if (
     bytes.length < 12 ||
@@ -651,11 +661,9 @@ contentRouter.post("/admin/pdf-upload", (req, res) => {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const name = crypto.randomUUID() + ".pdf";
   if (!uploadCapacity(dir, bytes.length))
-    return res
-      .status(507)
-      .json({
-        error: "Upload storage is full. Contact the website administrator.",
-      });
+    return res.status(507).json({
+      error: "Upload storage is full. Contact the website administrator.",
+    });
   fs.writeFileSync(path.join(dir, name), bytes, { flag: "wx", mode: 0o600 });
   uploadedActivity(
     req,
@@ -695,11 +703,9 @@ contentRouter.post("/admin/upload", (req, res) => {
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const name = crypto.randomUUID() + "." + match[1];
   if (!uploadCapacity(dir, bytes.length))
-    return res
-      .status(507)
-      .json({
-        error: "Upload storage is full. Contact the website administrator.",
-      });
+    return res.status(507).json({
+      error: "Upload storage is full. Contact the website administrator.",
+    });
   fs.writeFileSync(path.join(dir, name), bytes, { flag: "wx", mode: 0o600 });
   uploadedActivity(
     req,

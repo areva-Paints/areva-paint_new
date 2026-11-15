@@ -9,8 +9,8 @@ The HTTPS project URL is a Data API address, not a PostgreSQL login or permissio
 
 1. Open [this project's SQL Editor](https://supabase.com/dashboard/project/osljojzwulmjoqbnubia/sql/new) while signed in with database-management access.
 2. Start a new query and paste the complete contents of [supabase-setup.sql](../database/supabase-setup.sql). Run it using the project database-owner role, normally `postgres`.
-3. Run **once**. The script creates a new `areva` schema, all 20 reviewed tables and the eight categories in one transaction. It deliberately stops if `areva` already exists; inspect any existing data rather than dropping it or rerunning setup. It does not alter existing `public`, `auth` or `storage` tables.
-4. The final queries should report **20 tables**, **8 categories**, and **20 tables with row-level security enabled**. In Table Editor, select the **areva** schema to see the tables.
+3. Run **once**. The script creates a new `areva` schema, all 23 reviewed tables and the eight categories in one transaction. It deliberately stops if `areva` already exists; inspect any existing data rather than dropping it or rerunning setup. It does not alter existing `public`, `auth` or `storage` tables.
+4. The final queries should report **23 tables**, **8 categories**, and **23 tables with row-level security enabled**. In Table Editor, select the **areva** schema to see the tables.
 
 This file already includes the full schema and category seed. Do not also run `schema.sql`, `seed-categories.sql` or the old 15-table upgrade in this setup flow. If an earlier proposal has already been applied in `public` or another schema, stop and plan its migration instead of creating a competing copy.
 
@@ -46,8 +46,12 @@ The generator only prepares the local SQL file from the reviewed sources; it nev
 
 ## Warranty Registration upgrade
 
-An existing 19-table Areva installation needs [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once, after migrations 001–005, followed by [007-warranty-review-and-filters.sql](../database/migrations/007-warranty-review-and-filters.sql). The new fresh setup has 20 tables; never rerun it on an existing installation. See [warranty-registration.md](warranty-registration.md) for private receipt storage, JSON persistence and the future SQL adapter.
+An existing 19-table Areva installation needs [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once, after migrations 001–005, followed by [007-warranty-review-and-filters.sql](../database/migrations/007-warranty-review-and-filters.sql). The new fresh setup has 23 tables; never rerun it on an existing installation. See [warranty-registration.md](warranty-registration.md) for private receipt storage, JSON persistence and the future SQL adapter.
 
 For an existing 20-table installation with migration 006 already applied, use only migration 007 for review metadata/manual approvals. The fresh setup includes these fields already; do not rerun it. No application database adapter or live migration is implied.
 
 For final decisions and PDFs, an existing installation after migration 007 also needs [008-final-warranty-decisions.sql](../database/migrations/008-final-warranty-decisions.sql) once. It locks final review fields without changing records. PDFs are private backend-generated attachments, not public Supabase Storage files. Fresh setup includes the trigger.
+
+## Certifications and documents upgrade
+
+An existing 20-table installation after migrations 001–008 uses [009-certifications-and-documents.sql](../database/migrations/009-certifications-and-documents.sql) once. It adds `certifications`, `certification_attachments` and `certification_products`, updates activity sections and restricts direct API-role access. Fresh setup now has 23 tables and includes this upgrade. It does not import content, change the running JSON store or connect the application to SQL. See [the documents guide](certifications-and-documents.md).

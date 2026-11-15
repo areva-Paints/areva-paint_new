@@ -502,21 +502,21 @@ These are observations for technical handover. This document does not implement 
 
 ## 12. PostgreSQL column dictionary and relationships
 
-Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **20 tables**, including Gallery reviews and Warranty Registration (14 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
+Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **23 tables**, including Gallery reviews, Warranty Registration and Certifications/documents (15 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
 
 Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries now persist privately in `CONTENT_DATA_DIR/enquiries.json`.
 
-**Using Supabase instead:** follow [supabase-setup.md](docs/supabase-setup.md) and its single [supabase-setup.sql](database/supabase-setup.sql) file. That alternative creates the same 20 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
+**Using Supabase instead:** follow [supabase-setup.md](supabase-setup.md) and its single [supabase-setup.sql](../database/supabase-setup.sql) file. That alternative creates the same 23 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
 
-Use [schema.sql](database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
+Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007 and 008 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007, 008 and 009 in order. Back up and rehearse either route on staging first.
 
 ### Database access guardrails (14 November 2026)
 
-Fresh `schema.sql` now enables row-level security on all 20 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
+Fresh `schema.sql` now enables row-level security on all 23 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
 
-For an existing installation that already has migrations 001–004, review and apply [005-private-access-guardrails.sql](database/migrations/005-private-access-guardrails.sql) once. It revokes prior direct application-table access and preserves unrelated tables. If both `areva.users` and `public.users` exist, it stops for inspection. The migration changes permissions; rehearse it against a backup and assess any existing integrations. No SQL has been applied to the live project during this review.
+For an existing installation that already has migrations 001–004, review and apply [005-private-access-guardrails.sql](../database/migrations/005-private-access-guardrails.sql) once. It revokes prior direct application-table access and preserves unrelated tables. If both `areva.users` and `public.users` exist, it stops for inspection. The migration changes permissions; rehearse it against a backup and assess any existing integrations. No SQL has been applied to the live project during this review.
 
 Tests execute fresh public/private schemas, permission denials, hostile-search-path trigger calls, preserved unrelated tables and repeat-install rollback in isolated PGlite instances. Run `npm test` for these checks alongside the application regressions. This verifies the scripts, not the live Supabase configuration.
 
@@ -538,6 +538,9 @@ erDiagram
   colours o|--o{ enquiries : selected
   dealers o|--o{ enquiries : assigned
   users ||--|{ user_login_identifiers : signs_in_with
+  certifications ||--o{ certification_attachments : downloads
+  certifications ||--o{ certification_products : applies_to
+  products ||--o{ certification_products : has_documents
 ```
 
 Landing images, PDF shade cards, ads and reviews are independent entries. `site_state` holds one revision number for the whole website and the private history start date. Activity events keep actor/entity snapshots without foreign keys so deleted entries and the environment admin remain readable in history. The schema permits creating parents before their children; the service must require at least one pack size per product and one photo per project before committing.
@@ -751,7 +754,7 @@ Existing databases use `database/migrations/003-gallery-reviews.sql` once. It de
 
 #### 20. warranty_registrations — private customer submissions
 
-See [warranty-registration.md](docs/warranty-registration.md) for the complete form/API/storage mapping. Columns capture customer/session mobile and optional contact fields, product/category/warranty snapshots, purchase date/quantity/packing/batch/shade, dealer/invoice fields, property/application fields, notes/consent, reference, verification/status and private receipt metadata/storage key. `id`, `submission_id` and `receipt_id` are UUIDs. Quantity/area and warranty years use numeric; purchase/completion use date. Empty optional dealer reference, application date and area map to NULL.
+See [warranty-registration.md](warranty-registration.md) for the complete form/API/storage mapping. Columns capture customer/session mobile and optional contact fields, product/category/warranty snapshots, purchase date/quantity/packing/batch/shade, dealer/invoice fields, property/application fields, notes/consent, reference, verification/status and private receipt metadata/storage key. `id`, `submission_id` and `receipt_id` are UUIDs. Quantity/area and warranty years use numeric; purchase/completion use date. Empty optional dealer reference, application date and area map to NULL.
 
 Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, submission_id)` prevents duplicate retries; references and receipt IDs/keys are unique. RLS and revoked API-role permissions keep these records behind the backend. Checks prohibit verified demo phone numbers. An approved status requires either real non-demo phone verification or a manually confirmed review with a reviewer and timestamp. Existing 19-table installations use migration 006, then migration 007 for reviews; an existing 20-table installation after 006 needs only 007. Fresh setup includes both. Receipt files are private assets, not public URLs. Current website registrations persist in `warranties.json`; the SQL adapter/import and private file migration remain separate work.
 
@@ -766,6 +769,14 @@ Migration 007 replaces only the old approval guard, preserving the status enum, 
 Migration 008 adds `prevent_final_warranty_review_changes()` and the `warranty_registrations_final_review` trigger. Approved/rejected review fields (status, notes, reviewer/time, confirmation, review history and version) cannot change afterward. Existing rows are preserved, and product/dealer FK deletion cleanup is allowed. The function uses an explicit safe search path and revoked browser-role execute privileges. Fresh schema/setup include it; no additional table is created.
 
 The private backend generates PDF reports from stored snapshots and review metadata after final save. PDFs are no-store attachments available only to admins and are not public assets or database blobs. There is no extra PDF URL/byte column to migrate. A future SQL adapter must preserve finality, status/version concurrency, review history and the private download boundary. No live database migration is performed here.
+
+#### 21–23. Certifications and documents
+
+`certifications` stores card ID, heading (`title varchar(150)`), description (2,000 characters), document type, optional label/issuer/reference, optional issue/validity dates, `published`, display `position` (0–99) and server-created/updated timestamps. Types are `certification`, `test_report`, `tds`, `sds`, `warranty`, `other`. Dates range from 1900 to 2200 and validity cannot precede issue.
+
+`certification_attachments` stores a unique attachment ID, parent FK, nonblank download label, uploaded PDF path and position 0–4 (unique per card). `certification_products` joins cards to products using a composite PK and optional position (0–199). Card deletion cascades to both child tables; product deletion removes only its association. Public downloads remain separate files. The application requires 1–5 PDFs before publishing, caps cards at 100, filters hidden cards from public responses and preserves fields when older clients omit the section.
+
+Existing databases after migration 008 use `database/migrations/009-certifications-and-documents.sql` once. Fresh schema/setup includes these three RLS-protected tables, bringing the count to 23. The JSON-backed runtime writes `certifications[]` to `content.json`; no SQL adapter or live import is implied. See [certifications-and-documents.md](certifications-and-documents.md) for fields, public-file behavior and import mapping.
 
 ### Defaults, ordering and limits
 
@@ -799,7 +810,6 @@ Upload metadata already fits existing content URL columns plus private `uploaded
 ### Validation performed
 
 The original schema/category seed passed isolated PostgreSQL-engine (PGlite) execution and a trial mapping of all 18 default products, 13 dealers and 24 colours, including child arrays. Checks covered invalid coverage, case-insensitive colour-code uniqueness, category FKs, photo cascades and preservation of enquiry names after product deletion. The 11 November review additionally validates fresh creation and upgrading the old 15-table proposal, account/hash/identifier constraints, case-insensitive cross-identifier collision handling, password verification after import, history array order/optional fields and rollback of content/account/history transactions. These are isolated schema tests, not an executed migration of the live Render site. A staging adapter and migration of the latest live data remain necessary before production use.
-
 
 ## 13. Complete PostgreSQL schema
 
@@ -982,6 +992,40 @@ CREATE TABLE gallery_reviews (
 );
 CREATE INDEX gallery_reviews_latest_idx ON gallery_reviews(updated_at DESC, position DESC);
 
+-- Public document cards are curated through the backend. Files remain in uploads.
+CREATE TABLE certifications (
+  id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
+  title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
+  description varchar(2000) NOT NULL CHECK (btrim(description) <> ''),
+  document_type varchar(20) NOT NULL CHECK (document_type IN ('certification', 'test_report', 'tds', 'sds', 'warranty', 'other')),
+  label varchar(80) NOT NULL DEFAULT '',
+  issuer varchar(200) NOT NULL DEFAULT '',
+  reference varchar(100) NOT NULL DEFAULT '',
+  issued_on date CHECK (issued_on BETWEEN DATE '1900-01-01' AND DATE '2200-12-31'),
+  valid_until date CHECK (valid_until BETWEEN DATE '1900-01-01' AND DATE '2200-12-31'),
+  published boolean NOT NULL DEFAULT false,
+  position integer NOT NULL DEFAULT 0 CHECK (position BETWEEN 0 AND 99),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (issued_on IS NULL OR valid_until IS NULL OR issued_on <= valid_until)
+);
+CREATE INDEX certifications_public_order_idx ON certifications(published, position);
+CREATE TABLE certification_attachments (
+  id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
+  certification_id varchar(100) NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
+  label varchar(150) NOT NULL CHECK (btrim(label) <> ''),
+  pdf_url text NOT NULL CHECK (pdf_url ~ '^/uploads/[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}\.pdf$'),
+  position integer NOT NULL CHECK (position BETWEEN 0 AND 4),
+  UNIQUE (certification_id, position)
+);
+CREATE TABLE certification_products (
+  certification_id varchar(100) NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
+  product_id varchar(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  position integer NOT NULL DEFAULT 0 CHECK (position BETWEEN 0 AND 199),
+  PRIMARY KEY (certification_id, product_id)
+);
+CREATE INDEX certification_products_product_idx ON certification_products(product_id);
+
 -- One shared revision protects the existing full-content Save changes workflow.
 CREATE TABLE site_state (
   id smallint PRIMARY KEY CHECK (id = 1),
@@ -1072,7 +1116,7 @@ CREATE TABLE activity_events (
   )),
   section varchar(30) NOT NULL CHECK (section IN (
     'landingImages', 'products', 'dealers', 'colours', 'shadeCards',
-    'galleryProjects', 'galleryPhotos', 'galleryAds', 'galleryReviews', 'uploads',
+    'galleryProjects', 'galleryPhotos', 'galleryAds', 'galleryReviews', 'certifications', 'uploads',
     'website', 'account', 'users'
   )),
   entity_id text NOT NULL DEFAULT '',
@@ -1204,6 +1248,7 @@ BEGIN
     'categories', 'products', 'product_pack_sizes', 'product_surfaces',
     'dealers', 'dealer_badges', 'landing_images', 'colours', 'colour_pairings',
     'shade_cards', 'gallery_projects', 'gallery_photos', 'gallery_ads', 'gallery_reviews',
+    'certifications', 'certification_attachments', 'certification_products',
     'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations'
   ] LOOP
     IF to_regclass(format('%I.%I', app_schema, target)) IS NULL THEN
@@ -1418,3 +1463,7 @@ The admin registration view supports manual approval/rejection/information reque
 ## Final warranty decisions and decision PDFs — 15 November 2026
 
 Final Approved/Rejected decisions save before the dialog closes and the PDF download begins. The backend blocks further review changes; pending/information-needed records remain editable. PDFKit/fontkit and local licensed Noto fonts generate branded, multi-page private reports from saved record/review snapshots. The original receipt stays separate. Admin-only report endpoints recheck access and limit jobs; failed downloads preserve the decision and can be retried. Migration 008 adds matching SQL finality without a new table. The live database, OTP provider and deployment were not modified by this local implementation.
+
+## Certifications and documents — 15 November 2026
+
+Admin-managed document cards replace the example certification cards. Heading/description/type, label, issuer/reference, issue/validity dates, linked products and up to five PDFs are supported. Public cards and per-product downloads share one renderer, while hidden cards are excluded from public content. Uploaded PDFs are public attachments rather than private warranty receipts. JSON storage remains active; SQL migration 009 prepares three restricted tables (23 total). See [the guide](docs/certifications-and-documents.md) for validation, lifecycle and import mapping.

@@ -174,6 +174,40 @@ CREATE TABLE gallery_reviews (
 );
 CREATE INDEX gallery_reviews_latest_idx ON gallery_reviews(updated_at DESC, position DESC);
 
+-- Public document cards are curated through the backend. Files remain in uploads.
+CREATE TABLE certifications (
+  id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
+  title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
+  description varchar(2000) NOT NULL CHECK (btrim(description) <> ''),
+  document_type varchar(20) NOT NULL CHECK (document_type IN ('certification', 'test_report', 'tds', 'sds', 'warranty', 'other')),
+  label varchar(80) NOT NULL DEFAULT '',
+  issuer varchar(200) NOT NULL DEFAULT '',
+  reference varchar(100) NOT NULL DEFAULT '',
+  issued_on date CHECK (issued_on BETWEEN DATE '1900-01-01' AND DATE '2200-12-31'),
+  valid_until date CHECK (valid_until BETWEEN DATE '1900-01-01' AND DATE '2200-12-31'),
+  published boolean NOT NULL DEFAULT false,
+  position integer NOT NULL DEFAULT 0 CHECK (position BETWEEN 0 AND 99),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CHECK (issued_on IS NULL OR valid_until IS NULL OR issued_on <= valid_until)
+);
+CREATE INDEX certifications_public_order_idx ON certifications(published, position);
+CREATE TABLE certification_attachments (
+  id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
+  certification_id varchar(100) NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
+  label varchar(150) NOT NULL CHECK (btrim(label) <> ''),
+  pdf_url text NOT NULL CHECK (pdf_url ~ '^/uploads/[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}\.pdf$'),
+  position integer NOT NULL CHECK (position BETWEEN 0 AND 4),
+  UNIQUE (certification_id, position)
+);
+CREATE TABLE certification_products (
+  certification_id varchar(100) NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
+  product_id varchar(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  position integer NOT NULL DEFAULT 0 CHECK (position BETWEEN 0 AND 199),
+  PRIMARY KEY (certification_id, product_id)
+);
+CREATE INDEX certification_products_product_idx ON certification_products(product_id);
+
 -- One shared revision protects the existing full-content Save changes workflow.
 CREATE TABLE site_state (
   id smallint PRIMARY KEY CHECK (id = 1),
@@ -264,7 +298,7 @@ CREATE TABLE activity_events (
   )),
   section varchar(30) NOT NULL CHECK (section IN (
     'landingImages', 'products', 'dealers', 'colours', 'shadeCards',
-    'galleryProjects', 'galleryPhotos', 'galleryAds', 'galleryReviews', 'uploads',
+    'galleryProjects', 'galleryPhotos', 'galleryAds', 'galleryReviews', 'certifications', 'uploads',
     'website', 'account', 'users'
   )),
   entity_id text NOT NULL DEFAULT '',
@@ -396,6 +430,7 @@ BEGIN
     'categories', 'products', 'product_pack_sizes', 'product_surfaces',
     'dealers', 'dealer_badges', 'landing_images', 'colours', 'colour_pairings',
     'shade_cards', 'gallery_projects', 'gallery_photos', 'gallery_ads', 'gallery_reviews',
+    'certifications', 'certification_attachments', 'certification_products',
     'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations'
   ] LOOP
     IF to_regclass(format('%I.%I', app_schema, target)) IS NULL THEN

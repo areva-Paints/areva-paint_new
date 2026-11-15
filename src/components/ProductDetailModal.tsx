@@ -1,5 +1,7 @@
 import { productCoverageText, productPacking } from '../data/productDetails';
 import { ProductWarrantyBadge } from './ProductSummaryHeading';
+import { ProductDocumentDownloads } from './CertificationCards';
+import { useSiteContent } from '../admin/ContentContext';
 import React from 'react';
 import { Product } from '../types';
 import { X, Clock, Droplet, Layers, Paintbrush, FileText, MessageSquare, Eye, Printer } from 'lucide-react';
@@ -22,6 +24,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onRequestQuote,
   onOpenVisualizer,
 }) => {
+  const content = useSiteContent();
   if (!product) return null;
 
   const handlePrintTDS = () => {
@@ -164,6 +167,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
           </div>
 
+          <ProductDocumentDownloads content={content} productId={product.id} />
           {/* Inquiry & Action Module (No Cart) */}
           <div className="bg-stone-50 p-5 rounded-2xl border border-stone-200 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>

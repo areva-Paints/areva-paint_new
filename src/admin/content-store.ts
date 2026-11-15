@@ -23,6 +23,7 @@ const categoryIds = [
 export function defaults(): SiteContent {
   return {
     revision: 0,
+    certifications: [],
     galleryProjects: [],
     galleryAds: [],
     galleryReviews: [],
@@ -80,6 +81,7 @@ export function readContent(): SiteContent {
   return {
     // Allowlist public fields; future private store metadata must never be spread here.
     revision: content.revision,
+    certifications: content.certifications ?? [],
     products: content.products,
     dealers: content.dealers,
     landingImages: content.landingImages,
@@ -92,6 +94,13 @@ export function readContent(): SiteContent {
       family: card.family ?? "All Shades",
       tones: card.tones ?? [],
     })),
+  };
+}
+export function readPublicContent(): SiteContent {
+  const content = readContent();
+  return {
+    ...content,
+    certifications: content.certifications.filter((item) => item.published),
   };
 }
 export function readActivity(): ActivityStore {

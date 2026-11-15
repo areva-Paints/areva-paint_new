@@ -147,3 +147,7 @@ Use `npm ci`, `npm run lint`, `npm test`, `npm run build` and `npm audit --audit
 The public **Warranty Registration** tab opens `/warranty`, using an on-screen demo OTP `123456` followed by a product/purchase/dealer/site form and private receipt upload. Records are available in **Admin → Warranty registrations** with search, full details and authenticated receipt download. Demo submissions never count as verified mobile numbers or approved warranties. No SMS or WhatsApp integration is active. See [the warranty guide](docs/warranty-registration.md) for persistence, new private SQL table/migration 006 and later Meta setup.
 
 Final Approved/Rejected warranty decisions now close back to the admin list and automatically download an Areva Decision PDF with all saved fields and review details. Final decisions are read-only; reports can be downloaded again from the list/details. Existing SQL installations after migration 007 need migration 008. See the warranty guide for privacy and recovery behavior.
+
+## Certifications and documents
+
+Manage public certificate/report/data-sheet/warranty cards through **Admin → Certifications and documents**, including PDF uploads, linked products, issuer/reference/dates, visibility and display order. Both website views show the same cards and product downloads. See [the guide](docs/certifications-and-documents.md) for fields, storage and prepared migration 009. No live database migration is performed.

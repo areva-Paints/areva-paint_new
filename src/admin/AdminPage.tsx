@@ -1,4 +1,5 @@
 import { WarrantyManager } from "../warranty/WarrantyManager";
+import { CertificationsManager } from "./CertificationsManager";
 import { ProductTechnicalFields } from "./ProductTechnicalFields";
 import { GalleryReviewsManager } from "./GalleryReviewsManager";
 import { UsersManager } from "./UsersManager";
@@ -29,6 +30,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  FileText,
   Trash2,
   X,
   Droplets,
@@ -50,8 +52,16 @@ type Tab =
   | "galleryProjects"
   | "history"
   | "users"
-  | "warranties";
+  | "warranties"
+  | "certifications";
 const sections = [
+  {
+    id: "certifications" as Tab,
+    label: "Certifications and documents",
+    icon: FileText,
+    description:
+      "Publish certificates, product reports, data sheets and warranty documents as downloadable cards.",
+  },
   {
     id: "warranties" as Tab,
     label: "Warranty registrations",
@@ -340,6 +350,7 @@ export function AdminPage() {
       uploading ||
       busy ||
       tab === "colours" ||
+      tab === "certifications" ||
       tab === "galleryProjects" ||
       tab === "history" ||
       tab === "users"
@@ -381,6 +392,7 @@ export function AdminPage() {
     if (
       !content ||
       tab === "colours" ||
+      tab === "certifications" ||
       tab === "galleryProjects" ||
       tab === "history" ||
       tab === "users"
@@ -558,6 +570,7 @@ export function AdminPage() {
     );
   const items = content
     ? tab === "colours" ||
+      tab === "certifications" ||
       tab === "galleryProjects" ||
       tab === "history" ||
       tab === "users" ||
@@ -661,6 +674,7 @@ export function AdminPage() {
               <p>{section.description}</p>
             </div>
             {tab !== "colours" &&
+              tab !== "certifications" &&
               tab !== "galleryProjects" &&
               tab !== "history" &&
               tab !== "users" &&
@@ -732,7 +746,15 @@ export function AdminPage() {
                 ))}
             </div>
           )}
-          {tab === "warranties" ? (
+          {tab === "certifications" && content ? (
+            <CertificationsManager
+              content={content}
+              onChange={update}
+              onPublish={persist}
+              onBusy={setUploading}
+              publishError={error}
+            />
+          ) : tab === "warranties" ? (
             <WarrantyManager />
           ) : tab === "users" ? (
             <UsersManager
