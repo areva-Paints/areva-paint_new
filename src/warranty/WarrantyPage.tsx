@@ -68,32 +68,51 @@ export function WarrantyPage() {
   const uploadRef = useRef<HTMLInputElement>(null),
     headingRef = useRef<HTMLHeadingElement>(null);
   const remote = contentOrigin() !== location.origin;
+  function resetEntry() {
+    setStep("phone");
+    setPhone("");
+    setCode("");
+    setChallenge("");
+    setDemoCode("");
+    setRetryAt(0);
+    setForm(empty());
+    setCategory("");
+    setReceipt(null);
+    setReference("");
+    setError("");
+    setBusy(false);
+  }
   useEffect(() => {
     if (remote) {
       location.replace(contentUrl("/warranty") + location.search);
       return;
     }
     let active = true;
-    void Promise.all([
-      warrantyApi<Options>("/api/warranty/options"),
-      warrantyApi<{ mobile: string }>("/api/warranty/session").catch(
-        () => null,
-      ),
-    ])
-      .then(([data, session]) => {
-        if (active) {
-          setOptions(data);
-          if (session) {
-            setPhone(session.mobile);
-            setStep("form");
-          }
-        }
-      })
-      .catch((error) => {
-        if (active) setError(error.message);
-      });
+    let load = 0;
+    function startEntry() {
+      const currentLoad = ++load;
+      resetEntry();
+      setOptions(null);
+      // A new visit must start at mobile entry, even if an earlier OTP cookie remains.
+      void Promise.all([
+        warrantyApi<Options>("/api/warranty/options"),
+        warrantyApi("/api/warranty/logout", {}),
+      ])
+        .then(([data]) => {
+          if (active && currentLoad === load) setOptions(data);
+        })
+        .catch((error) => {
+          if (active && currentLoad === load) setError(error.message);
+        });
+    }
+    function restored(event: PageTransitionEvent) {
+      if (event.persisted) startEntry();
+    }
+    startEntry();
+    window.addEventListener("pageshow", restored);
     return () => {
       active = false;
+      window.removeEventListener("pageshow", restored);
     };
   }, [remote]);
   useEffect(() => {
@@ -103,11 +122,26 @@ export function WarrantyPage() {
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
-  useEffect(() => {
-    if (step !== "success") return;
-    const timer = setTimeout(() => location.replace("/"), 3000);
-    return () => clearTimeout(timer);
-  }, [step]);
+  async function backToWebsite(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    event.preventDefault();
+    setBusy(true);
+    try {
+      await warrantyApi("/api/warranty/logout", {});
+    } catch {
+      // Navigation remains available; the next visit also clears any old session.
+    } finally {
+      resetEntry();
+      location.assign("/");
+    }
+  }
   const product = options?.products.find((p) => p.id === form.productId);
   const wait = Math.max(0, Math.ceil((retryAt - now) / 1000));
   function patch(key: keyof WarrantyInput, value: unknown) {
@@ -258,10 +292,10 @@ export function WarrantyPage() {
   return (
     <div className="wr-page">
       <header className="wr-header">
-        <a href="/" aria-label="Areva Paints home">
+        <a href="/" aria-label="Areva Paints home" onClick={backToWebsite}>
           <img src="/assets/images/areva-brand-logo.png" alt="Areva Paints" />
         </a>
-        <a href="/" className="wr-back">
+        <a href="/" className="wr-back" onClick={backToWebsite}>
           <ArrowLeft size={17} />
           Back to website
         </a>
@@ -681,11 +715,10 @@ export function WarrantyPage() {
                   need to verify the purchase and warranty eligibility.
                 </p>
                 <div className="wr-inline-actions">
-                  <a className="wr-primary" href="/">
-                    Return to home page
+                  <a className="wr-primary" href="/" onClick={backToWebsite}>
+                    Back to website
                   </a>
                 </div>
-                <p>Returning to the home page in 3 seconds…</p>
               </div>
             )}
           </>
