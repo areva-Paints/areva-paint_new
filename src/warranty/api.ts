@@ -1,13 +1,14 @@
 export async function warrantyApi<T = any>(
   url: string,
   body?: unknown,
+  method: "POST" | "PATCH" = "POST",
 ): Promise<T> {
   const response = await fetch(url, {
     cache: "no-store",
     ...(body === undefined
       ? {}
       : {
-          method: "POST",
+          method,
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
         }),

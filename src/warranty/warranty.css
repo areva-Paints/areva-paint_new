@@ -671,3 +671,93 @@
 .wr-admin a.wr-primary {
   color: #fff;
 }
+
+/* Private admin review and inclusive date filters. */
+.wr-admin-date-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 16px;
+}
+.wr-admin-date-filters > label {
+  flex: 1 1 150px;
+}
+.wr-admin-date-filters small {
+  width: 100%;
+  color: #82718e;
+  font-size: 11px;
+}
+.wr-admin-toolbar .wr-field {
+  flex: 0 1 190px;
+}
+.wr-status-approved {
+  color: #216344;
+  background: #e6f5ec;
+}
+.wr-status-rejected {
+  color: #9a3340;
+  background: #fdebed;
+}
+.wr-status-needs_information {
+  color: #385b8b;
+  background: #eaf0fb;
+}
+.wr-review-form {
+  display: grid;
+  gap: 16px;
+  margin: 22px 0;
+  padding: 22px;
+  border: 1px solid #ded0eb;
+  background: #faf7fd;
+  border-radius: 12px;
+}
+.wr-review-form h3,
+.wr-review-form p,
+.wr-review-form .wr-consent {
+  margin: 0;
+}
+.wr-review-form > p {
+  color: #766180;
+  font-size: 12px;
+}
+.wr-review-form .wr-inline-actions {
+  margin-top: 0;
+}
+.wr-review-form p.wr-review-notice {
+  padding: 12px;
+  color: #216344;
+  background: #e6f5ec;
+  border: 1px solid #bbdfcc;
+  border-radius: 8px;
+}
+.wr-review-history {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.wr-review-history li {
+  padding: 12px 0;
+  border-bottom: 1px solid #ede5f2;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.wr-review-history span {
+  display: block;
+  margin-top: 4px;
+  color: #82718e;
+}
+.wr-review-history p {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+}
+@media (max-width: 650px) {
+  .wr-admin-date-filters > label,
+  .wr-admin-date-filters > button,
+  .wr-admin-toolbar .wr-field {
+    flex: 1 1 100%;
+  }
+  .wr-review-form {
+    padding: 16px;
+  }
+}

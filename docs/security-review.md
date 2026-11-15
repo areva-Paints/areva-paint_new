@@ -68,4 +68,9 @@ npm audit --audit-level=moderate
 
 ## Warranty Registration addendum — 14 November 2026
 
-The latest schema has 20 RLS tables. Warranty registrations use a separate private JSON file and receipt directory, not public catalogue uploads. Demo OTP is explicitly disclosed, creates only a scoped entry session, cannot read historical customer records and never marks a phone as verified. Admin-only search/download and rate/body/storage/ownership limits apply. Migration 006 adds private records and blocks demo verification/approval at SQL level. Real Meta OTP delivery is deferred; unknown provider modes fail closed. See [warranty-registration.md](warranty-registration.md).
+The latest schema has 20 RLS tables. Warranty registrations use a separate private JSON file and receipt directory, not public catalogue uploads. Demo OTP is explicitly disclosed, creates only a scoped entry session, cannot read historical customer records and never marks a phone as verified. Admin-only search/download and rate/body/storage/ownership limits apply. Migration 006 adds private records and blocks demo phone verification and unreviewed approval at SQL level; migration 007 adds explicitly confirmed manual reviews. Real Meta OTP delivery is deferred; unknown provider modes fail closed. See [warranty-registration.md](warranty-registration.md).
+
+
+## Warranty manual review — 15 November 2026
+
+Admin-only review updates are now supported with strict field allowlisting, required confirmation/existing receipt for approval, required reasons for rejection/information requests, session-derived actor/time, optimistic versions and atomic review history. Demo sessions cannot perform reviews and manual approval never changes mobile verification. Status and inclusive IST registration/purchase date filters combine with existing search/category filters. Migration 007 preserves RLS and the prohibition on verified demo phones while allowing a recorded manual approval. No live database change, external message or certificate is generated.

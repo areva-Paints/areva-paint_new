@@ -181,6 +181,13 @@ Use one Node process with persistent private storage. Session/rate-limit maps ar
 
 ## Warranty registrations
 
-Open **Warranty registrations** to search the private registration table by reference, customer/mobile, product/type, dealer/invoice, batch, site or notes. Filter by product type and select **View details** to read all fields and download the private purchase receipt. This view is separate from CMS Save changes. Demo entries are pending review and explicitly unverified; no approval/certificate is issued.
+Open **Warranty registrations** to search the private registration table by reference, customer/mobile, product/type, dealer/invoice, batch, site or notes. Filter by product type and select **View details** to read all fields and download the private purchase receipt. This view is separate from CMS Save changes. New demo entries start pending review. Admins can now record a manual purchase decision while leaving mobile verification unchanged; certificates are not generated.
 
 The public **Warranty Registration** tab opens `/warranty`: mobile → displayed demo code **123456** → full product/dealer/site form → required private receipt → reference confirmation. No SMS/WhatsApp message is sent. Back up `warranties.json`, `warranty-uploads.json` and `warranty-receipts/` under the persistent data directory. Fresh SQL now has 20 tables; existing 19-table installations need migration 006. The website still uses JSON until the database adapter is implemented. See [warranty-registration.md](docs/warranty-registration.md) for all fields, guardrails, configuration and the later Meta integration.
+
+
+### Warranty approvals and date filters — 15 November 2026
+
+In **Warranty registrations → View / review → Review & approval**, choose a decision and add notes. Approving requires confirmation that the purchase and private receipt have been reviewed; a missing receipt blocks approval. Rejection and information requests require a reason. Save the review using the decision button. The record shows its actual status, reviewer/time and review history. Demo OTP flags stay unverified even after manual approval, and no notification or warranty start date is generated.
+
+Use **Review status**, **Date field**, **From date** and **To date** alongside search/product type. Registration-date boundaries are inclusive in IST; Purchase date filters use the saved purchase date. Either date can be open-ended; Reset filters clears all selections. Existing SQL databases that already have migration 006 need **007-warranty-review-and-filters.sql** once; current runtime data continues to use the private JSON store.

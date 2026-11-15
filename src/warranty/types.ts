@@ -1,3 +1,18 @@
+export const WARRANTY_STATUSES = {
+  pending_review: "Pending review",
+  needs_information: "Needs information",
+  approved: "Approved",
+  rejected: "Rejected",
+} as const;
+export type WarrantyStatus = keyof typeof WARRANTY_STATUSES;
+export interface WarrantyReview {
+  id: string;
+  status: WarrantyStatus;
+  actor: string;
+  at: string;
+  notes: string;
+  approvalConfirmed: boolean;
+}
 export const DEMO_OTP = "123456";
 export interface ReceiptInfo {
   id: string;
@@ -48,7 +63,13 @@ export interface WarrantyRegistration extends Omit<
   warrantyLabel: string;
   verificationMode: "demo";
   mobileVerified: false;
-  status: "pending_review";
+  status: WarrantyStatus;
+  version: number;
+  reviewNotes: string;
+  reviewedBy: string;
+  reviewedAt: string | null;
+  approvalConfirmed: boolean;
+  reviewHistory: WarrantyReview[];
   receipt: ReceiptInfo;
   createdAt: string;
 }

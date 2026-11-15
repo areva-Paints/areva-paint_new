@@ -310,6 +310,12 @@ CREATE TABLE warranty_registrations (
   mobile_verified boolean NOT NULL DEFAULT false,
   status varchar(20) NOT NULL DEFAULT 'pending_review'
     CHECK (status IN ('pending_review', 'needs_information', 'approved', 'rejected')),
+  version integer NOT NULL DEFAULT 1 CHECK (version >= 1),
+  review_notes varchar(2000) NOT NULL DEFAULT '',
+  reviewed_by text NOT NULL DEFAULT '',
+  reviewed_at timestamptz,
+  approval_confirmed boolean NOT NULL DEFAULT false,
+  review_history jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(review_history) = 'array'),
   customer_name varchar(150) NOT NULL CHECK (btrim(customer_name) <> ''),
   email varchar(160) NOT NULL DEFAULT '',
   alternate_mobile varchar(25) NOT NULL DEFAULT '',
@@ -349,12 +355,25 @@ CREATE TABLE warranty_registrations (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (mobile, submission_id),
   CHECK (verification_mode <> 'demo' OR NOT mobile_verified),
-  CHECK (status <> 'approved' OR (mobile_verified AND verification_mode <> 'demo'))
+  CONSTRAINT warranty_registrations_review_metadata_check CHECK (
+    (reviewed_at IS NULL AND reviewed_by = '') OR
+    (reviewed_at IS NOT NULL AND btrim(reviewed_by) <> '')
+  ),
+  CONSTRAINT warranty_registrations_manual_review_check CHECK (
+    NOT approval_confirmed OR (reviewed_at IS NOT NULL AND btrim(reviewed_by) <> '')
+  ),
+  CONSTRAINT warranty_registrations_approval_check CHECK (
+    status <> 'approved' OR
+    (mobile_verified AND verification_mode <> 'demo') OR
+    (approval_confirmed AND reviewed_at IS NOT NULL AND btrim(reviewed_by) <> '')
+  )
 );
 CREATE INDEX warranty_registrations_created_idx ON warranty_registrations(created_at DESC);
 CREATE INDEX warranty_registrations_mobile_idx ON warranty_registrations(mobile);
 CREATE INDEX warranty_registrations_invoice_idx ON warranty_registrations(lower(invoice_number));
 CREATE INDEX warranty_registrations_product_idx ON warranty_registrations(category_id, product_id);
+CREATE INDEX warranty_registrations_purchase_idx ON warranty_registrations(purchase_date);
+CREATE INDEX warranty_registrations_status_created_idx ON warranty_registrations(status, created_at DESC);
 
 -- Private application tables: access is through the authenticated Express backend.
 -- No browser policies or broad grants are created. The owner can administer data.

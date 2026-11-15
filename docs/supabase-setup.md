@@ -46,4 +46,6 @@ The generator only prepares the local SQL file from the reviewed sources; it nev
 
 ## Warranty Registration upgrade
 
-An existing 19-table Areva installation needs [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once, after migrations 001–005. The new fresh setup has 20 tables; never rerun it on an existing installation. See [warranty-registration.md](warranty-registration.md) for private receipt storage, JSON persistence and the future SQL adapter.
+An existing 19-table Areva installation needs [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once, after migrations 001–005, followed by [007-warranty-review-and-filters.sql](../database/migrations/007-warranty-review-and-filters.sql). The new fresh setup has 20 tables; never rerun it on an existing installation. See [warranty-registration.md](warranty-registration.md) for private receipt storage, JSON persistence and the future SQL adapter.
+
+For an existing 20-table installation with migration 006 already applied, use only migration 007 for review metadata/manual approvals. The fresh setup includes these fields already; do not rerun it. No application database adapter or live migration is implied.

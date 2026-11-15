@@ -510,7 +510,7 @@ Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. Thi
 
 Use [schema.sql](database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005 and 006 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006 and 007 in order. Back up and rehearse either route on staging first.
 
 ### Database access guardrails (14 November 2026)
 
@@ -753,7 +753,13 @@ Existing databases use `database/migrations/003-gallery-reviews.sql` once. It de
 
 See [warranty-registration.md](docs/warranty-registration.md) for the complete form/API/storage mapping. Columns capture customer/session mobile and optional contact fields, product/category/warranty snapshots, purchase date/quantity/packing/batch/shade, dealer/invoice fields, property/application fields, notes/consent, reference, verification/status and private receipt metadata/storage key. `id`, `submission_id` and `receipt_id` are UUIDs. Quantity/area and warranty years use numeric; purchase/completion use date. Empty optional dealer reference, application date and area map to NULL.
 
-Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, submission_id)` prevents duplicate retries; references and receipt IDs/keys are unique. RLS and revoked API-role permissions keep these records behind the backend. Checks prohibit verified or approved demo entries. Existing 19-table installations use migration 006 once; fresh setup includes it. Receipt files are private assets, not public URLs. Current website registrations persist in `warranties.json`; the SQL adapter/import and private file migration remain separate work.
+Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, submission_id)` prevents duplicate retries; references and receipt IDs/keys are unique. RLS and revoked API-role permissions keep these records behind the backend. Checks prohibit verified demo phone numbers. An approved status requires either real non-demo phone verification or a manually confirmed review with a reviewer and timestamp. Existing 19-table installations use migration 006, then migration 007 for reviews; an existing 20-table installation after 006 needs only 007. Fresh setup includes both. Receipt files are private assets, not public URLs. Current website registrations persist in `warranties.json`; the SQL adapter/import and private file migration remain separate work.
+
+#### Warranty review columns — 15 November 2026
+
+`version integer DEFAULT 1` protects review edits against stale writes. `review_notes varchar(2000)`, `reviewed_by text`, `reviewed_at timestamptz`, `approval_confirmed boolean` and `review_history jsonb` preserve current and historical decisions. Review history is an array of server-generated event IDs/status/actor/time/notes/confirmation. Registration and receipt fields are preserved. Purchase-date and status/created-date indexes support the future SQL adapter's date/status queries. Registration date filtering must use inclusive IST day boundaries, not the database connection's default timezone.
+
+Migration 007 replaces only the old approval guard, preserving the status enum, demo-verification prohibition, RLS and existing data. Legacy rows get empty metadata/version 1; the migration does not invent past reviewers. Real verified approvals that satisfied the old rule remain valid. Manual demo approval requires explicit confirmation and reviewer metadata while `mobile_verified` remains false. No live migration is performed by code changes.
 
 ### Defaults, ordering and limits
 
@@ -1086,6 +1092,12 @@ CREATE TABLE warranty_registrations (
   mobile_verified boolean NOT NULL DEFAULT false,
   status varchar(20) NOT NULL DEFAULT 'pending_review'
     CHECK (status IN ('pending_review', 'needs_information', 'approved', 'rejected')),
+  version integer NOT NULL DEFAULT 1 CHECK (version >= 1),
+  review_notes varchar(2000) NOT NULL DEFAULT '',
+  reviewed_by text NOT NULL DEFAULT '',
+  reviewed_at timestamptz,
+  approval_confirmed boolean NOT NULL DEFAULT false,
+  review_history jsonb NOT NULL DEFAULT '[]'::jsonb CHECK (jsonb_typeof(review_history) = 'array'),
   customer_name varchar(150) NOT NULL CHECK (btrim(customer_name) <> ''),
   email varchar(160) NOT NULL DEFAULT '',
   alternate_mobile varchar(25) NOT NULL DEFAULT '',
@@ -1125,12 +1137,25 @@ CREATE TABLE warranty_registrations (
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (mobile, submission_id),
   CHECK (verification_mode <> 'demo' OR NOT mobile_verified),
-  CHECK (status <> 'approved' OR (mobile_verified AND verification_mode <> 'demo'))
+  CONSTRAINT warranty_registrations_review_metadata_check CHECK (
+    (reviewed_at IS NULL AND reviewed_by = '') OR
+    (reviewed_at IS NOT NULL AND btrim(reviewed_by) <> '')
+  ),
+  CONSTRAINT warranty_registrations_manual_review_check CHECK (
+    NOT approval_confirmed OR (reviewed_at IS NOT NULL AND btrim(reviewed_by) <> '')
+  ),
+  CONSTRAINT warranty_registrations_approval_check CHECK (
+    status <> 'approved' OR
+    (mobile_verified AND verification_mode <> 'demo') OR
+    (approval_confirmed AND reviewed_at IS NOT NULL AND btrim(reviewed_by) <> '')
+  )
 );
 CREATE INDEX warranty_registrations_created_idx ON warranty_registrations(created_at DESC);
 CREATE INDEX warranty_registrations_mobile_idx ON warranty_registrations(mobile);
 CREATE INDEX warranty_registrations_invoice_idx ON warranty_registrations(lower(invoice_number));
 CREATE INDEX warranty_registrations_product_idx ON warranty_registrations(category_id, product_id);
+CREATE INDEX warranty_registrations_purchase_idx ON warranty_registrations(purchase_date);
+CREATE INDEX warranty_registrations_status_created_idx ON warranty_registrations(status, created_at DESC);
 
 -- Private application tables: access is through the authenticated Express backend.
 -- No browser policies or broad grants are created. The owner can administer data.
@@ -1348,3 +1373,8 @@ See [security-review.md](docs/security-review.md) for findings, implemented cont
 ## Warranty Registration — 14 November 2026
 
 See [the warranty guide](docs/warranty-registration.md) for routes, form fields, private receipt handling, admin search, scoped demo sessions and migration 006. Fresh SQL includes 20 tables. Runtime registrations persist on the existing private volume; neither SQL connectivity nor Meta WhatsApp delivery is active. Demo entries remain unverified and pending review.
+
+
+## Warranty review controls — 15 November 2026
+
+The admin registration view supports manual approval/rejection/information requests with confirmation, notes, authenticated reviewer/time, private review history and stale-write protection. Search now combines product/status filters with inclusive registration-date (IST) or purchase-date ranges. Migration 007 adds review metadata and adjusts the approval guard without marking demo phones verified. Runtime storage remains private JSON; no live database or provider integration is changed.

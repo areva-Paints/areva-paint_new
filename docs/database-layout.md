@@ -8,7 +8,7 @@ Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. Thi
 
 Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005 and 006 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006 and 007 in order. Back up and rehearse either route on staging first.
 
 ## Database access guardrails (14 November 2026)
 
@@ -251,7 +251,13 @@ Existing databases use `database/migrations/003-gallery-reviews.sql` once. It de
 
 See [warranty-registration.md](warranty-registration.md) for the complete form/API/storage mapping. Columns capture customer/session mobile and optional contact fields, product/category/warranty snapshots, purchase date/quantity/packing/batch/shade, dealer/invoice fields, property/application fields, notes/consent, reference, verification/status and private receipt metadata/storage key. `id`, `submission_id` and `receipt_id` are UUIDs. Quantity/area and warranty years use numeric; purchase/completion use date. Empty optional dealer reference, application date and area map to NULL.
 
-Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, submission_id)` prevents duplicate retries; references and receipt IDs/keys are unique. RLS and revoked API-role permissions keep these records behind the backend. Checks prohibit verified or approved demo entries. Existing 19-table installations use migration 006 once; fresh setup includes it. Receipt files are private assets, not public URLs. Current website registrations persist in `warranties.json`; the SQL adapter/import and private file migration remain separate work.
+Product/dealer FKs use ON DELETE SET NULL, preserving text snapshots. `(mobile, submission_id)` prevents duplicate retries; references and receipt IDs/keys are unique. RLS and revoked API-role permissions keep these records behind the backend. Checks prohibit verified demo phone numbers. An approved status requires either real non-demo phone verification or a manually confirmed review with a reviewer and timestamp. Existing 19-table installations use migration 006, then migration 007 for reviews; an existing 20-table installation after 006 needs only 007. Fresh setup includes both. Receipt files are private assets, not public URLs. Current website registrations persist in `warranties.json`; the SQL adapter/import and private file migration remain separate work.
+
+### Warranty review columns — 15 November 2026
+
+`version integer DEFAULT 1` protects review edits against stale writes. `review_notes varchar(2000)`, `reviewed_by text`, `reviewed_at timestamptz`, `approval_confirmed boolean` and `review_history jsonb` preserve current and historical decisions. Review history is an array of server-generated event IDs/status/actor/time/notes/confirmation. Registration and receipt fields are preserved. Purchase-date and status/created-date indexes support the future SQL adapter's date/status queries. Registration date filtering must use inclusive IST day boundaries, not the database connection's default timezone.
+
+Migration 007 replaces only the old approval guard, preserving the status enum, demo-verification prohibition, RLS and existing data. Legacy rows get empty metadata/version 1; the migration does not invent past reviewers. Real verified approvals that satisfied the old rule remain valid. Manual demo approval requires explicit confirmation and reviewer metadata while `mobile_verified` remains false. No live migration is performed by code changes.
 
 ## Defaults, ordering and limits
 

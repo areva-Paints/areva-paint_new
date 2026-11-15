@@ -1,4 +1,4 @@
-# Warranty Registration — 14 November 2026
+# Warranty Registration — updated 15 November 2026
 
 The public website now has a **Warranty Registration** link, opening the Areva-branded `/warranty` page at top level. React Studio includes the same link. The form runs on the backend origin so cookies and private receipt upload do not depend on third-party iframe cookies.
 
@@ -8,7 +8,7 @@ The public website now has a **Warranty Registration** link, opening the Areva-b
 2. Submit to receive an on-screen **demo OTP `123456`**. No SMS or WhatsApp message is sent. The code expires after five minutes; resend has a 60-second cooldown and five incorrect attempts invalidate a challenge.
 3. Continue to the registration form. This creates a separate, 30-minute warranty-entry session, never an admin/customer account session.
 4. Enter the purchase and site details, upload a private receipt, confirm accurate information/contact consent, then submit.
-5. The confirmation shows the registration reference. Every demo record stores `verificationMode: demo`, `mobileVerified: false` and `status: pending_review` regardless of client input. No warranty start/end date or approval is assigned automatically.
+5. The confirmation shows the registration reference. Every new demo record starts with `verificationMode: demo`, `mobileVerified: false` and `status: pending_review` regardless of client input. No warranty start/end date or approval is assigned automatically.
 
 There is no public historical-record lookup by mobile number. Knowing the shared demo code does not give access to past registrations or receipts. A demo session can only create a new record and attach receipts uploaded in that same session. Retrying the same submission ID returns its existing confirmation instead of creating a duplicate. A separate registration can be made for another product.
 
@@ -28,9 +28,13 @@ Dates must be real dates, not in the future; application completion cannot prece
 
 ## Admin portal
 
-Open **Admin → Warranty registrations**. Search all saved details, including reference, name, mobile, invoice, product/type, dealer, site, batch, shade and notes. Filter by product type, refresh and page through results. Clicking **View details** opens the complete private record. **Download private receipt** uses an admin-authenticated attachment endpoint; the original file is never given a public `/uploads` URL. The list refreshes when the browser regains focus.
+Open **Admin → Warranty registrations**. Search all saved details, including reference, name, mobile, invoice, product/type, dealer, site, batch, shade and notes. Filter by product type, review status and an inclusive **From / To** range. **Date field** selects Registration date (India Standard Time) or Purchase date; either end may be left blank. Reset filters clears the search and filters. Clicking **View / review** opens the complete private record. **Download private receipt** uses an admin-authenticated attachment endpoint; the original file is never given a public `/uploads` URL. The list refreshes when the browser regains focus.
 
-Registration records are saved independently of CMS **Save changes**; changing website content does not overwrite them. This initial admin tab provides search/read/download, not approval, deletion, certificates or messaging. Demo entries are explicitly marked unverified and pending review.
+Registration records are saved independently of CMS **Save changes**; changing website content does not overwrite them. Inside **Review & approval**, select Pending review, Needs information, Approved or Rejected. Add notes (required for rejection or information requests). Approval requires confirmation that purchase details and the attached receipt were reviewed; the receipt file must still exist. Click **Approve registration**, **Reject registration**, **Request information** or **Save review** to persist the decision immediately. No CMS Save changes action is needed.
+
+An approved record remains marked **Demo · Mobile unverified**. This is an explicit manual purchase review, not proof of mobile ownership, a certificate, or an automatically assigned warranty start date. No SMS/WhatsApp notification is sent for any decision. Each change stores the acting admin username, review timestamp, notes, confirmation and append-only review history in the same atomic private record update. History and timestamps use IST in the admin interface.
+
+Old records receive version 1 and empty review metadata without being auto-approved. A stale review save returns a conflict instead of overwriting another admin's decision; use **Reload latest record** to inspect the latest version before saving again. Unchanged saves do not create duplicate history events. There is no registration-deletion endpoint.
 
 ## Current storage and privacy
 
@@ -55,18 +59,20 @@ Back up all three areas with the existing content/enquiry files and media. Recei
 | `POST /api/warranty/logout` | Ends only the warranty-entry session |
 | `POST /api/warranty/receipt` | Entry session required before parsing; 8 MiB JSON-body limit, five-MiB file limit, signature checks, ten uploads/hour per IP, three temporary uploads/session |
 | `POST /api/warranty/registrations` | Entry session required, 32 KiB body limit, five attempts/hour per IP, validated/idempotent save |
-| `GET /api/admin/warranties` | Admin only; search/category/page, twenty rows/page |
+| `GET /api/admin/warranties` | Admin only; search/category/status/dateBy/from/to/page, twenty rows/page |
+| `GET /api/admin/warranties/:id` | Admin only; latest record/review version |
+| `PATCH /api/admin/warranties/:id` | Admin only; status/notes/approvalConfirmed/expectedVersion; sixty attempts/minute per IP |
 | `GET /api/admin/warranties/:id/receipt` | Admin only; private no-store attachment, sandbox/nosniff |
 
 All warranty requests use no-store responses; writes require JSON and same-origin browser requests. Challenge/session maps are bounded at 2,000 entries each and expire on restart. Forged client phone-verification flags, warranty durations and product names are ignored. Temporary upload ownership is validated when submitting. Receipt storage defaults to 128 MiB; a full store refuses additional uploads without deleting real records. Up to 10,000 registrations and 5,000 temporary upload metadata entries are allowed. These are resource limits, not distributed spam prevention or antivirus/PDF sanitization.
 
 ## PostgreSQL / Supabase table
 
-The fresh schema and regenerated `database/supabase-setup.sql` now have **20 tables**, with new private `warranty_registrations`. The table holds all form fields, snapshots, receipt metadata/storage key, consent and status. It includes RLS and revoked direct browser-role access. SQL constraints prevent a demo registration from becoming phone-verified or approved. Product/dealer references may become NULL on deletion while their text snapshots remain.
+The fresh schema and regenerated `database/supabase-setup.sql` now have **20 tables**, with new private `warranty_registrations`. The table holds all form fields, snapshots, receipt metadata/storage key, consent and status. It includes RLS and revoked direct browser-role access. SQL constraints prevent a demo registration from becoming phone-verified. Approval requires real non-demo phone verification or explicit manual confirmation with an identified reviewer and timestamp. Review version, notes, current reviewer/time, confirmation and JSON review history are separate columns. Product/dealer references may become NULL on deletion while their text snapshots remain.
 
-For an existing 19-table installation after migrations 001–005, review and apply [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once in the SQL Editor using the database owner. It selects either `areva` or `public` and stops on ambiguity. Do not rerun the full setup on an existing schema.
+For an existing 19-table installation after migrations 001–005, review and apply [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once in the SQL Editor using the database owner. It selects either `areva` or `public` and stops on ambiguity. Then apply [007-warranty-review-and-filters.sql](../database/migrations/007-warranty-review-and-filters.sql) once for review metadata and manual approval. An existing 20-table installation with migration 006 only needs migration 007. Fresh setup includes both; the table count stays 20. Do not rerun the full setup on an existing schema.
 
-**No live database was changed.** This feature saves to private JSON immediately; the SQL schema is prepared for the future adapter. Setting `DATABASE_URL` alone does not make the application write to this table. A future import must preserve IDs/references, snapshots, contact consent, verification mode, dates, numeric quantity/area, and receipt private keys; actual binary receipts must also move to private storage. Empty `dealerId`, blank application date and blank area map to SQL NULL. Do not expose the table or a public Storage bucket to visitors.
+**No live database was changed.** This feature saves to private JSON immediately; the SQL schema is prepared for the future adapter. Setting `DATABASE_URL` alone does not make the application write to this table. A future import must preserve IDs/references, snapshots, contact consent, verification mode, dates, numeric quantity/area, review version/current metadata/history, and receipt private keys; actual binary receipts must also move to private storage. Empty `dealerId`, blank application date and blank area map to SQL NULL. Do not expose the table or a public Storage bucket to visitors.
 
 ## Configuration
 
@@ -86,3 +92,6 @@ Implement a backend provider adapter that generates unpredictable OTPs, stores o
 ## Verification
 
 `tests/warranty.test.mjs` covers OTP errors/replay, origin/auth boundaries, file validation, session ownership, private receipt downloads, registration validation, snapshot integrity, idempotency, unverified demo flags, expiry-cleanup safety, restart persistence and disabled/unconfigured provider behavior. Embedded PostgreSQL tests cover fresh/private schemas and migration 006, revoked access and demo-approval rejection. Browser checks exercise the actual entry/OTP/form/success flow, admin search/details/download, literal rendering of supplied text, and responsive layouts.
+
+
+`tests/warranty-review.test.mjs` additionally covers manual approval while keeping mobile unverified, missing-receipt/confirmation checks, authenticated reviewer metadata, validation/reason requirements, stale-write protection, no-op saves, status combinations, exact IST midnight/end-of-day boundaries, purchase ranges, invalid query input, restart persistence and public/private schema migration 007.
