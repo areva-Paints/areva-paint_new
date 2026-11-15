@@ -151,3 +151,5 @@ Final Approved/Rejected warranty decisions now close back to the admin list and 
 ## Certifications and documents
 
 Manage public certificate/report/data-sheet/warranty cards through **Admin → Certifications and documents**, including PDF uploads, linked products, issuer/reference/dates, visibility and display order. Both website views show the same cards and product downloads. See [the guide](docs/certifications-and-documents.md) for fields, storage and prepared migration 009. No live database migration is performed.
+
+Admin navigation scrolls vertically on desktop; mobile navigation wraps into two columns at the top. Admin sign-in now expires after five idle minutes, with an eight-hour absolute cap. See [the session guide](docs/admin-navigation-and-sessions.md) for interaction, multi-tab and unsaved-edit behavior.

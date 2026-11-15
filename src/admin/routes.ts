@@ -1,4 +1,4 @@
-import { sensitiveRequestGuard } from "../server/security";
+import { sensitiveRequestGuard, rateLimit } from "../server/security";
 import { prepareCertifications } from "./certification-store";
 import { OPTIONAL_PRODUCT_DETAILS } from "../data/productDetails";
 import {
@@ -12,6 +12,8 @@ import {
   adminLogout,
   requireAdmin,
   currentUser,
+  adminSessionTiming,
+  recordAdminInteraction,
   usersRouter,
   publicAccountRouter,
 } from "./accounts";
@@ -29,6 +31,7 @@ import {
 } from "./content-store";
 import { CATEGORIES, COLOR_SHADES } from "../data/paintsData";
 import type { SiteContent } from "./content-types";
+import { ADMIN_ACTIVITY_MAX_DELAY_MS } from "./session-policy";
 
 import { activityEvent, contentActivity } from "./activity";
 import {
@@ -104,9 +107,32 @@ contentRouter.get("/admin/history", (req, res) => {
     lastPublishedAt,
   });
 });
-contentRouter.get("/admin/session", (req, res) =>
-  res.json({ authenticated: true, user: currentUser(req) }),
-);
+contentRouter.get("/admin/session", (req, res) => {
+  const timing = adminSessionTiming(req),
+    user = currentUser(req);
+  if (!timing || !user)
+    return res.status(401).json({ error: "Please sign in as an admin." });
+  res.json({ authenticated: true, user, timing });
+});
+contentRouter.post("/admin/activity", rateLimit(120, 60000), (req, res) => {
+  const body = req.body;
+  if (
+    !body ||
+    typeof body !== "object" ||
+    Array.isArray(body) ||
+    Object.keys(body).some((key) => key !== "idleForMs") ||
+    !Number.isFinite(body.idleForMs) ||
+    body.idleForMs < 0 ||
+    body.idleForMs > ADMIN_ACTIVITY_MAX_DELAY_MS
+  )
+    return res
+      .status(400)
+      .json({ error: "Send a recent interaction delay in milliseconds." });
+  const timing = recordAdminInteraction(req, body.idleForMs);
+  if (!timing)
+    return res.status(401).json({ error: "Please sign in as an admin." });
+  res.json({ timing });
+});
 contentRouter.get("/content", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json(readPublicContent());
@@ -434,7 +460,8 @@ contentRouter.put("/admin/content", (req, res) => {
     c.galleryProjects ??= current.galleryProjects;
     c.galleryAds ??= current.galleryAds;
     c.galleryReviews ??= current.galleryReviews;
-    if (c.certifications === undefined) c.certifications = current.certifications;
+    if (c.certifications === undefined)
+      c.certifications = current.certifications;
     c.colours ??= current.colours;
     c.shadeCards ??= current.shadeCards;
     validate(c);

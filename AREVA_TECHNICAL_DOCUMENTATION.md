@@ -1467,3 +1467,7 @@ Final Approved/Rejected decisions save before the dialog closes and the PDF down
 ## Certifications and documents — 15 November 2026
 
 Admin-managed document cards replace the example certification cards. Heading/description/type, label, issuer/reference, issue/validity dates, linked products and up to five PDFs are supported. Public cards and per-product downloads share one renderer, while hidden cards are excluded from public content. Uploaded PDFs are public attachments rather than private warranty receipts. JSON storage remains active; SQL migration 009 prepares three restricted tables (23 total). See [the guide](docs/certifications-and-documents.md) for validation, lifecycle and import mapping.
+
+## Admin navigation and five-minute inactivity — 15 November 2026
+
+The sidebar is independently scrollable on desktop; mobile retains its two-column top navigation. Backend admin sessions enforce five-minute inactivity expiry and the existing eight-hour absolute cap. Trusted UI input triggers bounded activity heartbeats; ordinary background API requests do not refresh sessions. The frontend clears private workspace/editor state on expiry and coordinates activity/sign-out across tabs with a separate non-secret session identifier. Scoped idle logout cannot revoke or clear a newer login; manual logout retains cookie clearing. Other account and warranty-entry session rules are unchanged. See [the session guide](docs/admin-navigation-and-sessions.md) and `tests/admin-idle.test.mjs`. No SQL schema or live database changes are required.

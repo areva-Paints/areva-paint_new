@@ -1,5 +1,10 @@
 import { WarrantyManager } from "../warranty/WarrantyManager";
 import { CertificationsManager } from "./CertificationsManager";
+import {
+  announceAdminSignout,
+  useAdminIdleSession,
+} from "./useAdminIdleSession";
+import type { AdminSessionTiming } from "./session-policy";
 import { ProductTechnicalFields } from "./ProductTechnicalFields";
 import { GalleryReviewsManager } from "./GalleryReviewsManager";
 import { UsersManager } from "./UsersManager";
@@ -164,13 +169,21 @@ export function AdminPage() {
     [busy, setBusy] = useState(false),
     [uploading, setUploading] = useState(false);
   const [currentAdmin, setCurrentAdmin] = useState<AccountUser | null>(null);
+  const [sessionTiming, setSessionTiming] = useState<AdminSessionTiming | null>(
+    null,
+  );
+  const authEpoch = useRef(0);
   const [activity, setActivity] = useState<ActivitySummary | null>(null);
   const [activityError, setActivityError] = useState("");
   async function refreshActivity() {
+    const epoch = authEpoch.current;
     try {
-      setActivity(await request("/api/admin/history?pageSize=1"));
+      const result = await request("/api/admin/history?pageSize=1");
+      if (epoch !== authEpoch.current) return;
+      setActivity(result);
       setActivityError("");
     } catch {
+      if (epoch !== authEpoch.current) return;
       setActivityError(
         "Update dates could not be loaded. Open Activity history to retry.",
       );
@@ -189,13 +202,43 @@ export function AdminPage() {
     ),
     [isNew, setIsNew] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  function clearAdminSession(message = "") {
+    authEpoch.current++;
+    setAuthenticated(false);
+    setDirty(false);
+    setContent(null);
+    setActivity(null);
+    setCurrentAdmin(null);
+    setSessionTiming(null);
+    setEditor(null);
+    setPassword("");
+    setSearch("");
+    setBusy(false);
+    setUploading(false);
+    setNotice("");
+    setError(message);
+  }
+  useAdminIdleSession(authenticated, sessionTiming, (reason) => {
+    clearAdminSession(
+      reason === "idle"
+        ? "Signed out after 5 minutes of inactivity. Please sign in again."
+        : "Your admin session ended. Please sign in again.",
+    );
+  });
   const section = sections.find((s) => s.id === tab)!;
   async function load() {
+    const epoch = authEpoch.current;
     const [c, session] = await Promise.all([
       request("/api/admin/content"),
       request("/api/admin/session"),
     ]);
+    if (epoch !== authEpoch.current) return;
+    if (!session.timing)
+      throw Error(
+        "Your session could not be checked. Please reload and sign in again.",
+      );
     setCurrentAdmin(session.user);
+    setSessionTiming(session.timing);
     setContent(c);
     setAuthenticated(true);
   }
@@ -248,6 +291,7 @@ export function AdminPage() {
   }
   async function persist(next: SiteContent): Promise<boolean> {
     if (busy || uploading) return false;
+    const epoch = authEpoch.current;
     setBusy(true);
     setError("");
     try {
@@ -255,6 +299,7 @@ export function AdminPage() {
         method: "PUT",
         body: JSON.stringify(next),
       });
+      if (epoch !== authEpoch.current) return false;
       setContent(c);
       setDirty(false);
       setNotice("Changes saved. Your website is up to date.");
@@ -263,10 +308,10 @@ export function AdminPage() {
       } catch {}
       return true;
     } catch (e) {
-      setError((e as Error).message);
+      if (epoch === authEpoch.current) setError((e as Error).message);
       return false;
     } finally {
-      setBusy(false);
+      if (epoch === authEpoch.current) setBusy(false);
     }
   }
   async function logout() {
@@ -274,15 +319,8 @@ export function AdminPage() {
     if (dirty && !confirm("Discard unsaved changes and log out?")) return;
     try {
       await request("/api/admin/logout", { method: "POST" });
-      setAuthenticated(false);
-      setDirty(false);
-      setContent(null);
-      setActivity(null);
-      setCurrentAdmin(null);
-      setEditor(null);
-      setPassword("");
-      setError("");
-      setNotice("");
+      announceAdminSignout(sessionTiming?.activityId);
+      clearAdminSession();
     } catch (e) {
       setError((e as Error).message);
     }
@@ -596,7 +634,7 @@ export function AdminPage() {
   );
   const page = (
     <div className="adm-root">
-      <aside className="adm-sidebar">
+      <aside className="adm-sidebar" aria-label="Administration sidebar">
         <a className="adm-brand" href="/">
           areva<span>PAINTS</span>
         </a>
@@ -605,7 +643,7 @@ export function AdminPage() {
           Website workspace<small>Content administration</small>
         </div>
         <span className="adm-nav-title">MANAGE WEBSITE</span>
-        <nav>
+        <nav aria-label="Website administration sections">
           {sections.map((s) => (
             <button
               key={s.id}
@@ -646,7 +684,11 @@ export function AdminPage() {
           </button>
           <small>
             <ShieldCheck size={14} />
-            Private admin workspace
+            <span>
+              Private admin workspace
+              <br />
+              5-minute inactivity sign-out
+            </span>
           </small>
         </div>
       </aside>

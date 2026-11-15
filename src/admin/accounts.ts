@@ -5,6 +5,11 @@ import { promisify } from "node:util";
 import { readUsers, saveUsers, recordActivity } from "./content-store";
 import { activityEvent } from "./activity";
 import {
+  ADMIN_IDLE_TIMEOUT_MS,
+  ACCOUNT_SESSION_MAX_AGE_MS,
+  type AdminSessionTiming,
+} from "./session-policy";
+import {
   USER_ROLES,
   type AccountUser,
   type StoredUser,
@@ -23,7 +28,14 @@ async function derive(password: string, salt: string, length: number) {
 }
 const sessions = new Map<
   string,
-  { user: AccountUser; until: number; version: number; signature?: string }
+  {
+    user: AccountUser;
+    until: number;
+    lastActivityAt: number;
+    activityId: string;
+    version: number;
+    signature?: string;
+  }
 >();
 const attempts = new Map<string, { count: number; until: number }>();
 const normalize = (value: string) => value.trim().toLowerCase();
@@ -78,7 +90,11 @@ export function currentUser(
 ): AccountUser | null {
   const key = token(req, admin),
     session = sessions.get(key);
-  if (!session || session.until <= Date.now()) {
+  if (
+    !session ||
+    session.until <= Date.now() ||
+    (admin && session.lastActivityAt + ADMIN_IDLE_TIMEOUT_MS <= Date.now())
+  ) {
     sessions.delete(key);
     return null;
   }
@@ -105,6 +121,31 @@ export function currentUser(
     return null;
   }
   return safe(user);
+}
+export function adminSessionTiming(
+  req: express.Request,
+): AdminSessionTiming | null {
+  if (!currentUser(req)) return null;
+  const session = sessions.get(token(req, true))!;
+  return {
+    activityId: session.activityId,
+    serverTime: Date.now(),
+    idleExpiresAt: session.lastActivityAt + ADMIN_IDLE_TIMEOUT_MS,
+    expiresAt: session.until,
+  };
+}
+export function recordAdminInteraction(
+  req: express.Request,
+  idleForMs: number,
+): AdminSessionTiming | null {
+  // Authorization must precede touching the clock; expired sessions cannot be revived.
+  if (!currentUser(req)) return null;
+  const session = sessions.get(token(req, true))!;
+  session.lastActivityAt = Math.max(
+    session.lastActivityAt,
+    Date.now() - idleForMs,
+  );
+  return adminSessionTiming(req);
 }
 export const requireAdmin: express.RequestHandler = (req, res, next) => {
   if (!currentUser(req))
@@ -217,7 +258,12 @@ function login(admin: boolean): express.RequestHandler {
       }
       attempts.delete(key);
       for (const [id, session] of sessions)
-        if (session.until < Date.now()) sessions.delete(id);
+        if (
+          session.until <= Date.now() ||
+          (session.user.role === "admin" &&
+            session.lastActivityAt + ADMIN_IDLE_TIMEOUT_MS <= Date.now())
+        )
+          sessions.delete(id);
       if (sessions.size >= 2000) {
         res.setHeader("Retry-After", "60");
         return res
@@ -238,7 +284,9 @@ function login(admin: boolean): express.RequestHandler {
       sessions.set(sessionToken, {
         user,
         version,
-        until: Date.now() + 8 * 3600000,
+        until: Date.now() + ACCOUNT_SESSION_MAX_AGE_MS,
+        lastActivityAt: Date.now(),
+        activityId: crypto.randomUUID(),
         ...(user.environment
           ? { signature: digest(env!.password).toString("hex") }
           : {}),
@@ -248,7 +296,7 @@ function login(admin: boolean): express.RequestHandler {
           httpOnly: true,
           sameSite: "strict",
           secure: req.secure,
-          maxAge: 8 * 3600000,
+          maxAge: ACCOUNT_SESSION_MAX_AGE_MS,
           path: "/",
         })
         .json({ success: true, user });
@@ -261,12 +309,23 @@ function login(admin: boolean): express.RequestHandler {
 }
 export const adminLogin = login(true);
 export const adminLogout: express.RequestHandler = (req, res) => {
+  const scopedId = req.body?.activityId;
+  if (scopedId !== undefined && typeof scopedId !== "string")
+    return res.status(400).json({ error: "Invalid session identifier." });
+  if (
+    scopedId !== undefined &&
+    sessions.get(token(req, true))?.activityId !== scopedId
+  )
+    return res.json({ success: true });
   const user = currentUser(req);
   if (user)
     recordActivity(
       activityEvent(user.username, "signed_out", "account", "Signed out"),
     );
   sessions.delete(token(req, true));
+  // A delayed idle-logout response must not clear a newer login's cookie.
+  // The old token is revoked on the server; a subsequent login replaces it.
+  if (scopedId !== undefined) return res.json({ success: true });
   res.clearCookie("areva_admin", { path: "/" }).json({ success: true });
 };
 export const publicAccountRouter = express.Router();

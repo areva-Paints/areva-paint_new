@@ -50,6 +50,15 @@
   flex-direction: column;
   padding: 32px 20px;
   z-index: 10;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #c9b8dc #faf8fd;
+}
+.adm-sidebar > * {
+  flex-shrink: 0;
 }
 .adm-brand {
   font-size: 39px;
@@ -133,7 +142,7 @@
 }
 .adm-sidebar-bottom {
   margin-top: auto;
-  padding-top: 45px;
+  padding-top: 24px;
   display: grid;
   gap: 18px;
   color: #7b728a;
@@ -876,6 +885,9 @@
   .adm-sidebar {
     position: relative;
     width: 100%;
+    max-height: none;
+    overflow: visible;
+    scrollbar-gutter: auto;
     padding: 18px 20px;
     border-right: 0;
     border-bottom: 1px solid #eee7f3;
