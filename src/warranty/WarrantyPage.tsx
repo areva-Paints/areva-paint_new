@@ -103,6 +103,11 @@ export function WarrantyPage() {
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
+  useEffect(() => {
+    if (step !== "success") return;
+    const timer = setTimeout(() => location.replace("/"), 3000);
+    return () => clearTimeout(timer);
+  }, [step]);
   const product = options?.products.find((p) => p.id === form.productId);
   const wait = Math.max(0, Math.ceil((retryAt - now) / 1000));
   function patch(key: keyof WarrantyInput, value: unknown) {
@@ -676,20 +681,11 @@ export function WarrantyPage() {
                   need to verify the purchase and warranty eligibility.
                 </p>
                 <div className="wr-inline-actions">
-                  <button
-                    type="button"
-                    className="wr-primary"
-                    onClick={() => {
-                      setForm(empty());
-                      setReceipt(null);
-                      setCategory("");
-                      setStep("form");
-                    }}
-                  >
-                    Register another product
-                  </button>
-                  <a href="/">Back to website</a>
+                  <a className="wr-primary" href="/">
+                    Return to home page
+                  </a>
                 </div>
+                <p>Returning to the home page in 3 seconds…</p>
               </div>
             )}
           </>

@@ -8,7 +8,7 @@ The public website now has a **Warranty Registration** link, opening the Areva-b
 2. Submit to receive an on-screen **demo OTP `123456`**. No SMS or WhatsApp message is sent. The code expires after five minutes; resend has a 60-second cooldown and five incorrect attempts invalidate a challenge.
 3. Continue to the registration form. This creates a separate, 30-minute warranty-entry session, never an admin/customer account session.
 4. Enter the purchase and site details, upload a private receipt, confirm accurate information/contact consent, then submit.
-5. The confirmation shows the registration reference. Every new demo record starts with `verificationMode: demo`, `mobileVerified: false` and `status: pending_review` regardless of client input. No warranty start/end date or approval is assigned automatically.
+5. The confirmation shows the registration reference, then automatically returns to the home page after three seconds. **Return to home page** allows an immediate return. Failed submissions stay on the form with their details intact. Every new demo record starts with `verificationMode: demo`, `mobileVerified: false` and `status: pending_review` regardless of client input. No warranty start/end date or approval is assigned automatically.
 
 There is no public historical-record lookup by mobile number. Knowing the shared demo code does not give access to past registrations or receipts. A demo session can only create a new record and attach receipts uploaded in that same session. Retrying the same submission ID returns its existing confirmation instead of creating a duplicate. A separate registration can be made for another product.
 
@@ -27,6 +27,8 @@ There is no public historical-record lookup by mobile number. Knowing the shared
 Dates must be real dates, not in the future; application completion cannot precede purchase. The API uses the current date in Asia/Kolkata. Quantities/areas must be positive and at most 100,000. Catalogue/dealer IDs and string lengths are validated on the server. Product names/type/warranty are snapshots, so future catalogue edits do not rewrite old registrations. Product warranty text is not a promise of eligibility or activation.
 
 ## Admin portal
+
+Search matches readable field values and review history/notes, ignoring case, repeated spaces and punctuation. Words may match across fields (for example, **Pune approved**); formatted phone numbers are accepted. Results update while typing, or use **Search** / Enter to refresh. Search combines with the selected product, status and date filters; **Reset filters** clears them all. Internal JSON property names and private upload keys are excluded from matches. While loading, old rows are hidden so they are not mistaken for current search results.
 
 Open **Admin → Warranty registrations**. Search all saved details, including reference, name, mobile, invoice, product/type, dealer, site, batch, shade and notes. Filter by product type, review status and an inclusive **From / To** range. **Date field** selects Registration date (India Standard Time) or Purchase date; either end may be left blank. Reset filters clears the search and filters. Clicking **View / review** opens the complete private record. **Download private receipt** uses an admin-authenticated attachment endpoint; the original file is never given a public `/uploads` URL. The list refreshes when the browser regains focus.
 

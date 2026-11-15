@@ -260,7 +260,14 @@ export function WarrantyManager() {
           {pdfError}
         </p>
       )}
-      <div className="wr-admin-toolbar">
+      <form
+        className="wr-admin-toolbar"
+        onSubmit={(event) => {
+          event.preventDefault();
+          setPage(1);
+          setRefresh((value) => value + 1);
+        }}
+      >
         <label className="wr-admin-search">
           <Search size={18} />
           <span className="wr-sr-only">Search warranty registrations</span>
@@ -268,6 +275,7 @@ export function WarrantyManager() {
             type="search"
             maxLength={200}
             placeholder="Search reference, name, mobile, invoice, product, dealer…"
+            aria-describedby="wr-search-help"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
@@ -275,6 +283,10 @@ export function WarrantyManager() {
             }}
           />
         </label>
+        <button className="adm-secondary" type="submit">
+          <Search size={16} />
+          Search
+        </button>
         <label className="wr-field">
           Product type
           <select
@@ -311,13 +323,18 @@ export function WarrantyManager() {
         </label>
         <button
           className="adm-secondary"
+          type="button"
           onClick={() => setRefresh((v) => v + 1)}
           disabled={busy}
         >
           <RefreshCw size={16} />
           Refresh
         </button>
-      </div>
+      </form>
+      <p className="wr-admin-meta" id="wr-search-help">
+        Search all details and review notes. Combine words, such as Pune
+        approved. Results also use the product, status and date filters below.
+      </p>
       <div className="wr-admin-date-filters" aria-label="Warranty date filters">
         <label className="wr-field">
           Date field
@@ -381,7 +398,7 @@ export function WarrantyManager() {
         Demo OTP does not verify mobile ownership. Admins can manually review
         and approve purchases without changing the mobile-verification flag.
       </div>
-      <div className="wr-admin-table">
+      <div className="wr-admin-table" aria-busy={busy}>
         <table aria-label="Saved warranty registrations">
           <thead>
             <tr>
@@ -394,64 +411,70 @@ export function WarrantyManager() {
             </tr>
           </thead>
           <tbody>
-            {data?.registrations.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <strong className="wr-table-reference">
-                    {row.reference}
-                  </strong>
-                  <small>{date(row.createdAt)}</small>
-                </td>
-                <td>
-                  {row.customerName}
-                  <small>{row.mobile}</small>
-                  <small>
-                    {row.city}, {row.state}
-                  </small>
-                </td>
-                <td>
-                  {row.productName}
-                  <small>{row.categoryName}</small>
-                  <small>Purchased {date(row.purchaseDate)}</small>
-                </td>
-                <td>
-                  {row.dealerName}
-                  <small>{row.invoiceNumber}</small>
-                  <small>{row.dealerCity}</small>
-                </td>
-                <td>
-                  <span className={"wr-status wr-status-" + row.status}>
-                    {WARRANTY_STATUSES[row.status]}
-                  </span>
-                  <small>Demo · Mobile unverified</small>
-                </td>
-                <td>
-                  <button
-                    className="adm-secondary"
-                    onClick={() => openReview(row)}
-                    aria-label={"View registration for " + row.customerName}
-                  >
-                    {isFinalWarrantyStatus(row.status)
-                      ? "View details"
-                      : "View / review"}
-                  </button>
-                  {isFinalWarrantyStatus(row.status) && (
-                    <button
-                      type="button"
-                      className="adm-secondary wr-report-button"
-                      disabled={pdfBusy}
-                      onClick={() => void downloadPdf(row)}
-                      aria-label={
-                        "Download decision PDF for " + row.customerName
-                      }
-                    >
-                      <Download size={15} />
-                      {pdfBusy ? "Generating PDF…" : "Decision PDF"}
-                    </button>
-                  )}
-                </td>
+            {busy && (
+              <tr>
+                <td colSpan={6}>Searching registrations…</td>
               </tr>
-            ))}
+            )}
+            {!busy &&
+              data?.registrations.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <strong className="wr-table-reference">
+                      {row.reference}
+                    </strong>
+                    <small>{date(row.createdAt)}</small>
+                  </td>
+                  <td>
+                    {row.customerName}
+                    <small>{row.mobile}</small>
+                    <small>
+                      {row.city}, {row.state}
+                    </small>
+                  </td>
+                  <td>
+                    {row.productName}
+                    <small>{row.categoryName}</small>
+                    <small>Purchased {date(row.purchaseDate)}</small>
+                  </td>
+                  <td>
+                    {row.dealerName}
+                    <small>{row.invoiceNumber}</small>
+                    <small>{row.dealerCity}</small>
+                  </td>
+                  <td>
+                    <span className={"wr-status wr-status-" + row.status}>
+                      {WARRANTY_STATUSES[row.status]}
+                    </span>
+                    <small>Demo · Mobile unverified</small>
+                  </td>
+                  <td>
+                    <button
+                      className="adm-secondary"
+                      onClick={() => openReview(row)}
+                      aria-label={"View registration for " + row.customerName}
+                    >
+                      {isFinalWarrantyStatus(row.status)
+                        ? "View details"
+                        : "View / review"}
+                    </button>
+                    {isFinalWarrantyStatus(row.status) && (
+                      <button
+                        type="button"
+                        className="adm-secondary wr-report-button"
+                        disabled={pdfBusy}
+                        onClick={() => void downloadPdf(row)}
+                        aria-label={
+                          "Download decision PDF for " + row.customerName
+                        }
+                      >
+                        <Download size={15} />
+                        {pdfBusy ? "Generating PDF…" : "Decision PDF"}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
         {!busy && !error && !data?.registrations.length && (
@@ -464,7 +487,7 @@ export function WarrantyManager() {
             </h3>
             <p>
               {hasFilters
-                ? "Try another search or product type."
+                ? "Check your search, product type, review status and dates, or use Reset filters."
                 : "Submitted warranty details and private receipts will appear here."}
             </p>
           </div>

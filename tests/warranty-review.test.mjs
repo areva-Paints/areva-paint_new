@@ -86,6 +86,7 @@ test("admin manual review preserves demo verification, records history and appli
       "2026-11-15T18:30:00.000Z",
       "2026-11-16",
     );
+  first.notes = "Testing purchase details";
   await writeFile(
     path.join(dir, "warranties.json"),
     JSON.stringify([after, last, first, before]),
@@ -156,6 +157,37 @@ test("admin manual review preserves demo verification, records history and appli
       await (
         await request("/api/admin/warranties" + query, undefined, cookie)
       ).json();
+    for (const [search, count] of [
+      ["Testing", 1],
+      ["  TESTING   pune  ", 1],
+      ["Pune customer Snapshot", 4],
+      ["pending review", 4],
+      ["+91 (90000) 00000", 4],
+      ["9000000000", 4],
+      ["Interior Paints INV-REVIEW", 4],
+      [first.reference, 1],
+      ["customerName", 0],
+      ["submissionId", 0],
+      [first.submissionId, 0],
+      ["No such customer", 0],
+    ]) {
+      const result = await get("?search=" + encodeURIComponent(search));
+      assert.equal(result.total, count, "Readable-value search: " + search);
+    }
+    const dateMatches = await get(
+      "?search=" + encodeURIComponent("15 Nov 2026"),
+    );
+    assert.ok(dateMatches.registrations.some((row) => row.id === first.id));
+    assert.ok(dateMatches.registrations.some((row) => row.id === last.id));
+    assert.equal((await get("?search=Testing&status=approved")).total, 0);
+    assert.equal(
+      (
+        await get(
+          "?search=Testing&category=interior&from=2026-11-15&to=2026-11-15",
+        )
+      ).total,
+      1,
+    );
     let result = await get("?from=2026-11-15&to=2026-11-15");
     assert.equal(result.total, 2);
     assert.deepEqual(
@@ -237,6 +269,15 @@ test("admin manual review preserves demo verification, records history and appli
     assert.ok(approved.reviewedAt);
     assert.equal(approved.submissionId, undefined);
     assert.equal(approved.reviewHistory.length, 1);
+    assert.equal(
+      (
+        await get(
+          "?search=" +
+            encodeURIComponent("Reviewed receipt approved review-admin"),
+        )
+      ).total,
+      1,
+    );
     assert.equal(approved.productName, "Snapshot product");
     assert.equal(approved.receipt.id, first.receipt.id);
     assert.equal(

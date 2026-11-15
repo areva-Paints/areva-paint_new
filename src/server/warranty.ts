@@ -1,4 +1,5 @@
 import { createWarrantyPdf } from "./warranty-pdf";
+import { warrantySearch } from "./warranty-search";
 import express from "express";
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -569,6 +570,7 @@ warrantyAdminRouter.get("/", (req, res) => {
       .json({ error: "Choose a valid date range with From on or before To." });
   const lower = from ? Date.parse(from + "T00:00:00+05:30") : -Infinity;
   const upper = to ? Date.parse(to + "T23:59:59.999+05:30") : Infinity;
+  const matchesSearch = warrantySearch(query);
   const rows = readWarranties().filter((row) => {
     if (
       (category && row.categoryId !== category) ||
@@ -585,16 +587,7 @@ warrantyAdminRouter.get("/", (req, res) => {
           return false;
       }
     }
-    return (
-      !query ||
-      JSON.stringify({
-        ...row,
-        submissionId: undefined,
-        receipt: { name: row.receipt.name },
-      })
-        .toLowerCase()
-        .includes(query)
-    );
+    return matchesSearch(row);
   });
   const pages = Math.max(1, Math.ceil(rows.length / 20));
   const page = Math.min(
@@ -673,12 +666,10 @@ warrantyAdminRouter.patch("/:id", rateLimit(60, 60000), (req, res) => {
   )
     return res.json({ registration: publicRow(previous) });
   if (isFinalWarrantyStatus(previous.status))
-    return res
-      .status(409)
-      .json({
-        error:
-          "This registration already has a final decision. Approval and rejection details cannot be changed.",
-      });
+    return res.status(409).json({
+      error:
+        "This registration already has a final decision. Approval and rejection details cannot be changed.",
+    });
   if (status === "approved" && !fs.existsSync(receiptPath(previous.receipt)))
     return res.status(409).json({
       error:
@@ -716,11 +707,9 @@ warrantyAdminRouter.get(
       if (!row)
         return res.status(404).json({ error: "Registration not found." });
       if (!isFinalWarrantyStatus(row.status))
-        return res
-          .status(409)
-          .json({
-            error: "A decision PDF is available after approval or rejection.",
-          });
+        return res.status(409).json({
+          error: "A decision PDF is available after approval or rejection.",
+        });
       if (activeReports >= 2) {
         res.setHeader("Retry-After", "5");
         return res
