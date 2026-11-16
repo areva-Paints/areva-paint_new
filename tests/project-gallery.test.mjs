@@ -102,6 +102,11 @@ test("project gallery publishes real albums, validates photos, preserves timesta
       updatedAt: "1900-01-01",
     };
     c = await save({ ...c, galleryProjects: [project] });
+    assert.equal(
+      c.galleryProjects[0].category,
+      "other",
+      "Older project payloads keep a safe default",
+    );
     const created = c.galleryProjects[0].createdAt,
       updated = c.galleryProjects[0].updatedAt;
     assert.ok(Date.parse(created) > Date.parse("2026-01-01"));
@@ -119,6 +124,7 @@ test("project gallery publishes real albums, validates photos, preserves timesta
     );
     const second = {
       ...project,
+      category: "exterior",
       id: "second-project",
       title: "Newest project",
       photos: [{ id: "third-photo", image, caption: "" }],
@@ -133,11 +139,25 @@ test("project gallery publishes real albums, validates photos, preserves timesta
       )[1],
     );
     assert.equal(json[0].title, "Newest project");
+    assert.equal(json[0].category, "exterior");
+    assert.match(html, /data-pg-category="exterior"/);
+    assert.match(html, /Beautiful Spaces\. Lasting Impressions\./);
+    assert.match(html, /Ads &amp; Campaigns/);
+    assert.match(html, /Customer Reviews/);
     assert.equal(json[1].title, project.title);
     assert.equal(json[1].photos.length, 2);
     assert.ok(!html.includes("<script>bad()</script>"));
     assert.ok(html.includes('href="#gallery"'));
     for (const invalid of [
+      {
+        ...c,
+        galleryProjects: [{ ...c.galleryProjects[0], category: "unknown" }],
+      },
+      { ...c, galleryProjects: [{ ...c.galleryProjects[0], category: null }] },
+      {
+        ...c,
+        galleryProjects: [{ ...c.galleryProjects[0], category: ["interior"] }],
+      },
       { ...c, galleryProjects: [...c.galleryProjects, c.galleryProjects[0]] },
       { ...c, galleryProjects: [{ ...c.galleryProjects[0], photos: [] }] },
       { ...c, galleryProjects: [{ ...c.galleryProjects[0], title: "" }] },
@@ -203,6 +223,29 @@ test("project gallery publishes real albums, validates photos, preserves timesta
     const oldClient = { ...c };
     delete oldClient.galleryProjects;
     c = await save(oldClient);
+    const oldProjectClient = structuredClone(c);
+    for (const row of oldProjectClient.galleryProjects) delete row.category;
+    c = await save(oldProjectClient);
+    assert.equal(
+      c.galleryProjects[1].category,
+      "exterior",
+      "Older clients cannot erase a category by omission",
+    );
+    const previousUpdate = c.galleryProjects[0].updatedAt;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    c = await save({
+      ...c,
+      galleryProjects: c.galleryProjects.map((row, index) =>
+        index === 0 ? { ...row, category: "textures" } : row,
+      ),
+    });
+    assert.notEqual(c.galleryProjects[0].updatedAt, previousUpdate);
+    const history = await (
+      await req("/api/admin/history?section=galleryProjects&action=updated")
+    ).json();
+    assert.ok(
+      history.events.some((event) => event.fields.includes("category")),
+    );
     assert.equal(
       c.galleryProjects.length,
       2,
@@ -213,6 +256,11 @@ test("project gallery publishes real albums, validates photos, preserves timesta
     await login();
     c = await (await req("/api/admin/content")).json();
     assert.equal(c.galleryProjects[0].photos.length, 3);
+    assert.equal(
+      c.galleryProjects[0].category,
+      "textures",
+      "Categories survive a server restart",
+    );
     assert.equal((await req(image)).status, 200);
     c = await save({ ...c, galleryProjects: [] });
     html = await (

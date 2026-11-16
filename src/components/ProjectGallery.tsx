@@ -1,4 +1,4 @@
-import { GalleryReviews } from './GalleryReviews';
+import { GalleryReviews } from "./GalleryReviews";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
@@ -12,6 +12,15 @@ import { useSiteContent } from "../admin/ContentContext";
 import type { GalleryProject } from "../admin/content-types";
 import { contentUrl } from "../site-content";
 import { GalleryAds } from "./GalleryAds";
+import {
+  ProjectGalleryIntroduction,
+  ProjectCategoryFilters,
+} from "./ProjectGalleryParts";
+import {
+  GALLERY_PROJECT_CATEGORIES,
+  projectCategory,
+  type GalleryProjectFilter,
+} from "../data/galleryCategories";
 
 const projectDate = (project: GalleryProject) =>
   Date.parse(project.updatedAt) || Date.parse(project.createdAt) || 0;
@@ -52,8 +61,14 @@ export function ProjectGallery() {
     [content?.galleryProjects],
   );
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [category, setCategory] = useState<GalleryProjectFilter>("all");
+  const filteredProjects = projects.filter(
+    (project) => category === "all" || projectCategory(project) === category,
+  );
   const [photoIndex, setPhotoIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<"projects" | "ads" | "reviews">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "ads" | "reviews">(
+    "projects",
+  );
   const tabsId = useId();
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -108,7 +123,8 @@ export function ProjectGallery() {
                 Gallery
               </h2>
               <p className="pg-intro">
-                Explore our latest painting projects, brand campaigns and customer reviews.
+                Explore our latest painting projects, brand campaigns and
+                customer reviews.
               </p>
             </div>
           </div>
@@ -126,7 +142,15 @@ export function ProjectGallery() {
               event.preventDefault();
               const views = ["projects", "ads", "reviews"] as const;
               const index = views.indexOf(activeTab);
-              const next = event.key === "Home" ? 0 : event.key === "End" ? views.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + views.length) % views.length;
+              const next =
+                event.key === "Home"
+                  ? 0
+                  : event.key === "End"
+                    ? views.length - 1
+                    : (index +
+                        (event.key === "ArrowRight" ? 1 : -1) +
+                        views.length) %
+                      views.length;
               setActiveTab(views[next]);
               tabRefs.current[next]?.focus();
             }}
@@ -134,8 +158,8 @@ export function ProjectGallery() {
             {(
               [
                 ["projects", "Projects"],
-                ["ads", "Ads"],
-                ["reviews", "Reviews"],
+                ["ads", "Ads & Campaigns"],
+                ["reviews", "Customer Reviews"],
               ] as const
             ).map(([value, label], index) => (
               <button
@@ -164,9 +188,19 @@ export function ProjectGallery() {
             aria-labelledby={`${tabsId}-tab-projects`}
             hidden={activeTab !== "projects"}
           >
-            {projects.length ? (
+            <ProjectGalleryIntroduction />
+            <ProjectCategoryFilters
+              projects={projects}
+              selected={category}
+              onSelect={setCategory}
+            />
+            <p className="pg-project-count" role="status">
+              {filteredProjects.length}{" "}
+              {filteredProjects.length === 1 ? "project" : "projects"}
+            </p>
+            {filteredProjects.length ? (
               <div className="pg-grid">
-                {projects.map((project) => {
+                {filteredProjects.map((project) => {
                   const projectPhotos = project.photos.filter(
                     (photo) => photo.image,
                   );
@@ -190,6 +224,9 @@ export function ProjectGallery() {
                           loading="lazy"
                           decoding="async"
                         />
+                        <span className="pg-category-badge">
+                          {GALLERY_PROJECT_CATEGORIES[projectCategory(project)]}
+                        </span>
                         <span className="pg-photo-count">
                           <Images aria-hidden="true" />
                           {projectPhotos.length}{" "}
@@ -198,6 +235,11 @@ export function ProjectGallery() {
                       </span>
                       <span className="pg-card-body">
                         <span className="pg-card-title">{title}</span>
+                        {project.description && (
+                          <span className="pg-card-description">
+                            {project.description}
+                          </span>
+                        )}
                         {project.location && (
                           <span className="pg-location">
                             <MapPin aria-hidden="true" />
@@ -215,8 +257,16 @@ export function ProjectGallery() {
             ) : (
               <div className="pg-empty">
                 <Images aria-hidden="true" />
-                <h3>New projects are on the way</h3>
-                <p>Visit again soon for a closer look at our latest work.</p>
+                <h3>
+                  {projects.length
+                    ? "No projects in this category yet"
+                    : "New projects are on the way"}
+                </h3>
+                <p>
+                  {projects.length
+                    ? "Choose another category or All projects to explore more spaces."
+                    : "Visit again soon for a closer look at our latest work."}
+                </p>
               </div>
             )}
           </div>
@@ -232,8 +282,17 @@ export function ProjectGallery() {
               <GalleryAds ads={content?.galleryAds ?? []} />
             )}
           </div>
-          <div className="ga-panel" role="tabpanel" tabIndex={0} id={`${tabsId}-panel-reviews`} aria-labelledby={`${tabsId}-tab-reviews`} hidden={activeTab !== "reviews"}>
-            {activeTab === "reviews" && <GalleryReviews reviews={content?.galleryReviews ?? []} />}
+          <div
+            className="ga-panel"
+            role="tabpanel"
+            tabIndex={0}
+            id={`${tabsId}-panel-reviews`}
+            aria-labelledby={`${tabsId}-tab-reviews`}
+            hidden={activeTab !== "reviews"}
+          >
+            {activeTab === "reviews" && (
+              <GalleryReviews reviews={content?.galleryReviews ?? []} />
+            )}
           </div>
         </div>
       </section>

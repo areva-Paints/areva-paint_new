@@ -68,6 +68,26 @@
   });
 
   const filters = Array.from(section.querySelectorAll(".ga-filter[data-ga-filter]"));
+  const projectFilters = Array.from(section.querySelectorAll("[data-pg-filter]"));
+  const projectCards = Array.from(section.querySelectorAll(".pg-card[data-pg-category]"));
+  projectFilters.forEach((filter) => {
+    filter.addEventListener("click", () => {
+      projectFilters.forEach((item) => item.setAttribute("aria-pressed", String(item === filter)));
+      let visible = 0;
+      projectCards.forEach((card) => {
+        card.hidden = filter.dataset.pgFilter !== "all" && card.dataset.pgCategory !== filter.dataset.pgFilter;
+        if (!card.hidden) visible++;
+      });
+      const count = section.querySelector("[data-pg-count]");
+      if (count) count.textContent = `${visible} ${visible === 1 ? "project" : "projects"}`;
+      const empty = section.querySelector("[data-pg-empty]");
+      if (empty) {
+        empty.hidden = visible > 0;
+        empty.querySelector("[data-pg-empty-title]").textContent = projectCards.length ? "No projects in this category yet" : "New projects are on the way";
+        empty.querySelector("[data-pg-empty-copy]").textContent = projectCards.length ? "Choose another category or All projects to explore more spaces." : "Visit again soon for a closer look at our latest work.";
+      }
+    });
+  });
   const adCards = Array.from(section.querySelectorAll(".ga-card[data-ga-channel]"));
   const emptyAds = section.querySelector("[data-ga-empty]");
   filters.forEach((filter) => {

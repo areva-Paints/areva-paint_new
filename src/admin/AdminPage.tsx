@@ -868,7 +868,7 @@ export function AdminPage() {
                     setError("");
                   }}
                 >
-                  Ads <span>{content.galleryAds?.length || 0}</span>
+                  Ads &amp; Campaigns <span>{content.galleryAds?.length || 0}</span>
                 </button>
                 <button
                   type="button"
@@ -883,7 +883,7 @@ export function AdminPage() {
                     setError("");
                   }}
                 >
-                  Reviews <span>{content.galleryReviews?.length || 0}</span>
+                  Customer Reviews <span>{content.galleryReviews?.length || 0}</span>
                 </button>
               </div>
               <div

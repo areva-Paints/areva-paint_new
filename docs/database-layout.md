@@ -8,7 +8,7 @@ Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. Thi
 
 Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007, 008 and 009 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007, 008, 009 and 010 in order. Back up and rehearse either route on staging first.
 
 ## Database access guardrails (14 November 2026)
 
@@ -308,3 +308,7 @@ Upload metadata already fits existing content URL columns plus private `uploaded
 ## Validation performed
 
 The original schema/category seed passed isolated PostgreSQL-engine (PGlite) execution and a trial mapping of all 18 default products, 13 dealers and 24 colours, including child arrays. Checks covered invalid coverage, case-insensitive colour-code uniqueness, category FKs, photo cascades and preservation of enquiry names after product deletion. The 11 November review additionally validates fresh creation and upgrading the old 15-table proposal, account/hash/identifier constraints, case-insensitive cross-identifier collision handling, password verification after import, history array order/optional fields and rollback of content/account/history transactions. These are isolated schema tests, not an executed migration of the live Render site. A staging adapter and migration of the latest live data remain necessary before production use.
+
+## Gallery project categories — 16 November 2026
+
+`gallery_projects.category varchar(20)` is non-null, defaults to `other` and accepts `interior`, `exterior`, `textures`, `waterproofing`, `commercial`, `other`. The category/update/order index supports future SQL filtering. Migration 010 adds the field/index to existing installations after 009 without rewriting titles, photos or timestamps. The runtime still uses JSON; the table count remains 23. See [gallery-project-categories.md](gallery-project-categories.md).

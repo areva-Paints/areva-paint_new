@@ -13,6 +13,11 @@ import {
 } from "lucide-react";
 import type { GalleryProject, SiteContent } from "./content-types";
 import { checkImage, ImagePreview } from "./ImagePreview";
+import {
+  GALLERY_PROJECT_CATEGORIES,
+  projectCategory,
+  type GalleryProjectCategory,
+} from "../data/galleryCategories";
 
 function Field({
   label,
@@ -45,6 +50,7 @@ export function ProjectGalleryManager({
 }) {
   const [draft, setDraft] = useState<GalleryProject | null>(null),
     [search, setSearch] = useState(""),
+    [category, setCategory] = useState(""),
     [uploading, setUploading] = useState(false),
     [saving, setSaving] = useState(false),
     [progress, setProgress] = useState(""),
@@ -63,10 +69,15 @@ export function ProjectGalleryManager({
     const now = new Date().toISOString();
     setDraft(
       project
-        ? { ...project, photos: project.photos.map((p) => ({ ...p })) }
+        ? {
+            ...project,
+            category: projectCategory(project),
+            photos: project.photos.map((p) => ({ ...p })),
+          }
         : {
             id: id(),
             title: "",
+            category: "other",
             location: "",
             description: "",
             photos: [],
@@ -75,7 +86,16 @@ export function ProjectGalleryManager({
           },
     );
   }
-  function patch(key: "title" | "location" | "description", value: string) {
+  function patch(
+    key: "title" | "location" | "description" | "category",
+    value: string,
+  ) {
+    if (key === "category") {
+      setDraft((p) =>
+        p ? { ...p, category: value as GalleryProjectCategory } : p,
+      );
+      return;
+    }
     setDraft((p) => (p ? { ...p, [key]: value } : p));
   }
   async function upload(files: FileList | null) {
@@ -184,10 +204,12 @@ export function ProjectGalleryManager({
         b.index - a.index,
     )
     .map((x) => x.project)
-    .filter((p) =>
-      `${p.title} ${p.location}`
-        .toLowerCase()
-        .includes(search.toLowerCase().trim()),
+    .filter(
+      (p) =>
+        (!category || projectCategory(p) === category) &&
+        `${p.title} ${p.location} ${p.description} ${GALLERY_PROJECT_CATEGORIES[projectCategory(p)]}`
+          .toLowerCase()
+          .includes(search.toLowerCase().trim()),
     );
   return (
     <section className="adm-panel adm-project-manager">
@@ -211,14 +233,30 @@ export function ProjectGalleryManager({
       <div className="adm-project-tools">
         <Field label="Search projects">
           <input
-            placeholder="Search project name or location"
+            placeholder="Search project, description, location or category"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </Field>
+        <Field label="Filter project category">
+          <select
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          >
+            <option value="">All categories</option>
+            {Object.entries(GALLERY_PROJECT_CATEGORIES).map(
+              ([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ),
+            )}
+          </select>
+        </Field>
         <p className="adm-muted">
           Upload up to 20 photos per project, 25 MB per photo. Project name and
-          at least one photo are required; other details are optional.
+          at least one photo are required. The first photo is the card cover;
+          the description appears below the title.
         </p>
       </div>
       <div className="adm-gallery">
@@ -226,6 +264,9 @@ export function ProjectGalleryManager({
           <article key={project.id}>
             <div className="adm-gallery-image">
               <ImagePreview src={project.photos[0].image} alt={project.title} />
+              <span className="adm-project-category">
+                {GALLERY_PROJECT_CATEGORIES[projectCategory(project)]}
+              </span>
               <span>
                 {project.photos.length}{" "}
                 {project.photos.length === 1 ? "photo" : "photos"}
@@ -233,6 +274,11 @@ export function ProjectGalleryManager({
             </div>
             <div className="adm-gallery-copy">
               <h3>{project.title}</h3>
+              {project.description && (
+                <p className="adm-project-card-description">
+                  {project.description}
+                </p>
+              )}
               <AdminUpdated
                 section="galleryProjects"
                 id={project.id}
@@ -276,7 +322,7 @@ export function ProjectGalleryManager({
         <div className="adm-empty">
           <Camera size={32} />
           <h3>
-            {search
+            {search || category
               ? "No matching projects"
               : "Your project stories start here"}
           </h3>
@@ -329,6 +375,20 @@ export function ProjectGalleryManager({
                     value={draft.title}
                     onChange={(e) => patch("title", e.target.value)}
                   />
+                </Field>
+                <Field label="Project category">
+                  <select
+                    value={draft.category}
+                    onChange={(event) => patch("category", event.target.value)}
+                  >
+                    {Object.entries(GALLERY_PROJECT_CATEGORIES).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </select>
                 </Field>
                 <Field label="Location (optional)">
                   <input

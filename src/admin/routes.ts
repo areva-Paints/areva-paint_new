@@ -1,5 +1,6 @@
 import { sensitiveRequestGuard, rateLimit } from "../server/security";
 import { prepareCertifications } from "./certification-store";
+import { GALLERY_PROJECT_CATEGORIES } from "../data/galleryCategories";
 import { OPTIONAL_PRODUCT_DETAILS } from "../data/productDetails";
 import {
   COLOUR_FAMILIES,
@@ -211,6 +212,8 @@ function validate(c: SiteContent) {
     project.description ??= "";
     if (
       !nonempty(project.title, 150) ||
+      typeof project.category !== "string" ||
+      !Object.hasOwn(GALLERY_PROJECT_CATEGORIES, project.category) ||
       !text(project.location, 200) ||
       !text(project.description, 2000) ||
       !Array.isArray(project.photos) ||
@@ -458,6 +461,17 @@ contentRouter.put("/admin/content", (req, res) => {
     const current = readContent(),
       c = req.body as SiteContent;
     c.galleryProjects ??= current.galleryProjects;
+    if (Array.isArray(c.galleryProjects))
+      for (const project of c.galleryProjects) {
+        if (
+          project &&
+          typeof project === "object" &&
+          project.category === undefined
+        )
+          project.category =
+            current.galleryProjects.find((old) => old.id === project.id)
+              ?.category ?? "other";
+      }
     c.galleryAds ??= current.galleryAds;
     c.galleryReviews ??= current.galleryReviews;
     if (c.certifications === undefined)
@@ -514,6 +528,7 @@ contentRouter.put("/admin/content", (req, res) => {
       const previous = current.galleryProjects.find((p) => p.id === project.id);
       const fields = {
         id: project.id,
+        category: project.category,
         title: project.title.trim(),
         location: project.location,
         description: project.description,
@@ -532,6 +547,7 @@ contentRouter.put("/admin/content", (req, res) => {
         }) ===
           JSON.stringify({
             id: previous.id,
+            category: previous.category,
             title: previous.title,
             location: previous.location,
             description: previous.description,

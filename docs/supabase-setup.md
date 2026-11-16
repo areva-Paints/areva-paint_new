@@ -55,3 +55,7 @@ For final decisions and PDFs, an existing installation after migration 007 also 
 ## Certifications and documents upgrade
 
 An existing 20-table installation after migrations 001–008 uses [009-certifications-and-documents.sql](../database/migrations/009-certifications-and-documents.sql) once. It adds `certifications`, `certification_attachments` and `certification_products`, updates activity sections and restricts direct API-role access. Fresh setup now has 23 tables and includes this upgrade. It does not import content, change the running JSON store or connect the application to SQL. See [the documents guide](certifications-and-documents.md).
+
+## Gallery category upgrade
+
+After migration 009, existing installations use [010-gallery-project-categories.sql](../database/migrations/010-gallery-project-categories.sql) once. It adds the category field/index and defaults existing projects to Other while retaining access restrictions and other data. Fresh setup includes it; there are still 23 tables. No live migration or runtime SQL connection is implied.

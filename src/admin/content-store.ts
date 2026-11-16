@@ -1,5 +1,6 @@
 import { writePrivateJson } from "../server/storage";
 import { normalizeShade } from "../data/shadeFamilies";
+import { projectCategory } from "../data/galleryCategories";
 import type { StoredUser } from "./user-types";
 import fs from "node:fs";
 import path from "node:path";
@@ -85,7 +86,10 @@ export function readContent(): SiteContent {
     products: content.products,
     dealers: content.dealers,
     landingImages: content.landingImages,
-    galleryProjects: content.galleryProjects ?? [],
+    galleryProjects: (content.galleryProjects ?? []).map((project) => ({
+      ...project,
+      category: projectCategory(project),
+    })),
     galleryAds: content.galleryAds ?? [],
     galleryReviews: content.galleryReviews ?? [],
     colours: (content.colours ?? COLOR_SHADES).map(normalizeShade),

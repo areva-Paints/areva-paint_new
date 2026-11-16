@@ -1491,3 +1491,11 @@
 .adm-product-technical { margin-top: 24px; padding-top: 22px; border-top: 1px solid #e4dfea; }
 .adm-product-technical > h3 { margin: 0 0 18px; color: #361052; }
 .adm-product-technical .adm-checkbox { margin-top: 18px; }
+
+/* Category-aware Gallery card previews. */
+.adm-project-manager .adm-gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.adm-project-manager .adm-gallery-image > .adm-project-category { top: auto; left: 12px; bottom: 12px; right: auto; border-radius: 99px; background: #fffffff0; color: #351453; font-size: 11px; text-transform: uppercase; }
+.adm-project-card-description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.adm-project-tools .adm-field { min-width: 0; }
+@media (max-width: 1100px) { .adm-project-manager .adm-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .adm-project-manager .adm-gallery { grid-template-columns: minmax(0, 1fr); } }

@@ -149,6 +149,7 @@ CREATE TABLE shade_cards (
 
 CREATE TABLE gallery_projects (
   id varchar(100) PRIMARY KEY,
+  category varchar(20) NOT NULL DEFAULT 'other' CHECK (category IN ('interior', 'exterior', 'textures', 'waterproofing', 'commercial', 'other')),
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
   location varchar(200) NOT NULL DEFAULT '',
   description text NOT NULL DEFAULT '',
@@ -157,6 +158,7 @@ CREATE TABLE gallery_projects (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX gallery_projects_latest_idx ON gallery_projects(updated_at DESC, position DESC);
+CREATE INDEX gallery_projects_category_latest_idx ON gallery_projects(category, updated_at DESC, position DESC);
 
 CREATE TABLE gallery_photos (
   id varchar(100) NOT NULL,

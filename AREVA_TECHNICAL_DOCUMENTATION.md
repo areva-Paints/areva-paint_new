@@ -946,6 +946,7 @@ CREATE TABLE shade_cards (
 
 CREATE TABLE gallery_projects (
   id varchar(100) PRIMARY KEY,
+  category varchar(20) NOT NULL DEFAULT 'other' CHECK (category IN ('interior', 'exterior', 'textures', 'waterproofing', 'commercial', 'other')),
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
   location varchar(200) NOT NULL DEFAULT '',
   description text NOT NULL DEFAULT '',
@@ -954,6 +955,7 @@ CREATE TABLE gallery_projects (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX gallery_projects_latest_idx ON gallery_projects(updated_at DESC, position DESC);
+CREATE INDEX gallery_projects_category_latest_idx ON gallery_projects(category, updated_at DESC, position DESC);
 
 CREATE TABLE gallery_photos (
   id varchar(100) NOT NULL,
@@ -1471,3 +1473,7 @@ Admin-managed document cards replace the example certification cards. Heading/de
 ## Admin navigation and five-minute inactivity — 15 November 2026
 
 The sidebar is independently scrollable on desktop; mobile retains its two-column top navigation. Backend admin sessions enforce five-minute inactivity expiry and the existing eight-hour absolute cap. Trusted UI input triggers bounded activity heartbeats; ordinary background API requests do not refresh sessions. The frontend clears private workspace/editor state on expiry and coordinates activity/sign-out across tabs with a separate non-secret session identifier. Scoped idle logout cannot revoke or clear a newer login; manual logout retains cookie clearing. Other account and warranty-entry session rules are unchanged. See [the session guide](docs/admin-navigation-and-sessions.md) and `tests/admin-idle.test.mjs`. No SQL schema or live database changes are required.
+
+## Gallery design and categories — 16 November 2026
+
+Public/admin Gallery tabs are Projects, Ads & Campaigns and Customer Reviews, with a highlighted selection. Project cards show the first photo, category badge, title/description and album action. Shared Interior/Exterior/Textures/Waterproofing/Commercial/Other categories support public/admin filtering. Existing projects default to Other; old clients preserve saved categories. Migration 010 prepares the corresponding SQL column/index without adding tables or changing live storage. See [the Gallery guide](docs/gallery-project-categories.md).

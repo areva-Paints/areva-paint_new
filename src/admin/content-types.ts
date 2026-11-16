@@ -1,5 +1,6 @@
 import type { ShadeFamily, ShadeTone } from "../data/shadeFamilies";
 import type { Product, ColorShade } from "../types";
+import type { GalleryProjectCategory } from "../data/galleryCategories";
 export interface LandingImage {
   id: string;
   label: string;
@@ -31,6 +32,7 @@ export interface ProjectPhoto {
 }
 export interface GalleryProject {
   id: string;
+  category: GalleryProjectCategory;
   title: string;
   location: string;
   description: string;

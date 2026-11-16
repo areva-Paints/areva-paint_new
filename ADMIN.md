@@ -204,3 +204,7 @@ Open **Certifications and documents → Add document** to create a card with hea
 ## Sidebar navigation and inactivity sign-out
 
 The desktop sidebar scrolls vertically to reach every section and the logout controls, including on short screens. On small screens, the navigation stays at the top and wraps into two columns. Admins are signed out after **five minutes without interaction**, even with an editor open or unsaved changes. Keyboard, pointer, touch and wheel activity extend the idle deadline; background content/history/session requests do not. Tabs sharing the same admin session coordinate activity and sign-out. Returning after a sleeping or backgrounded tab checks expiry before accepting new activity. Sign in again after automatic sign-out; unsaved edits are discarded. See [the session guide](docs/admin-navigation-and-sessions.md).
+
+## Gallery categories and cards
+
+In **Gallery → Projects**, assign Interior, Exterior, Textures, Waterproofing, Commercial or Other. The cover photo appears above the name and description, with a category badge. Search or filter projects by category. **Save project to website** updates the public card and filters in both website views. Existing albums default to Other until assigned. Ads & Campaigns and Customer Reviews remain alongside Projects. See [the Gallery guide](docs/gallery-project-categories.md).
