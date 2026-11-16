@@ -95,7 +95,7 @@ export function referenceLayout(html: string, content: SiteContent) {
       "Explore painting services and request guidance from the Areva team.",
     ],
     [
-      "about",
+      "our-story",
       "Our story",
       "Colouring the future.",
       "Discover the Areva story, our values and our approach to better spaces.",

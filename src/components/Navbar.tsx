@@ -50,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     <>
       {/* Sleek, Modern, Architectural Top Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/80 transition-all duration-200 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4 lg:gap-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           {/* Brand Logo: Clean Luxury Wordmark */}
           <a
             href="#top"
@@ -80,7 +80,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </a>
 
           {/* Center Navigation Links (Clean, spacious, single-line) */}
-          <nav className="hidden xl:flex items-center gap-5 lg:gap-8 xl:gap-10 text-sm font-semibold text-stone-700">
+          <nav className="hidden xl:flex items-center gap-2 text-xs font-semibold text-stone-700">
             <a
               href="#products"
               className={`hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1 ${
@@ -110,6 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               Gallery
             </a>
             <a href={contentUrl('/warranty')} className="hover:text-stone-950 transition-colors whitespace-nowrap py-1">Warranty Registration</a>
+            <a href="#about" className="hover:text-stone-950 transition-colors whitespace-nowrap shrink-0 py-1">About Areva</a>
             <a
               href="#calculator"
               onClick={(e) => {
@@ -287,6 +288,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               Gallery
             </a>
             <a href={contentUrl('/warranty')} className="hover:text-stone-950 transition-colors whitespace-nowrap py-1">Warranty Registration</a>
+            <a href="#about" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 rounded-xl text-base font-semibold text-stone-900 hover:bg-stone-100">About Areva</a>
             <a
               href="#calculator"
               onClick={() => {

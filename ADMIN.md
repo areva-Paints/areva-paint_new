@@ -208,3 +208,7 @@ The desktop sidebar scrolls vertically to reach every section and the logout con
 ## Gallery categories and cards
 
 In **Gallery → Projects**, assign Interior, Exterior, Textures, Waterproofing, Commercial or Other. The cover photo appears above the name and description, with a category badge. Search or filter projects by category. **Save project to website** updates the public card and filters in both website views. Existing albums default to Other until assigned. Ads & Campaigns and Customer Reviews remain alongside Projects. See [the Gallery guide](docs/gallery-project-categories.md).
+
+## Public Explore Areva navigation
+
+The public **About Areva** page is a resource hub. Resource Centre opens your published document cards; Dealer Network opens the existing directory; Warranty & Support opens `/warranty`; Partner Login opens the secured `/admin` portal. The original story remains at `#our-story`. No new account role or admin configuration section is introduced. See [the guide](docs/explore-areva.md).

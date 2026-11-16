@@ -155,3 +155,5 @@ Manage public certificate/report/data-sheet/warranty cards through **Admin → C
 Admin navigation scrolls vertically on desktop; mobile navigation wraps into two columns at the top. Admin sign-in now expires after five idle minutes, with an eight-hour absolute cap. See [the session guide](docs/admin-navigation-and-sessions.md) for interaction, multi-tab and unsaved-edit behavior.
 
 Gallery now uses the reference gradient header, highlighted Projects/Ads & Campaigns/Customer Reviews tabs, category filters and image-first project cards. Admins manage categories and card descriptions in **Gallery → Projects**. See [the Gallery guide](docs/gallery-project-categories.md) for backward compatibility and prepared SQL migration 010.
+
+**About Areva** now opens Explore Areva, a six-card resource hub linking to the preserved story, dealer network, documents, Customer Care, Warranty Registration and the admin portal. See [the resource navigation guide](docs/explore-areva.md).

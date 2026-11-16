@@ -1,5 +1,7 @@
 import { ProjectGallery } from './components/ProjectGallery';
 import { Certifications } from './components/Certifications';
+import { ExploreAreva } from './components/ExploreAreva';
+import { contentUrl } from './site-content';
 import './reference-theme.css';
 import React, { useState, useEffect } from 'react';
 import { Product } from './types';
@@ -26,6 +28,7 @@ import { MessageSquare, ArrowUp } from 'lucide-react';
 import '../public/assets/page-gradient.css';
 import '../public/assets/shade-library.css';
 import '../public/assets/product-details.css';
+import '../public/assets/explore-areva.css';
 
 export default function App() {
   // View mode switcher: 'attached' (shows the user's attached HTML file), 'react' (modern React platform), 'split' (side-by-side)
@@ -144,6 +147,7 @@ export default function App() {
             <ProjectGallery />
             <DealersAndServices />
             <Certifications />
+            <ExploreAreva resolveLink={(path) => contentUrl(path.startsWith('#') ? '/attached-page' + path : path)} />
           </div>
 
           {/* Right Column: Attached HTML Page View */}
@@ -244,6 +248,7 @@ export default function App() {
             {/* Dealers & On-Site Technical Services */}
             <DealersAndServices />
             <Certifications />
+            <ExploreAreva resolveLink={(path) => contentUrl(path.startsWith('#') ? '/attached-page' + path : path)} />
 
             {/* Grand Vibrant Multi-Gradient Call-to-Action Banner */}
             <GrandCtaBanner

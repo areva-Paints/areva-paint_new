@@ -1477,3 +1477,7 @@ The sidebar is independently scrollable on desktop; mobile retains its two-colum
 ## Gallery design and categories — 16 November 2026
 
 Public/admin Gallery tabs are Projects, Ads & Campaigns and Customer Reviews, with a highlighted selection. Project cards show the first photo, category badge, title/description and album action. Shared Interior/Exterior/Textures/Waterproofing/Commercial/Other categories support public/admin filtering. Existing projects default to Other; old clients preserve saved categories. Migration 010 prepares the corresponding SQL column/index without adding tables or changing live storage. See [the Gallery guide](docs/gallery-project-categories.md).
+
+## Explore Areva resource hub — 16 November 2026
+
+About Areva (`#about`) uses a shared React/server-rendered six-card resource hub. Company history moves to a distinct `#our-story` view with original content/style retained; documents (`#certs`) also have their own view. Cards link to story, dealers (`#portals`), documents, Customer Care (`#contact`), top-level Warranty Registration and secured admin access. React links resolve against the configured content backend for split deployments. Hash navigation, history, focus and active About links handle the new views. No database/authentication model changes are required. See [docs/explore-areva.md](docs/explore-areva.md) for routing and validation.

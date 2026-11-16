@@ -10,15 +10,13 @@
     "gallery",
     "services",
     "about",
+    "our-story",
+    "certs",
     "portals",
     "contact",
   ]);
   main.querySelectorAll(":scope > section, :scope > .mq").forEach((node) => {
-    node.dataset.refView = known.has(node.id)
-      ? node.id
-      : node.id === "certs"
-        ? "about"
-        : "home";
+    node.dataset.refView = known.has(node.id) ? node.id : "home";
   });
   const views = Array.from(main.querySelectorAll("[data-ref-view]"));
   const decodeHash = (hash) => {
@@ -197,7 +195,7 @@
     });
     document.querySelectorAll("[data-ref-nav]").forEach((link) => {
       const active =
-        link.dataset.refNav === (target.id === "solutions" ? "products" : view);
+        link.dataset.refNav === (target.id === "solutions" ? "products" : view === "our-story" || view === "certs" ? "about" : view);
       link.classList.toggle("active", active);
       if (active) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");

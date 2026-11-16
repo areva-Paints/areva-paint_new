@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { ColourCollectionHeading, ShadeLibrary } from '../components/ShadeLibrary';
 import { renderProjectGallery } from "./project-gallery-page";
 import { CertificationsSection } from "../components/CertificationCards";
+import { ExploreAreva } from "../components/ExploreAreva";
 import { referenceLayout } from "./reference-layout";
 import fs from "node:fs";
 import path from "node:path";
@@ -22,6 +23,8 @@ export function legacyPage() {
     "utf8",
   );
   const c = readContent();
+  html = html.replace("<!-- EXPLORE_AREVA -->", () => renderToStaticMarkup(createElement(ExploreAreva)));
+  html = html.replace("</head>", '<link rel="stylesheet" href="/assets/explore-areva.css"></head>');
   html = html.replace("<!-- CERTIFICATIONS_DOCUMENTS -->", () => renderToStaticMarkup(createElement(CertificationsSection, { content: c })));
   html = html.replace("</head>", '<link rel="stylesheet" href="/assets/certifications.css"></head>');
   html = html.replace("<!-- PROJECT_GALLERY -->", () =>
