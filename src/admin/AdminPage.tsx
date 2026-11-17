@@ -694,17 +694,7 @@ export function AdminPage() {
         </div>
       </aside>
       <div className="adm-main">
-        <header className="adm-topbar">
-          <div className="adm-topbar-actions">
-            <a href="/" target="_blank" rel="noreferrer">
-              View live website <ExternalLink size={14} />
-            </a>
-            <button onClick={logout} disabled={busy || uploading}>
-              <LogOut size={15} /> Logout
-            </button>
-          </div>
-        </header>
-        <div className="adm-page-banner" inert={busy}>
+        <header className="adm-page-banner" inert={busy}>
           <div className="adm-page-heading">
             <div>
               <span className="adm-eyebrow">YOUR WEBSITE, YOUR WAY</span>
@@ -728,7 +718,7 @@ export function AdminPage() {
                 </button>
               )}
           </div>
-        </div>
+        </header>
         <main className="adm-content" inert={busy}>
           <div className="adm-overview">
             {[
