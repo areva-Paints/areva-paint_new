@@ -49,6 +49,7 @@ import { CATEGORIES } from "../data/paintsData";
 import type { Product } from "../types";
 import type { Dealer, LandingImage, SiteContent } from "./content-types";
 import "./admin.css";
+import "../../public/assets/page-gradient.css";
 
 type Tab =
   | "landingImages"
@@ -598,7 +599,6 @@ export function AdminPage() {
           </small>
         </form>
         <div className="adm-login-art">
-          <div />
           <span>
             GOOD COLOUR.
             <br />
@@ -709,7 +709,7 @@ export function AdminPage() {
             </button>
           </div>
         </header>
-        <main className="adm-content" inert={busy}>
+        <div className="adm-page-banner" inert={busy}>
           <div className="adm-page-heading">
             <div>
               <span className="adm-eyebrow">YOUR WEBSITE, YOUR WAY</span>
@@ -733,6 +733,8 @@ export function AdminPage() {
                 </button>
               )}
           </div>
+        </div>
+        <main className="adm-content" inert={busy}>
           <div className="adm-overview">
             {[
               {

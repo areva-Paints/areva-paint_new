@@ -1,4 +1,4 @@
-/* Shared public banners. Home, Products and admin keep their own layouts. */
+/* Shared banner colours. Home and Products retain their own artwork. */
 :root {
   --areva-page-gradient: linear-gradient(112deg, #36005f 0%, #7f00ce 33%, #e8109b 68%, #ff7b19 100%);
   --areva-page-title: 400 clamp(40px, 5.5vw, 82px)/1.08 Georgia, "Times New Roman", serif;
@@ -77,8 +77,10 @@ main#top > section:not(#home):not(#products) > .ref-page-banner .ref-eyebrow,
   letter-spacing: .2em;
   margin: 0;
 }
+/* The original page's section padding must not sit above its banner. */
+main#top > section:has(> .ref-page-banner),
 #gallery.pg-section,
-.areva-reference-site :is(#visualizer, #calculator, #dealers) {
+.areva-reference-site :is(#visualizer, #calculator, #gallery, #dealers, #about):has(> :is(.page-gradient-banner, .ea-banner)) {
   padding-top: 0;
 }
 #about .ea-banner { margin-bottom: 0; }
