@@ -44,8 +44,8 @@
   width: 246px;
   position: fixed;
   inset: 0 auto 0 0;
-  background: #fff;
-  border-right: 1px solid #eae6f0;
+  background: linear-gradient(165deg, #efe4ff 0%, #fce8f2 55%, #fff0da 100%);
+  border-right: 1px solid #e2cfee;
   display: flex;
   flex-direction: column;
   padding: 32px 20px;
@@ -55,7 +55,7 @@
   overscroll-behavior-y: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: #c9b8dc #faf8fd;
+  scrollbar-color: #b88bd0 #f7eafa;
 }
 .adm-sidebar > * {
   flex-shrink: 0;
@@ -63,11 +63,16 @@
 .adm-brand {
   display: inline-flex;
   align-self: flex-start;
-  padding-left: 15px;
+  padding: 8px 14px;
+  background: #fff;
+  border: 1px solid #e9d9ef;
+  border-radius: 14px;
+  box-shadow: 0 4px 16px #6035860c;
 }
 .adm-workspace {
-  background: #f7f5fb;
-  border: 1px solid #ede8f4;
+  background: #ffffffc7;
+  border: 1px solid #e5d1ed;
+  color: #4d2e66;
   border-radius: 12px;
   padding: 13px 12px;
   margin: 35px 0 27px;
@@ -76,7 +81,7 @@
 }
 .adm-workspace small {
   display: block;
-  color: #8a8299;
+  color: #7a608d;
   font-weight: 400;
   margin: 2px 0 0 16px;
 }
@@ -96,7 +101,7 @@
 .adm-nav-title {
   font-size: 9px;
   letter-spacing: 1.6px;
-  color: #9b93aa;
+  color: #78558f;
   font-weight: 700;
   margin: 0 14px 14px;
 }
@@ -105,38 +110,80 @@
   gap: 7px;
 }
 .adm-sidebar nav button {
+  --adm-nav-accent: #7133a0;
+  --adm-nav-tint: #f5edff;
+  --adm-nav-line: #e0cfef;
   display: flex;
   align-items: center;
   gap: 12px;
-  background: none;
-  border: 0;
-  color: #776d87;
+  background: var(--adm-nav-tint);
+  border: 1px solid var(--adm-nav-line);
+  color: #503761;
   padding: 13px 12px;
   border-radius: 9px;
   text-align: left;
   font-size: 12px;
   font-weight: 600;
 }
+.adm-sidebar nav button:nth-child(3n + 2) {
+  --adm-nav-accent: #ad3768;
+  --adm-nav-tint: #fff0f5;
+  --adm-nav-line: #efcfde;
+}
+.adm-sidebar nav button:nth-child(3n) {
+  --adm-nav-accent: #23756d;
+  --adm-nav-tint: #eaf7f3;
+  --adm-nav-line: #c9e8df;
+}
+.adm-sidebar nav button:nth-child(4) {
+  --adm-nav-accent: #926014;
+  --adm-nav-tint: #fff5df;
+  --adm-nav-line: #efdfb9;
+}
+.adm-sidebar nav button:nth-child(5) {
+  --adm-nav-accent: #3566a4;
+  --adm-nav-tint: #edf4ff;
+  --adm-nav-line: #cddff5;
+}
+.adm-sidebar nav button > svg {
+  color: var(--adm-nav-accent);
+  flex-shrink: 0;
+}
+.adm-sidebar nav button:hover:not(:disabled) {
+  border-color: var(--adm-nav-accent);
+  box-shadow: 0 3px 10px #6334830d;
+}
+.adm-sidebar nav button:focus-visible {
+  outline: 3px solid #8c43bd;
+  outline-offset: 2px;
+}
 .adm-sidebar nav button.active {
-  background: #eee7fa;
-  color: #6d43aa;
+  background: linear-gradient(105deg, #501c79, #8435a6);
+  border-color: #703198;
+  color: #fff;
+  box-shadow: 0 5px 14px #60358625;
+}
+.adm-sidebar nav button.active > svg {
+  color: #fff;
 }
 .adm-sidebar nav button span {
   margin-left: auto;
   font-size: 10px;
   border-radius: 5px;
   padding: 1px 5px;
-  background: #f4f1f8;
+  color: var(--adm-nav-accent);
+  background: #ffffffb8;
 }
 .adm-sidebar nav button.active span {
-  background: #e2d6f3;
+  color: #fff;
+  background: #ffffff26;
 }
 .adm-sidebar-bottom {
   margin-top: auto;
   padding-top: 24px;
   display: grid;
   gap: 18px;
-  color: #7b728a;
+  color: #634471;
   font-size: 12px;
 }
 .adm-sidebar-bottom > a,
@@ -150,12 +197,12 @@
   text-align: left;
 }
 .adm-sidebar-bottom small {
-  border-top: 1px solid #eeeaf4;
+  border-top: 1px solid #e3cde5;
   padding: 24px 10px 0;
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #aaa2b5;
+  color: #7d6588;
   font-size: 10px;
 }
 .adm-main {
@@ -170,24 +217,15 @@
   border-bottom: 1px solid #ebe7f1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 0 40px;
   font-size: 11px;
   color: #958b9f;
 }
-.adm-topbar > span,
 .adm-topbar a {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-.adm-topbar b {
-  font-weight: 500;
-  color: #62556f;
-}
-.adm-slash {
-  margin: 0 5px;
-  color: #d0c8d9;
 }
 .adm-topbar a {
   color: #776188;
@@ -906,7 +944,7 @@
     border-bottom: 1px solid #eee7f3;
   }
   .adm-brand {
-    padding-left: 0;
+    padding: 0;
   }
   .adm-workspace,
   .adm-nav-title,

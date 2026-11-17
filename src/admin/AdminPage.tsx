@@ -29,7 +29,6 @@ import {
   ArrowLeft,
   Check,
   ImagePlus,
-  LayoutDashboard,
   LogOut,
   MapPin,
   Package,
@@ -650,6 +649,7 @@ export function AdminPage() {
               key={s.id}
               disabled={uploading || busy}
               className={tab === s.id ? "active" : ""}
+              aria-current={tab === s.id ? "page" : undefined}
               onClick={() => {
                 setTab(s.id);
                 setSearch("");
@@ -695,11 +695,6 @@ export function AdminPage() {
       </aside>
       <div className="adm-main">
         <header className="adm-topbar">
-          <span>
-            <LayoutDashboard size={16} />
-            Website administration<span className="adm-slash">/</span>
-            <b>{section.label}</b>
-          </span>
           <div className="adm-topbar-actions">
             <a href="/" target="_blank" rel="noreferrer">
               View live website <ExternalLink size={14} />
