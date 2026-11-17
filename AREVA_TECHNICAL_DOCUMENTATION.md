@@ -1140,6 +1140,7 @@ CREATE TABLE warranty_registrations (
   reference varchar(100) NOT NULL UNIQUE CHECK (btrim(reference) <> ''),
   submission_id uuid NOT NULL,
   mobile varchar(13) NOT NULL CHECK (mobile ~ '^\+91[6-9][0-9]{9}$'),
+  login_mobile varchar(13) NOT NULL CHECK (login_mobile ~ '^\+91[6-9][0-9]{9}$'),
   verification_mode varchar(12) NOT NULL CHECK (verification_mode IN ('demo', 'whatsapp')),
   mobile_verified boolean NOT NULL DEFAULT false,
   status varchar(20) NOT NULL DEFAULT 'pending_review'
@@ -1481,3 +1482,7 @@ Public/admin Gallery tabs are Projects, Ads & Campaigns and Customer Reviews, wi
 ## Explore Areva resource hub — 16 November 2026
 
 About Areva (`#about`) uses a shared React/server-rendered six-card resource hub. Company history moves to a distinct `#our-story` view with original content/style retained; documents (`#certs`) also have their own view. Cards link to story, dealers (`#portals`), documents, Customer Care (`#contact`), top-level Warranty Registration and secured admin access. React links resolve against the configured content backend for split deployments. Hash navigation, history, focus and active About links handle the new views. No database/authentication model changes are required. See [docs/explore-areva.md](docs/explore-areva.md) for routing and validation.
+
+## Shared page headers, official logo and warranty entry phone — 17 November 2026
+
+Public banners (except Home and Products) now share gradient, Georgia heading sizes and copy typography. Public/admin navigation and sign-in share the official Areva logo. Warranty purchase invoice number and purchase date appear together; `loginMobile` is a server-session snapshot shown in admin search/details and private PDFs. Existing JSON uses the saved mobile as fallback. Prepared SQL migration 011 backfills the new `login_mobile` column without changing final reviews. See [the header guide](docs/shared-brand-and-page-headers.md) and [warranty guide](docs/warranty-registration.md).

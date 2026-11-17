@@ -1,4 +1,4 @@
-# Warranty Registration — updated 15 November 2026
+# Warranty Registration — updated 17 November 2026
 
 The public website now has a **Warranty Registration** link, opening the Areva-branded `/warranty` page at top level. React Studio includes the same link. The form runs on the backend origin so cookies and private receipt upload do not depend on third-party iframe cookies.
 
@@ -16,15 +16,17 @@ There is no public historical-record lookup by mobile number. Knowing the shared
 
 | Group | Fields |
 | --- | --- |
-| Customer | Full name, session mobile, optional email/alternate phone |
+| Customer | Full name, primary mobile and a separate login phone snapshot from the entry session, optional email/alternate phone |
 | Product/purchase | Product type and name from the current catalogue, purchase date, quantity, pack size/unit, optional batch/lot and shade |
 | Warranty details | Server-side snapshot of product name/type and configured warranty years/label; no customer-entered duration |
-| Dealer | Optional selection from existing dealers, dealer/shop name, address, city, optional phone, invoice/receipt number |
+| Dealer | Optional selection from existing dealers, dealer/shop name, address, city, optional phone, purchase invoice number beside date of purchase |
 | Receipt | Required PDF/JPEG/PNG/WebP, up to 5 MiB; original display name, MIME, byte count and random private identifier |
 | Site/application | Site address, city, state, six-digit PIN; optional completion date, painted area, applicator name/phone and notes |
 | Submission | Accuracy/contact consent, reference, created timestamp, verification mode and pending-review status |
 
 Dates must be real dates, not in the future; application completion cannot precede purchase. The API uses the current date in Asia/Kolkata. Quantities/areas must be positive and at most 100,000. Catalogue/dealer IDs and string lengths are validated on the server. Product names/type/warranty are snapshots, so future catalogue edits do not rewrite old registrations. Product warranty text is not a promise of eligibility or activation.
+
+The entry mobile is captured server-side as `loginMobile` when a registration is submitted. Users cannot override it through form data. Admin records, readable-value search and private decision PDFs include **Login phone number** separately from **Primary mobile number**. Older JSON records use their saved `mobile` as the login phone; the original value is preserved. This does not create an abandoned-entry/contact-lead log or change the demo verification status.
 
 ## Admin portal
 

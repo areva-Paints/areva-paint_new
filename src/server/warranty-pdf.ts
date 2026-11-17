@@ -157,7 +157,8 @@ export async function createWarrantyPdf(
     heading("Customer and application site");
     [
       ["Customer name", row.customerName],
-      ["Mobile number", row.mobile],
+      ["Primary mobile number", row.mobile],
+      ["Login phone number", row.loginMobile || row.mobile],
       ["Email address", row.email],
       ["Alternate mobile", row.alternateMobile],
       ["Site address", row.siteAddress],
@@ -195,7 +196,7 @@ export async function createWarrantyPdf(
       ["Dealer phone", row.dealerPhone],
       ["Dealer address", row.dealerAddress],
       ["Dealer city", row.dealerCity],
-      ["Invoice / receipt number", row.invoiceNumber],
+      ["Purchase invoice number", row.invoiceNumber],
       ["Attached receipt name", row.receipt.name],
       ["Receipt file type", row.receipt.mime],
       ["Receipt size (bytes)", String(row.receipt.bytes)],

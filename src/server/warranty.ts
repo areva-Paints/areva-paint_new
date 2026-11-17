@@ -45,6 +45,7 @@ export function readWarranties(): Row[] {
   if (!Array.isArray(rows)) throw Error("Invalid warranty store");
   return rows.map((row) => ({
     ...row,
+    loginMobile: row.loginMobile ?? row.mobile,
     version: row.version ?? 1,
     reviewNotes: row.reviewNotes ?? "",
     reviewedBy: row.reviewedBy ?? "",
@@ -480,6 +481,7 @@ warrantyRouter.post(
         id,
         reference,
         mobile: session.mobile,
+        loginMobile: session.mobile,
         categoryId: product.categoryId,
         categoryName: product.categoryName,
         productName: product.name,

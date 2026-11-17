@@ -231,6 +231,7 @@ test("demo warranty registration persists private details and receipts with admi
       mobileVerified: true,
       verificationMode: "whatsapp",
       warrantyYears: 999,
+      loginMobile: "+919999999999",
     };
     const other = await demo("9000000004");
     assert.equal(
@@ -306,6 +307,11 @@ test("demo warranty registration persists private details and receipts with admi
     assert.equal(raw[0].verificationMode, "demo");
     assert.equal(raw[0].mobileVerified, false);
     assert.equal(raw[0].mobile, "+919000000000");
+    assert.equal(
+      raw[0].loginMobile,
+      "+919000000000",
+      "Entry phone comes from the session, never the submitted form",
+    );
     assert.equal(raw[0].warrantyYears, product.specs.warrantyYears);
     assert.equal(raw[0].status, "pending_review");
     assert.equal(
@@ -333,6 +339,7 @@ test("demo warranty registration persists private details and receipts with admi
     const found = await list.json();
     assert.equal(found.total, 1);
     assert.equal(found.registrations[0].siteAddress, form.siteAddress);
+    assert.equal(found.registrations[0].loginMobile, "+919000000000");
     assert.equal(found.registrations[0].submissionId, undefined);
     assert.equal(
       (
@@ -452,6 +459,12 @@ test("demo warranty registration persists private details and receipts with admi
       (await (await req("/api/admin/warranties", undefined, restored)).json())
         .total,
       1,
+    );
+    assert.equal(
+      (await (await req("/api/admin/warranties", undefined, restored)).json())
+        .registrations[0].loginMobile,
+      "+919000000000",
+      "The login phone snapshot survives restart",
     );
     assert.equal(
       (

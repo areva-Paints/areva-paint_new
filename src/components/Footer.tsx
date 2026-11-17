@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrandLogo } from './BrandLogo';
 import { ShieldCheck, Phone, Mail, MapPin, Sparkles, Download } from 'lucide-react';
 
 interface FooterProps {
@@ -24,16 +25,7 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Col 1 & 2: Brand & Mission */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-stone-900 border border-stone-800 flex items-center justify-center text-white">
-                <div className="flex items-center gap-1">
-                  <span className="w-1.5 h-3 rounded-full bg-amber-500"></span>
-                  <span className="w-1.5 h-4 rounded-full bg-rose-500"></span>
-                  <span className="w-1.5 h-2.5 rounded-full bg-teal-500"></span>
-                </div>
-              </div>
-              <span className="font-display font-extrabold text-2xl text-white tracking-tight">
-                AREVA<span className="text-amber-500 ml-1.5">PAINTS</span>
-              </span>
+              <BrandLogo className="areva-brand-logo-on-dark" />
             </div>
 
             <p className="text-stone-400 leading-relaxed max-w-sm">

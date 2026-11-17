@@ -1,0 +1,32 @@
+/* The same official artwork and proportions across public and admin pages. */
+.areva-brand-logo,
+.ref-header .logo > .areva-brand-logo,
+.wr-header .areva-brand-logo,
+.adm-brand .areva-brand-logo,
+.adm-logo .areva-brand-logo {
+  display: block;
+  width: 112px;
+  height: 84px;
+  object-fit: contain;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 0;
+}
+.ref-header .nav { min-height: 96px; }
+.areva-brand-logo-on-dark {
+  padding: 6px;
+  border-radius: 12px;
+  background: #fff;
+}
+@media (max-width: 760px) {
+  .areva-brand-logo,
+  .ref-header .logo > .areva-brand-logo,
+  .wr-header .areva-brand-logo,
+  .adm-brand .areva-brand-logo,
+  .adm-logo .areva-brand-logo {
+    width: 96px;
+    height: 72px;
+  }
+  /* The original embedded page sets its mobile logo height with !important. */
+  .ref-header .logo > .areva-brand-logo { height: 72px !important; }
+}

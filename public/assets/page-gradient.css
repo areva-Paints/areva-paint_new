@@ -1,9 +1,12 @@
-/* Header banners only. Home, Products, site navigation and admin are excluded. */
+/* Shared public banners. Home, Products and admin keep their own layouts. */
 :root {
   --areva-page-gradient: linear-gradient(112deg, #36005f 0%, #7f00ce 33%, #e8109b 68%, #ff7b19 100%);
+  --areva-page-title: 400 clamp(40px, 5.5vw, 82px)/1.08 Georgia, "Times New Roman", serif;
+  --areva-page-copy: 400 clamp(15px, 1.2vw, 17px)/1.8 Arial, sans-serif;
+  --areva-page-kicker: 700 12px/1.7 Arial, sans-serif;
+  --areva-page-padding: clamp(48px, 6vw, 86px) 0;
 }
 
-/* Keep the page body light, with its original cards, forms and spacing. */
 main#top > section[data-ref-view]:not([data-ref-view="home"]):not(#products),
 #gallery.pg-section,
 .areva-reference-site :is(#visualizer, #calculator, #gallery, #dealers) {
@@ -11,65 +14,79 @@ main#top > section[data-ref-view]:not([data-ref-view="home"]):not(#products),
 }
 
 main#top > section:not(#home):not(#products) > .ref-page-banner,
-#gallery > .page-gradient-banner,
-.areva-reference-site :is(#visualizer, #calculator, #dealers) > .page-gradient-banner {
+#gallery.pg-section > .page-gradient-banner,
+.areva-reference-site :is(#visualizer, #calculator, #dealers) > .page-gradient-banner,
+#about .ea-banner,
+.wr-page > .wr-page-banner {
   background: var(--areva-page-gradient);
   color: #fff;
-  padding: clamp(48px, 6vw, 86px) 0;
+  padding: var(--areva-page-padding);
   margin-bottom: 48px;
 }
-main#top > section:not(#home):not(#products) > .ref-page-banner h1 {
+/* Align banner copy without changing navigation or body containers. */
+main#top > section:not(#home):not(#products) > .ref-page-banner > .wrap,
+#gallery .page-gradient-banner > .pg-wrap,
+.areva-reference-site .page-gradient-banner > div,
+#about .ea-banner > .ea-wrap,
+.wr-page-banner > .wr-intro {
+  width: min(1280px, 92%);
+  max-width: 1280px;
+  margin: 0 auto;
+  padding-inline: 0;
+}
+#gallery.pg-section .page-gradient-banner .pg-heading,
+.areva-reference-site .page-gradient-banner .page-gradient-heading,
+#about .ea-heading {
+  max-width: 1100px;
+  margin: 0;
+}
+main#top > section:not(#home):not(#products) > .ref-page-banner h1,
+#gallery.pg-section .page-gradient-banner .pg-title,
+.areva-reference-site .page-gradient-banner .page-gradient-heading h2,
+#about .ea-heading h1,
+.wr-page-banner .wr-intro h1 {
   max-width: 1100px;
   margin: 18px 0 22px;
   color: #fff;
-  font: 400 clamp(40px, 5.5vw, 82px)/1.08 Georgia, serif;
+  font: var(--areva-page-title);
   letter-spacing: -0.035em;
+  overflow-wrap: break-word;
 }
 main#top > section:not(#home):not(#products) > .ref-page-banner h1 em {
   display: block;
-  color: #ffdf35;
+  color: inherit;
   font-style: normal;
 }
-main#top > section:not(#home):not(#products) > .ref-page-banner .ref-eyebrow,
-main#top > section:not(#home):not(#products) > .ref-page-banner p {
-  color: #fff;
-}
-main#top > section:not(#home):not(#products) > .ref-page-banner p {
-  max-width: 740px;
+main#top > section:not(#home):not(#products) > .ref-page-banner p,
+#gallery .page-gradient-banner .pg-intro,
+.areva-reference-site .page-gradient-banner .page-gradient-heading > p,
+#about .ea-intro,
+.wr-page-banner .wr-intro p:last-child {
+  max-width: 1100px;
   margin: 0;
-  font-size: 17px;
-  line-height: 1.8;
+  color: #fff;
+  font: var(--areva-page-copy);
 }
-
-/* Gallery and React tools have separate banner and content containers. */
+main#top > section:not(#home):not(#products) > .ref-page-banner .ref-eyebrow,
+#gallery .page-gradient-banner .pg-kicker,
+.areva-reference-site .page-gradient-banner .page-gradient-heading > div:first-child,
+#about .ea-kicker,
+.wr-page-banner .wr-kicker {
+  color: #fff;
+  font: var(--areva-page-kicker);
+  letter-spacing: .2em;
+  margin: 0;
+}
 #gallery.pg-section,
 .areva-reference-site :is(#visualizer, #calculator, #dealers) {
   padding-top: 0;
 }
-#gallery .page-gradient-banner .pg-heading,
-.areva-reference-site .page-gradient-banner .page-gradient-heading {
-  max-width: 760px;
-  margin-bottom: 0;
-}
-#gallery .page-gradient-banner .pg-title,
-.areva-reference-site .page-gradient-banner .page-gradient-heading h2 {
-  color: #fff;
-  font: 400 clamp(40px, 5.5vw, 76px)/1.1 Georgia, serif;
-}
-#gallery .page-gradient-banner :is(.pg-kicker, .pg-intro),
-.areva-reference-site .page-gradient-banner .page-gradient-heading > p {
-  color: #fff;
-}
-.areva-reference-site .page-gradient-banner .page-gradient-heading > div:first-child {
-  color: #ffdf69;
-}
+#about .ea-banner { margin-bottom: 0; }
+.wr-page > .wr-page-banner { margin-bottom: 0; }
 @media (max-width: 700px) {
   main#top > section:not(#home):not(#products) > .ref-page-banner,
-  #gallery > .page-gradient-banner,
+  #gallery.pg-section > .page-gradient-banner,
   .areva-reference-site :is(#visualizer, #calculator, #dealers) > .page-gradient-banner {
     margin-bottom: 32px;
-  }
-  main#top > section:not(#home):not(#products) > .ref-page-banner p {
-    font-size: 15px;
   }
 }

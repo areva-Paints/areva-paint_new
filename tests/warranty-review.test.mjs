@@ -87,6 +87,7 @@ test("admin manual review preserves demo verification, records history and appli
       "2026-11-16",
     );
   first.notes = "Testing purchase details";
+  first.loginMobile = "+919000000009";
   await writeFile(
     path.join(dir, "warranties.json"),
     JSON.stringify([after, last, first, before]),
@@ -157,6 +158,12 @@ test("admin manual review preserves demo verification, records history and appli
       await (
         await request("/api/admin/warranties" + query, undefined, cookie)
       ).json();
+    assert.equal(
+      (await get("")).registrations.find((row) => row.id === before.id)
+        .loginMobile,
+      before.mobile,
+      "Legacy rows retain the original entry phone",
+    );
     for (const [search, count] of [
       ["Testing", 1],
       ["  TESTING   pune  ", 1],
@@ -164,6 +171,7 @@ test("admin manual review preserves demo verification, records history and appli
       ["pending review", 4],
       ["+91 (90000) 00000", 4],
       ["9000000000", 4],
+      ["+91 (90000) 00009", 1],
       ["Interior Paints INV-REVIEW", 4],
       [first.reference, 1],
       ["customerName", 0],

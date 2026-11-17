@@ -220,7 +220,7 @@
 @media (max-width: 600px) { .gr-grid { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 400px) { .ga-tabs { display: flex; max-width: 100%; } .ga-tabs .ga-tab { min-width: 0; flex: 1; padding: 10px 12px; font-size: 13px; } }
 
-/* Gallery reference: purple/orange header and image-first category cards. */
+/* Gallery category cards use the shared public page banner. */
 .pg-section, .pg-dialog {
   --pg-deep: #351453;
   --pg-ink: #2f2538;
@@ -233,15 +233,9 @@
 }
 #gallery.pg-section { background: #faf8fd; padding-top: 0; }
 #gallery.pg-section > .page-gradient-banner {
-  background: linear-gradient(110deg, #2b104c 0%, #43116a 30%, #88109a 60%, #ba1682 80%, #c6501c 100%);
-  padding: clamp(58px, 7vw, 100px) 0;
-  margin-bottom: 42px;
+  background: var(--areva-page-gradient);
+  padding: var(--areva-page-padding);
 }
-#gallery.pg-section .page-gradient-banner .pg-heading { max-width: 1000px; margin: 0 auto; }
-#gallery.pg-section .page-gradient-banner .pg-title { color: white; font: 400 clamp(48px, 6vw, 82px)/1.1 Georgia, serif; margin: 20px 0; }
-#gallery .page-gradient-banner .pg-title::after { content: ''; display: block; width: 76px; height: 4px; border-radius: 4px; margin-top: 26px; background: #d8b636; }
-#gallery .page-gradient-banner .pg-kicker { color: white; font-size: 12px; font-weight: 800; letter-spacing: .24em; margin: 0; }
-#gallery .page-gradient-banner .pg-intro { color: white; max-width: 100%; font-size: 17px; }
 #gallery .ga-tabs { display: flex; justify-content: center; flex-wrap: wrap; width: 100%; gap: 10px; padding: 0; border: 0; background: transparent; margin: 0 0 32px; }
 #gallery .ga-tab { flex: 0 1 auto; min-width: 0; padding: 14px 25px; border: 1px solid #e5d5f0; border-radius: 99px; background: white; color: #5c3680; font-size: 15px; font-weight: 700; }
 #gallery .ga-tab[aria-selected="true"] { background: #351453; border-color: #351453; color: white; box-shadow: 0 12px 26px #35145322; }

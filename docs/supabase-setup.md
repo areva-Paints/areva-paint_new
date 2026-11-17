@@ -59,3 +59,7 @@ An existing 20-table installation after migrations 001–008 uses [009-certifica
 ## Gallery category upgrade
 
 After migration 009, existing installations use [010-gallery-project-categories.sql](../database/migrations/010-gallery-project-categories.sql) once. It adds the category field/index and defaults existing projects to Other while retaining access restrictions and other data. Fresh setup includes it; there are still 23 tables. No live migration or runtime SQL connection is implied.
+
+## Warranty login phone snapshot
+
+Existing installations after migration 010 use [011-warranty-login-mobile.sql](../database/migrations/011-warranty-login-mobile.sql) once. It adds required `login_mobile` and backfills it from each record's existing mobile number without changing review decisions. Fresh schema/setup includes the column. The count remains 23 tables; the runtime continues to use private JSON files. No live migration is performed here.

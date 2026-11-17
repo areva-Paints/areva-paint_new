@@ -157,3 +157,5 @@ Admin navigation scrolls vertically on desktop; mobile navigation wraps into two
 Gallery now uses the reference gradient header, highlighted Projects/Ads & Campaigns/Customer Reviews tabs, category filters and image-first project cards. Admins manage categories and card descriptions in **Gallery → Projects**. See [the Gallery guide](docs/gallery-project-categories.md) for backward compatibility and prepared SQL migration 010.
 
 **About Areva** now opens Explore Areva, a six-card resource hub linking to the preserved story, dealer network, documents, Customer Care, Warranty Registration and the admin portal. See [the resource navigation guide](docs/explore-areva.md).
+
+Public headers (except Home and Products) now share the reference gradient and typography; public/admin pages use the official Areva logo. Warranty invoice/date fields sit together, and admin records/search/PDFs include the captured login phone. See [the shared header guide](docs/shared-brand-and-page-headers.md) for the prepared SQL upgrade.

@@ -8,7 +8,7 @@ Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. Thi
 
 Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007, 008, 009 and 010 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007, 008, 009, 010 and 011 in order. Back up and rehearse either route on staging first.
 
 ## Database access guardrails (14 November 2026)
 
@@ -251,6 +251,8 @@ The product editor exposes all public technical fields. `sheen` is now free text
 Existing databases use `database/migrations/003-gallery-reviews.sql` once. It detects a `public` or private `areva` install, stops if both exist, creates this table and permits `galleryReviews` activity events. The private-schema path enables RLS and revokes browser-role access to the new table. Fresh schema/setup already includes it. Import `galleryReviews[]` in the same content/history transaction; up to 100 reviews, optional images use the existing 25 MiB upload path. Preserve rows when older clients omit the section. This is an SQL design update, not a live migration or backend connection.
 
 ### 20. warranty_registrations — private customer submissions
+
+`login_mobile varchar(13)` separately snapshots the phone used for warranty entry. It is required in the prepared schema, accepts canonical Indian `+91` numbers and is set from the server session. Migration 011 adds/backfills this column from `mobile` on existing installations after 010, preserving final reviews and private access. New JSON registrations save `loginMobile`; old JSON rows read their existing `mobile` as the fallback.
 
 See [warranty-registration.md](warranty-registration.md) for the complete form/API/storage mapping. Columns capture customer/session mobile and optional contact fields, product/category/warranty snapshots, purchase date/quantity/packing/batch/shade, dealer/invoice fields, property/application fields, notes/consent, reference, verification/status and private receipt metadata/storage key. `id`, `submission_id` and `receipt_id` are UUIDs. Quantity/area and warranty years use numeric; purchase/completion use date. Empty optional dealer reference, application date and area map to NULL.
 

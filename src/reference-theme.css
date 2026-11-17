@@ -31,10 +31,10 @@
 }
 .areva-reference-site :is(#products, #calculator, #gallery) { background: var(--brand-page); }
 .areva-reference-site :is(#visualizer, #dealers) { background: #fff; }
-.areva-reference-site :is(#products, #visualizer, #calculator, #dealers) > div > div:first-child h2 {
+.areva-reference-site :is(#products, #visualizer, #calculator, #dealers) > div:not(.page-gradient-banner) > div:first-child h2 {
   font-size: clamp(2rem, 3.5vw, 3rem);
 }
-.areva-reference-site :is(#products, #visualizer, #calculator, #dealers) > div > div:first-child h2::after {
+.areva-reference-site :is(#products, #visualizer, #calculator, #dealers) > div:not(.page-gradient-banner) > div:first-child h2::after {
   content: "";
   display: block;
   width: 60px;

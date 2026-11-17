@@ -10,6 +10,7 @@ const record = () => ({
   reference: "ARV-WR-20261115-TEST-REPORT",
   customerName: "José ₹ Review Customer",
   mobile: "+919000000000",
+  loginMobile: "+919000000004",
   email: "private@example.test",
   alternateMobile: "9000000001",
   productId: "product-1",
@@ -98,6 +99,9 @@ test("decision PDF contains all saved fields and long review notes across brande
     row.reference,
     row.customerName,
     row.mobile,
+    row.loginMobile,
+    "LOGIN PHONE NUMBER",
+    "PURCHASE INVOICE NUMBER",
     row.email,
     row.alternateMobile,
     row.productName,
@@ -163,7 +167,7 @@ test("decision PDF contains all saved fields and long review notes across brande
   assert.ok(result.text.includes("Rejected history"));
 });
 
-test("final-decision SQL trigger locks review metadata in public and private schemas", async () => {
+test("final-decision and login-phone SQL upgrades preserve private records and lock final reviews", async () => {
   for (const schema of ["public", "areva"]) {
     const db = new PGlite();
     try {
@@ -174,6 +178,9 @@ test("final-decision SQL trigger locks review metadata in public and private sch
         await db.exec("CREATE SCHEMA areva;SET search_path=areva,pg_catalog;");
       await db.exec(await readFile("database/schema.sql", "utf8"));
       // Rehearse the upgrade from an existing migration-007 installation.
+      await db.exec(
+        "ALTER TABLE warranty_registrations DROP COLUMN login_mobile",
+      );
       await db.exec(
         "DROP TRIGGER warranty_registrations_final_review ON warranty_registrations;DROP FUNCTION prevent_final_warranty_review_changes();",
       );
@@ -188,6 +195,34 @@ test("final-decision SQL trigger locks review metadata in public and private sch
       );
       await db.exec(
         `UPDATE ${schema}.warranty_registrations SET status='approved',approval_confirmed=true,reviewed_by='admin',reviewed_at=now(),review_notes='Final purchase decision',version=2`,
+      );
+      await db.exec(
+        await readFile(
+          "database/migrations/011-warranty-login-mobile.sql",
+          "utf8",
+        ),
+      );
+      const upgraded = (
+        await db.query(
+          `SELECT mobile,login_mobile,status,review_notes,reviewed_by,version FROM ${schema}.warranty_registrations`,
+        )
+      ).rows[0];
+      assert.equal(upgraded.login_mobile, upgraded.mobile);
+      assert.equal(upgraded.status, "approved");
+      assert.equal(upgraded.review_notes, "Final purchase decision");
+      assert.equal(upgraded.reviewed_by, "admin");
+      assert.equal(upgraded.version, 2);
+      await assert.rejects(
+        db.exec(
+          `UPDATE ${schema}.warranty_registrations SET login_mobile='invalid'`,
+        ),
+        /check constraint/,
+      );
+      await assert.rejects(
+        db.exec(
+          `UPDATE ${schema}.warranty_registrations SET login_mobile=NULL`,
+        ),
+        /not-null constraint/,
       );
       for (const update of [
         "status='rejected'",

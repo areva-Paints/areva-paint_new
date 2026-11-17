@@ -343,6 +343,7 @@ CREATE TABLE warranty_registrations (
   reference varchar(100) NOT NULL UNIQUE CHECK (btrim(reference) <> ''),
   submission_id uuid NOT NULL,
   mobile varchar(13) NOT NULL CHECK (mobile ~ '^\+91[6-9][0-9]{9}$'),
+  login_mobile varchar(13) NOT NULL CHECK (login_mobile ~ '^\+91[6-9][0-9]{9}$'),
   verification_mode varchar(12) NOT NULL CHECK (verification_mode IN ('demo', 'whatsapp')),
   mobile_verified boolean NOT NULL DEFAULT false,
   status varchar(20) NOT NULL DEFAULT 'pending_review'

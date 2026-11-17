@@ -31,6 +31,7 @@ export function warrantySearch(search: string) {
       row.reference,
       row.customerName,
       row.mobile,
+      row.loginMobile || row.mobile,
       row.email,
       row.alternateMobile,
       row.productName,
@@ -77,6 +78,7 @@ export function warrantySearch(search: string) {
     // Also accept full phone numbers copied with spaces, brackets or hyphens.
     const phones = [
       row.mobile,
+      row.loginMobile || row.mobile,
       row.alternateMobile,
       row.dealerPhone,
       row.applicatorPhone,

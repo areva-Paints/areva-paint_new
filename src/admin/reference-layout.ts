@@ -1,4 +1,5 @@
 import { getProductDisplayDetails } from '../data/productDetails';
+import { BrandLogo } from '../components/BrandLogo';
 import { ProductSummaryHeading } from '../components/ProductSummaryHeading';
 import { ProductDocumentDownloads } from '../components/CertificationCards';
 import { createElement } from "react";
@@ -22,10 +23,9 @@ const escapeHtml = (value: string) =>
 export function referenceLayout(html: string, content: SiteContent) {
   html = html.replace(
     "</head>",
-    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"></head>',
+    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/brand.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"></head>',
   );
-  const logo =
-    html.match(/<a class="logo"[^>]*>(<img[^>]+>)<\/a>/)?.[1] || "Areva Paints";
+  const logo = renderToStaticMarkup(createElement(BrandLogo));
   html = html.replace(
     /<header>[\s\S]*?<\/header>/,
     () => `<header class="ref-header">

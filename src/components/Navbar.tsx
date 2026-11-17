@@ -1,4 +1,5 @@
 import { contentUrl } from '../site-content';
+import { BrandLogo } from './BrandLogo';
 import { AccountAccess } from "./AccountAccess";
 import React, { useState } from "react";
 import {
@@ -50,33 +51,14 @@ export const Navbar: React.FC<NavbarProps> = ({
     <>
       {/* Sleek, Modern, Architectural Top Navigation Bar */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/80 transition-all duration-200 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
-          {/* Brand Logo: Clean Luxury Wordmark */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center justify-between gap-4">
+          {/* Official Areva Paints logo */}
           <a
             href="#top"
             className="flex items-center gap-3 shrink-0 group focus:outline-none rounded-xl"
             aria-label="Areva Paints Home"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-stone-950 text-white flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-105">
-              {/* Minimalist 3-droplet mark */}
-              <div className="flex items-center gap-1">
-                <span className="w-1.5 h-3.5 rounded-full bg-amber-500 transform -rotate-12"></span>
-                <span className="w-1.5 h-4.5 rounded-full bg-rose-500"></span>
-                <span className="w-1.5 h-3 rounded-full bg-teal-500 transform rotate-12"></span>
-              </div>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="font-display font-extrabold text-lg sm:text-2xl tracking-tight text-stone-950 leading-none">
-                AREVA
-                <span className="text-amber-700 font-semibold ml-1.5 text-sm sm:text-xl">
-                  PAINTS
-                </span>
-              </span>
-              <span className="hidden sm:block text-[10px] tracking-widest uppercase text-stone-500 font-semibold mt-1">
-                Architectural Wall Coatings
-              </span>
-            </div>
+            <BrandLogo />
           </a>
 
           {/* Center Navigation Links (Clean, spacious, single-line) */}

@@ -8,12 +8,14 @@ import {
   X,
 } from "lucide-react";
 import { contentOrigin, contentUrl } from "../site-content";
+import { BrandLogo } from "../components/BrandLogo";
 import { warrantyApi } from "./api";
 import { type WarrantyInput, type ReceiptInfo } from "./types";
 import type { Product } from "../types";
 import type { Dealer } from "../admin/content-types";
 import { CATEGORIES } from "../data/paintsData";
 import "./warranty.css";
+import "../../public/assets/page-gradient.css";
 
 type Options = {
   otpMode: "demo" | "disabled";
@@ -293,18 +295,21 @@ export function WarrantyPage() {
     <div className="wr-page">
       <header className="wr-header">
         <a href="/" aria-label="Areva Paints home" onClick={backToWebsite}>
-          <img src="/assets/images/areva-brand-logo.png" alt="Areva Paints" />
+          <BrandLogo />
         </a>
         <a href="/" className="wr-back" onClick={backToWebsite}>
           <ArrowLeft size={17} />
           Back to website
         </a>
       </header>
-      <main className={"wr-main " + (step === "form" ? "wr-main-form" : "")}>
+      <section
+        className="page-gradient-banner wr-page-banner"
+        aria-labelledby="wr-title"
+      >
         <div className="wr-intro">
-          <div>
+          <div className="page-gradient-heading">
             <p className="wr-kicker">AREVA PAINTS · AFTERCARE</p>
-            <h1 ref={headingRef} tabIndex={-1}>
+            <h1 id="wr-title" ref={headingRef} tabIndex={-1}>
               Product <span>Warranty Registration</span>
             </h1>
             <p>Keep your purchase details together, for care that lasts.</p>
@@ -315,6 +320,8 @@ export function WarrantyPage() {
             <span>WARRANTY CARE</span>
           </div>
         </div>
+      </section>
+      <main className={"wr-main " + (step === "form" ? "wr-main-form" : "")}>
         {error && (
           <p className="wr-error" role="alert">
             {error}
@@ -483,13 +490,6 @@ export function WarrantyPage() {
                             ))}
                         </select>
                       </label>
-                      {input(
-                        "purchaseDate",
-                        "Date of purchase",
-                        true,
-                        "date",
-                        10,
-                      )}
                       {input("quantity", "Number of packs", true, "text", 20)}
                       <label className="wr-field">
                         Pack size / unit *
@@ -567,12 +567,21 @@ export function WarrantyPage() {
                         500,
                       )}
                       {input("dealerCity", "Dealer city", true)}
+                    </div>
+                    <div className="wr-grid wr-invoice-details">
                       {input(
                         "invoiceNumber",
-                        "Invoice / receipt number",
+                        "Purchase invoice number",
                         true,
                         "text",
                         100,
+                      )}
+                      {input(
+                        "purchaseDate",
+                        "Date of purchase",
+                        true,
+                        "date",
+                        10,
                       )}
                     </div>
                     <div className="wr-receipt">

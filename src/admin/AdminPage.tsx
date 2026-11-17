@@ -1,4 +1,5 @@
 import { WarrantyManager } from "../warranty/WarrantyManager";
+import { BrandLogo } from "../components/BrandLogo";
 import { CertificationsManager } from "./CertificationsManager";
 import {
   announceAdminSignout,
@@ -557,7 +558,7 @@ export function AdminPage() {
             Back to website
           </a>
           <div className="adm-logo">
-            a<span>.</span>
+            <BrandLogo />
           </div>
           <span className="adm-eyebrow">AREVA PAINTS / ADMINISTRATION</span>
           <h1>
@@ -635,8 +636,8 @@ export function AdminPage() {
   const page = (
     <div className="adm-root">
       <aside className="adm-sidebar" aria-label="Administration sidebar">
-        <a className="adm-brand" href="/">
-          areva<span>PAINTS</span>
+        <a className="adm-brand" href="/" aria-label="Areva Paints home">
+          <BrandLogo />
         </a>
         <div className="adm-workspace">
           <span className="adm-status-dot" />

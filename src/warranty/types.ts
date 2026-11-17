@@ -59,6 +59,7 @@ export interface WarrantyRegistration extends Omit<
   id: string;
   reference: string;
   mobile: string;
+  loginMobile: string;
   categoryId: string;
   categoryName: string;
   productName: string;

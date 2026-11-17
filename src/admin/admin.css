@@ -61,18 +61,9 @@
   flex-shrink: 0;
 }
 .adm-brand {
-  font-size: 39px;
-  font-weight: 900;
-  letter-spacing: -2.5px;
-  line-height: 1;
-  color: #552e81 !important;
+  display: inline-flex;
+  align-self: flex-start;
   padding-left: 15px;
-}
-.adm-brand span {
-  font-size: 9px;
-  display: block;
-  letter-spacing: 5px;
-  margin: 8px 0 0 3px;
 }
 .adm-workspace {
   background: #f7f5fb;
@@ -777,14 +768,7 @@
   margin-bottom: 50px;
 }
 .adm-logo {
-  font-size: 60px;
-  font-weight: 900;
-  line-height: 1;
-  color: #6b4294;
   margin-bottom: 20px;
-}
-.adm-logo span {
-  color: #e4b58c;
 }
 .adm-login h1 {
   font-size: 38px;
@@ -893,12 +877,7 @@
     border-bottom: 1px solid #eee7f3;
   }
   .adm-brand {
-    font-size: 28px;
     padding-left: 0;
-  }
-  .adm-brand span {
-    font-size: 7px;
-    letter-spacing: 4px;
   }
   .adm-workspace,
   .adm-nav-title,

@@ -404,6 +404,7 @@ export function WarrantyManager() {
             <tr>
               <th>Reference / date</th>
               <th>Customer</th>
+              <th>Login phone number</th>
               <th>Product</th>
               <th>Dealer / invoice</th>
               <th>Status</th>
@@ -413,7 +414,7 @@ export function WarrantyManager() {
           <tbody>
             {busy && (
               <tr>
-                <td colSpan={6}>Searching registrations…</td>
+                <td colSpan={7}>Searching registrations…</td>
               </tr>
             )}
             {!busy &&
@@ -432,6 +433,7 @@ export function WarrantyManager() {
                       {row.city}, {row.state}
                     </small>
                   </td>
+                  <td>{row.loginMobile || row.mobile}</td>
                   <td>
                     {row.productName}
                     <small>{row.categoryName}</small>
@@ -700,7 +702,11 @@ export function WarrantyManager() {
               <h3>Customer & site</h3>
               <dl className="wr-detail-grid">
                 {field("Customer", selected.customerName)}
-                {field("Mobile", selected.mobile)}
+                {field("Primary mobile number", selected.mobile)}
+                {field(
+                  "Login phone number",
+                  selected.loginMobile || selected.mobile,
+                )}
                 {field("Email", selected.email)}
                 {field("Alternate mobile", selected.alternateMobile)}
                 {field("Site address", selected.siteAddress)}
@@ -731,7 +737,7 @@ export function WarrantyManager() {
                 {field("Dealer phone", selected.dealerPhone)}
                 {field("Dealer address", selected.dealerAddress)}
                 {field("Dealer city", selected.dealerCity)}
-                {field("Invoice number", selected.invoiceNumber)}
+                {field("Purchase invoice number", selected.invoiceNumber)}
                 {field("Receipt", selected.receipt.name)}
               </dl>
               <a
