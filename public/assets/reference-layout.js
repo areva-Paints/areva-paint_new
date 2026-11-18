@@ -2,6 +2,50 @@
   "use strict";
   const main = document.querySelector("main#top");
   if (!main || !document.querySelector("#home.ref-home")) return;
+  const more = document.querySelector(".ref-more");
+  const moreSummary = more?.querySelector("summary");
+  const morePanel = more?.querySelector(".ref-more-panel");
+  function closeMore(restoreFocus = false) {
+    if (!more?.open) return;
+    more.open = false;
+    if (restoreFocus) moreSummary.focus({ preventScroll: true });
+  }
+  function fitMore() {
+    if (!more?.open) return;
+    const bottom = document
+      .querySelector(".ref-header")
+      .getBoundingClientRect().bottom;
+    more.style.setProperty(
+      "--ref-more-available",
+      Math.max(0, window.innerHeight - bottom - 20) + "px",
+    );
+  }
+  more?.addEventListener("toggle", fitMore);
+  moreSummary?.addEventListener("click", () => requestAnimationFrame(fitMore));
+  more?.addEventListener("focusout", (event) => {
+    if (
+      event.relatedTarget instanceof Node &&
+      !more.contains(event.relatedTarget)
+    )
+      closeMore();
+  });
+  morePanel?.addEventListener("click", (event) => {
+    if (!(event.target instanceof Element)) return;
+    if (event.target.closest("[data-close-more]")) closeMore(true);
+    else if (event.target.closest("a")) closeMore();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (event.target instanceof Node && !more?.contains(event.target))
+      closeMore();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && more?.open) {
+      event.preventDefault();
+      closeMore(true);
+    }
+  });
+  window.addEventListener("resize", fitMore);
+  window.addEventListener("scroll", fitMore, { passive: true });
   const known = new Set([
     "home",
     "products",
@@ -195,7 +239,12 @@
     });
     document.querySelectorAll("[data-ref-nav]").forEach((link) => {
       const active =
-        link.dataset.refNav === (target.id === "solutions" ? "products" : view === "our-story" || view === "certs" ? "about" : view);
+        link.dataset.refNav ===
+        (target.id === "solutions"
+          ? "products"
+          : view === "our-story" || view === "certs"
+            ? "about"
+            : view);
       link.classList.toggle("active", active);
       if (active) link.setAttribute("aria-current", "page");
       else link.removeAttribute("aria-current");

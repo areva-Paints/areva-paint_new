@@ -1,5 +1,6 @@
 import { getProductDisplayDetails } from '../data/productDetails';
 import { BrandLogo } from '../components/BrandLogo';
+import { MoreMenuCards } from '../components/MoreMenuCards';
 import { ProductSummaryHeading } from '../components/ProductSummaryHeading';
 import { ProductDocumentDownloads } from '../components/CertificationCards';
 import { createElement } from "react";
@@ -23,7 +24,7 @@ const escapeHtml = (value: string) =>
 export function referenceLayout(html: string, content: SiteContent) {
   html = html.replace(
     "</head>",
-    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/brand.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"></head>',
+    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/brand.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"><link rel="stylesheet" href="/assets/more-menu.css"></head>',
   );
   const logo = renderToStaticMarkup(createElement(BrandLogo));
   html = html.replace(
@@ -38,11 +39,7 @@ export function referenceLayout(html: string, content: SiteContent) {
         <li><a href="#calculator" data-ref-nav="calculator">Paint Calculator</a></li>
         <li><a href="#gallery" data-ref-nav="gallery">Gallery</a></li>
         <li><a href="/warranty" target="_top">Warranty Registration</a></li>
-        <li><details class="ref-more"><summary>More</summary><div>
-          <a href="#services" data-ref-nav="services">Services</a><a href="#about" data-ref-nav="about">About Areva</a>
-          <a href="#portals" data-ref-nav="portals">Authorised dealers</a><a href="#certs">Documents</a><a href="#contact" data-ref-nav="contact">Contact</a>
-          <a href="/admin" target="_top">Admin portal</a>
-        </div></details></li>
+        <li><details class="ref-more"><summary aria-controls="ref-more-panel">More<svg class="ref-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>${renderToStaticMarkup(createElement(MoreMenuCards))}</details></li>
       </ul></nav><div class="ref-nav-actions"><button class="btn btn-line" data-r="Customer">Login</button><a class="btn btn-main" href="#contact">Enquire now</a></div>
     </div></header>`,
   );

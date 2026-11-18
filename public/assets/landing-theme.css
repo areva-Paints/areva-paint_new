@@ -258,10 +258,7 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
 .ref-header nav a:hover { text-decoration: none; }
 .ref-nav-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .ref-header .btn { padding: 11px 19px; font-size: 12px; }
-.ref-more { position: relative; }
 .ref-more summary { cursor: pointer; padding: 10px 0; }
-.ref-more > div { position: absolute; z-index: 30; min-width: 210px; top: 100%; right: 0; padding: 12px 20px; background: #fff; border: 1px solid var(--brand-line); box-shadow: var(--shadow); border-radius: 14px; }
-.ref-more > div a { display: block; }
 .ref-home { padding: 0; }
 .ref-hero { padding: 55px 0; background: linear-gradient(112deg,#260c3b 5%,#5e1c83 44%,#0756a6 78%,#e6a258 110%); color: #fff; }
 .ref-hero-grid { width: min(1280px, 92%); display: grid; grid-template-columns: .85fr 1.15fr; gap: 48px; align-items: center; }
@@ -350,7 +347,6 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
   .ref-header nav { order: 3; width: 100%; margin: 0; overflow-x: auto; }
   .ref-header nav ul { width: max-content; gap: 24px; }
   .ref-nav-actions { margin-left: auto; }
-  .ref-more > div { position: fixed; top: 150px; right: 12px; max-height: calc(100dvh - 166px); overflow-y: auto; }
   html { scroll-padding-top: 160px; }
   .ref-hero-grid { gap: 28px; }
 }
