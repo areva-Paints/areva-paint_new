@@ -1,11 +1,18 @@
+/*
+ * Filter and present CMS campaign cards with image fallbacks and safe external links.
+ * Detail dialogs preserve the selected card context.
+ */
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Image as ImageIcon, X } from "lucide-react";
 import type { GalleryAd } from "../admin/content-types";
 
+/* Format the server campaign timestamp for card metadata. */
 const adDate = (ad: GalleryAd) =>
   Date.parse(ad.updatedAt) || Date.parse(ad.createdAt) || 0;
+/* Map supported campaign channels to their public labels. */
 const channelName = (channel: GalleryAd["channel"]) =>
   channel === "social" ? "Social media" : "Digital";
+/* Return only a valid HTTPS destination for a campaign action. */
 const externalLink = (value: string) => {
   try {
     const url = new URL(value);
@@ -15,6 +22,7 @@ const externalLink = (value: string) => {
   }
 };
 
+/* Keep campaign cards readable when an optional image fails to load. */
 function AdImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   const [unavailable, setUnavailable] = useState(false);
   useEffect(() => {
@@ -40,6 +48,7 @@ function AdImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   );
 }
 
+/* Filter and present CMS campaign cards with image fallbacks and safe external links. */
 export function GalleryAds({ ads = [] }: { ads?: GalleryAd[] }) {
   const [channel, setChannel] = useState<"all" | GalleryAd["channel"]>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -74,6 +83,7 @@ export function GalleryAds({ ads = [] }: { ads?: GalleryAd[] }) {
     };
   }, [Boolean(selected)]);
 
+  /* Dismiss the current dialog and release its temporary selection state. */
   const close = () => {
     dialogRef.current?.close();
     setSelectedId(null);

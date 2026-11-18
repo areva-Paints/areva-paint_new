@@ -1,3 +1,6 @@
+/*
+ * Render the optional React studio hero and its product/enquiry navigation actions.
+ */
 import React, { useState } from 'react';
 import { Eye, ArrowRight, ShieldCheck, Droplets, Sparkles, CheckCircle2 } from 'lucide-react';
 import { COLOR_SHADES } from '../data/paintsData';
@@ -8,6 +11,7 @@ interface HeroProps {
   onSelectColor: (hex: string, name: string) => void;
 }
 
+/* Render the optional React studio hero and its product/enquiry navigation actions.. */
 export const Hero: React.FC<HeroProps> = ({
   onOpenVisualizer,
   onExploreProducts,

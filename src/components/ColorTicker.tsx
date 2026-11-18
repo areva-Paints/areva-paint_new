@@ -1,3 +1,6 @@
+/*
+ * Render the decorative scrolling shade strip used in the optional React studio.
+ */
 import { useSiteContent } from '../admin/ContentContext';
 import React from 'react';
 import { COLOR_SHADES as DEFAULT_SHADES } from '../data/paintsData';
@@ -7,6 +10,7 @@ interface ColorTickerProps {
   onOpenVisualizer: () => void;
 }
 
+/* Render the decorative scrolling shade strip used in the optional React studio.. */
 export const ColorTicker: React.FC<ColorTickerProps> = ({
   onSelectColor,
   onOpenVisualizer,

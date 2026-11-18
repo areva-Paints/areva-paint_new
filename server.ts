@@ -1,3 +1,7 @@
+/*
+ * Assemble the Express service: security precedes body parsing, private APIs precede static files, and only development loads Vite.
+ * Persistent records live in CONTENT_DATA_DIR.
+ */
 import "dotenv/config";
 import { warrantyRouter, warrantyAdminRouter } from "./src/server/warranty";
 import {
@@ -21,7 +25,6 @@ import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { createServer as createViteServer } from "vite";
 import { CATEGORIES } from "./src/data/paintsData";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -228,6 +231,7 @@ export const DEALER_LOCATIONS: DealerDepot[] = [
 // ==========================================
 
 // 1. System Health Check
+/* GET /api/health: Report service readiness and catalogue counts without returning private records. */
 app.get("/api/health", (_req: Request, res: Response) => {
   res.json({
     status: "ok",
@@ -245,6 +249,7 @@ app.get("/api/health", (_req: Request, res: Response) => {
 });
 
 // 2. Coatings Catalog Endpoint
+/* GET /api/products: Read the current public catalogue with validated category/search filters. */
 app.get("/api/products", (req: Request, res: Response) => {
   const { category, search } = req.query;
 
@@ -273,6 +278,7 @@ app.get("/api/products", (req: Request, res: Response) => {
 });
 
 // 3. Single Coating Details Endpoint
+/* GET /api/products/:id: Return one public product or a missing-product response. */
 app.get("/api/products/:id", (req: Request, res: Response) => {
   const product = readContent().products.find((p) => p.id === req.params.id);
   if (!product) {
@@ -284,6 +290,7 @@ app.get("/api/products/:id", (req: Request, res: Response) => {
 });
 
 // 4. Architectural Shades Palette
+/* GET /api/shades: Filter the public shade palette using the shared family/tone rules. */
 app.get("/api/shades", (req: Request, res: Response) => {
   const all = readContent().colours;
   const family =
@@ -308,6 +315,7 @@ app.get("/api/shades", (req: Request, res: Response) => {
 });
 
 // 5. Authorized Dealer Depots
+/* GET /api/dealers: Filter current CMS dealers without using the legacy fallback constant. */
 app.get("/api/dealers", (req: Request, res: Response) => {
   const { state } = req.query;
   let depots = [...readContent().dealers];
@@ -328,6 +336,7 @@ app.get("/api/dealers", (req: Request, res: Response) => {
 });
 
 // 6. Paint Coverage Calculation Endpoint
+/* POST /api/calculator/estimate: Validate dimensions and estimate quantities from authoritative catalogue coverage. */
 app.post(
   "/api/calculator/estimate",
   rateLimit(120, 60000),
@@ -443,6 +452,7 @@ app.post(
 );
 
 // 7. Enquiries Submission Endpoint
+/* POST /api/enquiries: Persist a validated private enquiry on POST; listing requires admin authorization. */
 app.post(
   "/api/enquiries",
   rateLimit(5, 15 * 60000),
@@ -470,6 +480,7 @@ app.post(
     }
   },
 );
+/* GET /api/enquiries: Persist a validated private enquiry on POST; listing requires admin authorization. */
 app.get("/api/enquiries", requireAdmin, (_req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-store");
   const enquiries = readEnquiries();
@@ -541,6 +552,7 @@ app.get(
 );
 
 // 9c. Source Files JSON Manifest (for 100% in-browser client JSZip packaging)
+/* GET /api/project/source-files: Return an admin-only text manifest excluding secrets and private runtime files. */
 app.get("/api/project/source-files", (_req: Request, res: Response) => {
   try {
     const files: Record<string, string> = {};
@@ -548,6 +560,7 @@ app.get("/api/project/source-files", (_req: Request, res: Response) => {
 
     const textFiles = [
       "package.json",
+      "package-lock.json",
       "tsconfig.json",
       "vite.config.ts",
       "server.ts",
@@ -556,18 +569,24 @@ app.get("/api/project/source-files", (_req: Request, res: Response) => {
       ".env.example",
       ".gitignore",
       "metadata.json",
+      ".nvmrc",
+      "render.yaml",
+      "AREVA_TECHNICAL_DOCUMENTATION.md",
     ];
 
     for (const f of textFiles) {
       const full = path.join(rootDir, f);
-      if (fs.existsSync(full)) {
+      if (fs.existsSync(full) && fs.lstatSync(full).isFile()) {
         files[f] = fs.readFileSync(full, "utf-8");
       }
     }
 
+    /* Collect only supported text sources without following symlinks or hidden directories. */
     function readTextDir(dir: string, relPath: string) {
       const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const entry of entries) {
+        /* Hidden entries may contain operator secrets; the text export skips them. */
+        if (entry.name.startsWith(".")) continue;
         const fullPath = path.join(dir, entry.name);
         const rel = path.join(relPath, entry.name).replace(/\\/g, "/");
         if (entry.isDirectory()) {
@@ -579,16 +598,23 @@ app.get("/api/project/source-files", (_req: Request, res: Response) => {
             entry.name.endsWith(".css") ||
             entry.name.endsWith(".json") ||
             entry.name.endsWith(".html") ||
-            entry.name.endsWith(".md"))
+            entry.name.endsWith(".md") ||
+            entry.name.endsWith(".js") ||
+            entry.name.endsWith(".mjs") ||
+            entry.name.endsWith(".cjs") ||
+            entry.name.endsWith(".sql"))
         ) {
           files[rel] = fs.readFileSync(fullPath, "utf-8");
         }
       }
     }
 
-    const srcDir = path.join(rootDir, "src");
-    if (fs.existsSync(srcDir)) {
-      readTextDir(srcDir, "src");
+    /* Include maintained text/config sources; binary artwork/fonts stay in the full ZIP. */
+    for (const folder of ["src", "public", "scripts", "tests", "docs", "database"]) {
+      const directory = path.join(rootDir, folder);
+      if (fs.existsSync(directory) && fs.lstatSync(directory).isDirectory()) {
+        readTextDir(directory, folder);
+      }
     }
 
     res.json({ success: true, count: Object.keys(files).length, files });
@@ -600,6 +626,7 @@ app.get("/api/project/source-files", (_req: Request, res: Response) => {
 });
 
 // 10. Project Summary & Architecture Info Endpoint
+/* GET /api/project/info: Return project metadata only after the shared source-export admin guard. */
 app.get("/api/project/info", (_req: Request, res: Response) => {
   res.json({
     name: "Areva Paints Full-Stack Architectural Platform",
@@ -608,7 +635,7 @@ app.get("/api/project/info", (_req: Request, res: Response) => {
     modules: {
       backend: "Express 4.x + REST API + tsx",
       frontend: "React 19 + TypeScript + Tailwind CSS v4 + Motion",
-      xrStudio: "WebXR 60fps Live Camera Real-Time Wall Recoloring Canvas",
+      xrStudio: "Browser camera and canvas paint-colour preview",
       visualizer: "Room Interior Studio with 5 Architect-Curated Scenes",
       calculator: "Formula-Aware Liters Coverage & Packaging Distribution",
       dealers: "4-State Regional Depot Distributor Routing Engine",
@@ -617,7 +644,7 @@ app.get("/api/project/info", (_req: Request, res: Response) => {
       dev: "npm run dev (Runs Express server on port 3000 with Vite middleware)",
       build: "npm run build (Creates production Vite distribution in dist/)",
       start: "npm start (Starts production Express server serving dist/)",
-      lint: "npm run lint (TypeScript strict type validation)",
+      lint: "npm run lint (TypeScript type checking)",
     },
     downloadEndpoint: "/api/project/download",
   });
@@ -631,6 +658,7 @@ app.use("/api", (_req, res) =>
   res.status(404).json({ error: "API endpoint not found." }),
 );
 
+/* Reject exposed data-directory locations, mount development or production assets, then start the single Express process. */
 async function startServer() {
   for (const exposed of ["public", "dist", "src"]) {
     const relative = path.relative(path.resolve(__dirname, exposed), dataDir);
@@ -642,6 +670,8 @@ async function startServer() {
       throw Error("CONTENT_DATA_DIR must be outside public, dist and src.");
   }
   if (!isProd) {
+    /* Load build tooling only for local development; production serves dist. */
+    const { createServer: createViteServer } = await import("vite");
     // In dev: mount Vite middlewares so HMR and SPA routing work together on port 3000
     const vite = await createViteServer({
       server: { middlewareMode: true },

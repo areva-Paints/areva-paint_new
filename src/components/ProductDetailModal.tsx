@@ -1,3 +1,7 @@
+/*
+ * Display shared product specifications and provide a printable product summary.
+ * Uploaded technical documents are managed separately through the CMS.
+ */
 import { productCoverageText, productPacking } from '../data/productDetails';
 import { ProductWarrantyBadge } from './ProductSummaryHeading';
 import { ProductDocumentDownloads } from './CertificationCards';
@@ -16,6 +20,7 @@ interface ProductDetailModalProps {
   onOpenVisualizer: () => void;
 }
 
+/* Display shared product specifications and provide a printable product summary. */
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   product,
   onClose,
@@ -27,6 +32,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const content = useSiteContent();
   if (!product) return null;
 
+  /* Print the displayed product summary using the current catalogue values. */
   const handlePrintTDS = () => {
     window.print();
   };

@@ -1,3 +1,4 @@
+/* Style shade family/tone filters, cards and public PDF shade references. */
 /* Shared colour-family browser for the website and admin preview. */
 .shade-library {
   margin-block: 36px;
@@ -216,6 +217,7 @@
   outline: 3px solid #a482b3;
   outline-offset: 3px;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) {
   .shade-tones-panel {
     padding: 16px;
@@ -344,11 +346,13 @@
 .colour-shade-panel .shade-swatch strong {
   font-size: 12px;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 900px) {
   #visualizer .colour-studio-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) {
   .colour-collection-heading {
     margin-bottom: 28px;

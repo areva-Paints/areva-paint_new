@@ -1,3 +1,7 @@
+/*
+ * Filter CMS projects by category and open ordered album photos in an accessible dialog.
+ * Unavailable images retain descriptive fallbacks.
+ */
 import { GalleryReviews } from "./GalleryReviews";
 import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
@@ -22,9 +26,11 @@ import {
   type GalleryProjectFilter,
 } from "../data/galleryCategories";
 
+/* Format the project update timestamp for public Gallery metadata. */
 const projectDate = (project: GalleryProject) =>
   Date.parse(project.updatedAt) || Date.parse(project.createdAt) || 0;
 
+/* Render album artwork with descriptive fallback content when loading fails. */
 function GalleryImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   const [unavailable, setUnavailable] = useState(false);
   useEffect(() => {
@@ -50,6 +56,7 @@ function GalleryImage(props: React.ImgHTMLAttributes<HTMLImageElement>) {
   );
 }
 
+/* Filter CMS projects by category and open ordered album photos in an accessible dialog. */
 export function ProjectGallery() {
   const content = useSiteContent();
   const projects = useMemo(
@@ -96,10 +103,12 @@ export function ProjectGallery() {
     };
   }, [albumOpen]);
 
+  /* Close the album and restore focus to the card that opened it. */
   const closeAlbum = () => {
     dialogRef.current?.close();
     setSelectedId(null);
   };
+  /* Move through the selected album while wrapping at its photo boundaries. */
   const stepPhoto = (direction: number) => {
     if (photos.length < 2) return;
     setPhotoIndex(

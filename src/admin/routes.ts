@@ -1,5 +1,10 @@
+/*
+ * Expose public content separately from authenticated editing, history and upload APIs.
+ * Validate complete CMS payloads and restrict published documents to verified local PDF uploads.
+ */
 import { sensitiveRequestGuard, rateLimit } from "../server/security";
 import { prepareCertifications } from "./certification-store";
+import { validContactPhone } from "../data/contactDetails";
 import { GALLERY_PROJECT_CATEGORIES } from "../data/galleryCategories";
 import { OPTIONAL_PRODUCT_DETAILS } from "../data/productDetails";
 import {
@@ -48,7 +53,9 @@ contentRouter.post("/admin/login", adminLogin);
 contentRouter.post("/admin/logout", adminLogout);
 contentRouter.use("/admin", requireAdmin);
 contentRouter.use("/admin/users", usersRouter);
+/* Resolve the current admin name for saved activity records. */
 const adminActor = (req: express.Request) => currentUser(req)!.username;
+/* GET /admin/history: Filter and paginate saved private activity with validated query values. */
 contentRouter.get("/admin/history", (req, res) => {
   const selectedTab = ACTIVITY_TABS.find(
     (tab) => tab.id === (req.query.tab || "all"),
@@ -85,6 +92,7 @@ contentRouter.get("/admin/history", (req, res) => {
             .includes(search)),
     )
     .reverse();
+  /* Validate bounded finite numbers used in product calculation metadata. */
   const positive = (value: unknown, fallback: number) =>
     typeof value === "string" &&
     /^\d+$/.test(value) &&
@@ -108,6 +116,7 @@ contentRouter.get("/admin/history", (req, res) => {
     lastPublishedAt,
   });
 });
+/* GET /admin/session: Check the current admin identity and authoritative idle/absolute deadlines. */
 contentRouter.get("/admin/session", (req, res) => {
   const timing = adminSessionTiming(req),
     user = currentUser(req);
@@ -115,6 +124,7 @@ contentRouter.get("/admin/session", (req, res) => {
     return res.status(401).json({ error: "Please sign in as an admin." });
   res.json({ authenticated: true, user, timing });
 });
+/* POST /admin/activity: Accept real interaction timing only for a still-valid admin session. */
 contentRouter.post("/admin/activity", rateLimit(120, 60000), (req, res) => {
   const body = req.body;
   if (
@@ -134,16 +144,22 @@ contentRouter.post("/admin/activity", rateLimit(120, 60000), (req, res) => {
     return res.status(401).json({ error: "Please sign in as an admin." });
   res.json({ timing });
 });
+/* GET /content: Publish a curated CMS snapshot with no credentials, history or draft documents. */
 contentRouter.get("/content", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json(readPublicContent());
 });
+/* GET /admin/content: Read or atomically save a complete private CMS revision after validation. */
 contentRouter.get("/admin/content", (_req, res) => res.json(readContent()));
+/* Validate the entire CMS payload before any revision or file write. */
 function validate(c: SiteContent) {
+  /* Validate a bounded text field before accepting it into a stored record. */
   const text = (v: unknown, max = 3000) =>
     typeof v === "string" && v.length <= max;
+  /* Require a bounded, nonblank editor text value. */
   const nonempty = (v: unknown, max = 3000) =>
     text(v, max) && (v as string).trim().length > 0;
+  /* Accept supported public image references without allowing executable URL schemes. */
   const image = (v: unknown) => {
     if (!text(v, 2048) || /[\s\\<>"'\x00-\x1f\x7f]/.test(v as string))
       return false;
@@ -160,12 +176,15 @@ function validate(c: SiteContent) {
       return false;
     }
   };
+  /* Require a plain record before validating nested content. */
   const record = (v: unknown): v is Record<string, unknown> =>
     Boolean(v) && typeof v === "object" && !Array.isArray(v);
+  /* Reject invalid or duplicate entity identifiers within a content collection. */
   const ids = (items: { id: string }[]) =>
     items.every(
       (x) => record(x) && nonempty(x.id, 100) && /^[\w-]+$/.test(x.id),
     ) && new Set(items.map((x) => x.id)).size === items.length;
+  /* Restrict campaign destinations to valid HTTPS URLs. */
   const webLink = (v: string) => {
     if (!text(v, 2048) || !/^https:\/\/[^\s<>"']+$/i.test(v)) return false;
     try {
@@ -207,6 +226,7 @@ function validate(c: SiteContent) {
     !ids(c.galleryProjects)
   )
     throw Error("Keep up to 100 projects, each with a unique identifier.");
+  /* Validate album metadata and every image before staging project changes. */
   for (const project of c.galleryProjects) {
     project.location ??= "";
     project.description ??= "";
@@ -238,6 +258,7 @@ function validate(c: SiteContent) {
     !ids(c.galleryAds)
   )
     throw Error("Keep up to 100 ads, each with a unique identifier.");
+  /* Validate campaign channels and require a safe image or HTTPS destination. */
   for (const ad of c.galleryAds) {
     ad.image ??= "";
     ad.description ??= "";
@@ -262,6 +283,7 @@ function validate(c: SiteContent) {
     !ids(c.galleryReviews)
   )
     throw Error("Keep up to 100 reviews, each with a unique identifier.");
+  /* Treat review/customer text as bounded content and require safe optional portraits. */
   for (const review of c.galleryReviews) {
     review.detail ??= "";
     review.image ??= "";
@@ -276,6 +298,7 @@ function validate(c: SiteContent) {
         "Each review needs a reviewer name and review text. Add a valid image and location/description if required.",
       );
   }
+  /* Validate shared shade metadata and a case-insensitive unique code namespace. */
   const families = new Set<string>([
     ...COLOUR_FAMILIES,
     ...LEGACY_SHADE_FAMILIES,
@@ -304,6 +327,7 @@ function validate(c: SiteContent) {
   }
   if (!ids(c.shadeCards))
     throw Error("PDF shade cards need unique identifiers.");
+  /* Accept only local uploaded shade PDFs that still exist on the server. */
   for (const card of c.shadeCards)
     if (
       !nonempty(card.title, 150) ||
@@ -324,6 +348,7 @@ function validate(c: SiteContent) {
     throw Error(
       "Keep at least one product with configured coverage for the calculator.",
     );
+  /* Validate calculator numbers and technical display values as separate product concerns. */
   for (const p of c.products) {
     if (
       !nonempty(p.name, 150) ||
@@ -402,18 +427,20 @@ function validate(c: SiteContent) {
         "Invalid product coverage text, dilution, bases, packing or warranty label.",
       );
   }
+  /* Require usable dealer contacts and preserve bounded public address metadata. */
   for (const d of c.dealers)
     if (
       !["name", "city", "state", "address", "phone"].every((k) =>
         nonempty(d[k], 500),
       ) ||
       !/^\d{6}$/.test(d.pin) ||
-      !/^\+?[\d ()-]{7,25}$/.test(d.phone) ||
+      !validContactPhone(d.phone) ||
       !Array.isArray(d.badges) ||
       d.badges.length > 10 ||
       !d.badges.every((x) => text(x, 100))
     )
       throw Error("Dealers need contact details and a six-digit PIN code.");
+  /* Validate landing artwork while allowing optional campaign captions. */
   for (const l of c.landingImages) {
     l.label ??= "";
     l.roomType ??= "";
@@ -428,6 +455,7 @@ function validate(c: SiteContent) {
         "Landing images need a valid image. Caption, subtitle and recommended product are optional.",
       );
   }
+  /* Reject references to missing public uploads instead of saving broken CMS media. */
   for (const image of [
     ...c.landingImages,
     ...c.products,
@@ -447,6 +475,7 @@ function validate(c: SiteContent) {
       );
   }
 }
+/* Accept only supported, unique shade-tone values. */
 function validTones(tones: unknown): boolean {
   return (
     tones === undefined ||
@@ -456,6 +485,7 @@ function validTones(tones: unknown): boolean {
       tones.every((t) => SHADE_TONES.includes(t)))
   );
 }
+/* PUT /admin/content: Read or atomically save a complete private CMS revision after validation. */
 contentRouter.put("/admin/content", (req, res) => {
   try {
     const current = readContent(),
@@ -632,6 +662,7 @@ contentRouter.put("/admin/content", (req, res) => {
     res.status(400).json({ error: (e as Error).message });
   }
 });
+/* Associate an authenticated upload with a private activity event. */
 function uploadedActivity(
   req: express.Request,
   url: string,
@@ -669,6 +700,7 @@ function uploadedActivity(
     ),
   );
 }
+/* Refuse new uploads that would exceed the shared disk budget without removing files. */
 function uploadCapacity(dir: string, bytes: number) {
   const configured = Number(process.env.UPLOAD_STORAGE_MB || "512");
   const limit =
@@ -682,6 +714,7 @@ function uploadCapacity(dir: string, bytes: number) {
   }
   return used + bytes <= limit;
 }
+/* POST /admin/pdf-upload: Validate a PDF signature, filename and budget before recording a public document upload. */
 contentRouter.post("/admin/pdf-upload", (req, res) => {
   const match =
     typeof req.body.data === "string" &&
@@ -716,6 +749,7 @@ contentRouter.post("/admin/pdf-upload", (req, res) => {
   );
   res.status(201).json({ url: "/uploads/" + name });
 });
+/* POST /admin/upload: Validate supported image bytes and storage budget before assigning a server filename. */
 contentRouter.post("/admin/upload", (req, res) => {
   const match =
     typeof req.body.data === "string" &&
@@ -778,6 +812,7 @@ contentRouter.use("/content/legacy-image", (req, res) => {
   const [header, body] = image[1].split(",");
   res.type(header.slice(5).split(";")[0]).send(Buffer.from(body, "base64"));
 });
+/* Serve only allowed public media filenames with download/security headers for PDFs. */
 export function uploads() {
   return express.static(path.join(dataDir, "uploads"), {
     dotfiles: "deny",

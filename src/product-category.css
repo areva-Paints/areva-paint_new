@@ -1,3 +1,4 @@
+/* Style the category hub, category-specific landings and shared product imagery. */
 /* Dedicated category views for the public React site. */
 .areva-reference-site .pc-hub-cta { color: #f2e7f6; }
 .areva-reference-site .pc-hub-cta:hover { background: #ffffff18; color: #fff; }
@@ -86,6 +87,7 @@
 .areva-reference-site #products.pc-catalog .pc-empty h3 { margin: 0 0 10px; color: #361052; font-size: 22px; }
 .areva-reference-site #products.pc-catalog .pc-empty p { margin: 0 0 16px; color: #68636f; font-size: 14px; }
 .areva-reference-site #products.pc-catalog .pc-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1000px) {
   .areva-reference-site #products.pc-catalog .pc-category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .areva-reference-site #products.pc-catalog .pc-toolbar { align-items: stretch; flex-direction: column; gap: 18px; }
@@ -93,6 +95,7 @@
   .areva-reference-site #products.pc-catalog .pc-search { flex: 1; }
   .areva-reference-site #products.pc-catalog .pc-search input { width: 100%; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 700px) {
   .areva-reference-site #products.pc-catalog { padding-bottom: 48px; }
   .areva-reference-site #products.pc-catalog .pc-overview { padding-top: 40px; }
@@ -119,12 +122,14 @@
   .areva-reference-site #products.pc-catalog .pc-search-sort { flex-direction: column; gap: 10px; }
   .areva-reference-site #products.pc-catalog .pc-sort select { width: 100%; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (prefers-reduced-motion: reduce) {
   .areva-reference-site #products.pc-catalog .pc-category-card { transition: none; }
   .areva-reference-site #products.pc-catalog .pc-category-card:hover { transform: none; }
   .areva-reference-site #products.pc-catalog .pc-flip-inner { transition: none; }
 }
 
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:480px) {
   .areva-reference-site #products.pc-catalog .pc-category-grid { grid-template-columns: 1fr; }
 }

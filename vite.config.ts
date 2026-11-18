@@ -1,3 +1,7 @@
+/*
+ * Build the React/Tailwind client and configure development-only HMR.
+ * Production runs Express against dist and does not import Vite.
+ */
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";

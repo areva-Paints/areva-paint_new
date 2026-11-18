@@ -1,3 +1,7 @@
+/* Extend palette and PDF shade references with supported family and tone metadata.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- For an existing Areva installation. Fresh installs already include these columns.
 -- Supports the private Supabase areva schema or an ordinary public-schema install.
 -- Does not replace HEX values, import shades, or connect the website to SQL.

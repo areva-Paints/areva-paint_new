@@ -1,3 +1,6 @@
+/*
+ * Write private JSON through an exclusive restricted temporary file and atomic rename so interrupted writes do not publish partial records.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";

@@ -1,3 +1,6 @@
+/*
+ * Render server-side Gallery markup with escaped customer-managed fields, category filters and album data consumed by the public browser controller.
+ */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { GalleryReviews } from "../components/GalleryReviews";
@@ -11,6 +14,7 @@ import {
 } from "../data/galleryCategories";
 import type { GalleryAd, GalleryProject, GalleryReview } from "./content-types";
 
+/* Escape Gallery text before building server-rendered card markup. */
 const escapeHtml = (value: string) =>
   value.replace(
     /[&<>"']/g,
@@ -20,6 +24,7 @@ const escapeHtml = (value: string) =>
       ]!,
   );
 
+/* Allow only usable HTTPS campaign links in public Gallery markup. */
 const safeAdLink = (link: string) => {
   try {
     const url = new URL(link);

@@ -1,3 +1,6 @@
+/*
+ * Render the About Areva resource hub and its direct links to story, dealers, documents, support, warranty entry and admin access.
+ */
 import React from "react";
 import {
   Building2,
@@ -48,6 +51,7 @@ export const EXPLORE_AREVA_RESOURCES = [
   },
 ] as const;
 
+/* Render the About Areva resource hub and its direct links to story, dealers, documents, support, warranty entry and admin access.. */
 export function ExploreAreva({
   resolveLink = (path) => path,
 }: {

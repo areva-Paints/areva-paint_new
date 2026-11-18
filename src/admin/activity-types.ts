@@ -1,3 +1,6 @@
+/*
+ * Define saved-event actions, sections and paginated history responses shared by the backend and admin screens.
+ */
 export const ACTIVITY_SECTIONS = {
   landingImages: "Landing images",
   products: "Products",

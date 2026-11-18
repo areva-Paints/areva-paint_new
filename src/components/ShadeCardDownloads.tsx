@@ -1,6 +1,10 @@
+/*
+ * Filter and display public shade-card PDF references using supported family and tone metadata.
+ */
 import React from "react";
 import { FileText } from "lucide-react";
 import { useSiteContent } from "../admin/ContentContext";
+/* Filter and display public shade-card PDF references using supported family and tone metadata.. */
 export function ShadeCardDownloads() {
   const cards = useSiteContent()?.shadeCards || [];
   if (!cards.length) return null;

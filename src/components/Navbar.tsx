@@ -1,3 +1,6 @@
+/*
+ * Provide public navigation and the illustrated More menu with responsive dismissal and active-section styling.
+ */
 import { contentUrl } from '../site-content';
 import { BrandLogo } from './BrandLogo';
 import { AccountAccess } from "./AccountAccess";
@@ -32,6 +35,7 @@ interface NavbarProps {
   activeSection: string;
 }
 
+/* Provide public navigation and the illustrated More menu with responsive dismissal and active-section styling.. */
 export const Navbar: React.FC<NavbarProps> = ({
   onOpenVisualizer,
   onOpenCalculator,

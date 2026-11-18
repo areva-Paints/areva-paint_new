@@ -1,3 +1,7 @@
+/*
+ * Offer authenticated source archives and client-side ZIP assembly from the protected manifest.
+ * Frontend visibility checks supplement, but never replace, server authorization.
+ */
 import React, { useState, useEffect } from "react";
 import {
   Download,
@@ -24,6 +28,7 @@ interface ProjectDownloadModalProps {
   onClose: () => void;
 }
 
+/* Offer authenticated source archives and client-side ZIP assembly from the protected manifest. */
 export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
   isOpen,
   onClose,
@@ -90,6 +95,7 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
       </div>
     );
 
+  /* Copy the selected setup command and show a temporary confirmation. */
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedCommand(id);
@@ -97,6 +103,7 @@ export const ProjectDownloadModal: React.FC<ProjectDownloadModalProps> = ({
   };
 
   // Generate ZIP in-browser using JSZip to completely eliminate iframe proxy cutoffs
+  /* Fetch the admin-only source manifest and build a downloadable ZIP in the browser. */
   const handleGenerateInBrowser = async () => {
     setIsGeneratingClientZip(true);
     setClientZipDone(false);

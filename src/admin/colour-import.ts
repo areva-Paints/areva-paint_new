@@ -1,3 +1,7 @@
+/*
+ * Parse pasted/CSV-like shade rows into an editable preview with duplicate and metadata errors.
+ * Parsing does not save or publish content.
+ */
 import type { ColorShade } from "../types";
 import {
   COLOUR_FAMILIES,
@@ -6,6 +10,7 @@ import {
   type ShadeTone,
 } from "../data/shadeFamilies";
 export { COLOUR_FAMILIES } from "../data/shadeFamilies";
+/* Parse shade rows and return validation feedback without mutating persisted content. */
 export function parseColourRows(
   text: string,
   defaults: { family: ShadeFamily; tones: ShadeTone[] } = {

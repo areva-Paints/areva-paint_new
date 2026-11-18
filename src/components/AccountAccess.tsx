@@ -1,3 +1,7 @@
+/*
+ * Provide the public account sign-in dialog using a cookie namespace separate from admin sessions.
+ * Website roles and account status come from the backend.
+ */
 import React, { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { contentOrigin } from "../site-content";
@@ -7,6 +11,7 @@ import {
   type UserRole,
 } from "../admin/user-types";
 const roles: UserRole[] = ["customer", "architect", "builder"];
+/* Provide the public account sign-in dialog using a cookie namespace separate from admin sessions. */
 export function AccountAccess() {
   const [user, setUser] = useState<AccountUser | null>(null),
     [role, setRole] = useState<UserRole>("customer"),
@@ -46,6 +51,7 @@ export function AccountAccess() {
     if (open) dialog.current?.showModal();
     else dialog.current?.close();
   }, [open]);
+  /* Dismiss the current dialog and release its temporary selection state. */
   function close() {
     if (busy) return;
     setOpen(false);

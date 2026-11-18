@@ -1,3 +1,7 @@
+/*
+ * Resolve the shared content service and its public media URLs.
+ * A separately hosted frontend selects its backend at build time; admin cookies remain same-origin.
+ */
 import type { SiteContent } from "./admin/content-types";
 // The existing public Render Static Site and admin Web Service must read one store.
 // Other deployments can select their shared backend at build time.

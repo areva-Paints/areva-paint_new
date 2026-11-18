@@ -1,3 +1,6 @@
+/*
+ * Render shared public navigation, contact information and enquiry entry points.
+ */
 import React from 'react';
 import { BrandLogo } from './BrandLogo';
 import { ShieldCheck, Phone, Mail, MapPin, Sparkles, Download } from 'lucide-react';
@@ -9,6 +12,7 @@ interface FooterProps {
   onOpenDownload?: () => void;
 }
 
+/* Render shared public navigation, contact information and enquiry entry points.. */
 export const Footer: React.FC<FooterProps> = ({
   onOpenImprovements,
   onOpenVisualizer,

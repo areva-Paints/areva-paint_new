@@ -1,3 +1,6 @@
+/* Seed the eight stable catalogue category identifiers after a fresh schema.
+ * Do not use this file to overwrite existing CMS data or import customer records.
+ */
 -- Run after schema.sql in a new database. Matches the current category IDs.
 BEGIN;
 INSERT INTO categories (id, name, icon, description, accent_color, position) VALUES

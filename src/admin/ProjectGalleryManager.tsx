@@ -1,3 +1,7 @@
+/*
+ * Stage categorized project albums, descriptions and ordered photos.
+ * Stable project/photo identifiers preserve history across edits.
+ */
 import { AdminUpdated } from "./ActivityHistory";
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
@@ -19,6 +23,7 @@ import {
   type GalleryProjectCategory,
 } from "../data/galleryCategories";
 
+/* Keep label, required state and validation layout consistent across editor fields. */
 function Field({
   label,
   children,
@@ -34,7 +39,9 @@ function Field({
     </div>
   );
 }
+/* Allocate stable identifiers for project and photo drafts. */
 const id = () => crypto.randomUUID();
+/* Stage categorized project albums, descriptions and ordered photos. */
 export function ProjectGalleryManager({
   content,
   onChange,
@@ -63,6 +70,7 @@ export function ProjectGalleryManager({
     } else dialog.current?.close();
   }, [!!draft]);
   const locked = uploading || saving;
+  /* Initialize an isolated editor draft from the selected record before showing its dialog. */
   function open(project?: GalleryProject) {
     setError("");
     setProgress("");
@@ -86,6 +94,7 @@ export function ProjectGalleryManager({
           },
     );
   }
+  /* Update one draft field while preserving the other form values. */
   function patch(
     key: "title" | "location" | "description" | "category",
     value: string,
@@ -98,6 +107,7 @@ export function ProjectGalleryManager({
     }
     setDraft((p) => (p ? { ...p, [key]: value } : p));
   }
+  /* Send the selected file to its authenticated upload API and keep the returned server-owned URL. */
   async function upload(files: FileList | null) {
     if (!files?.length || !draft) return;
     const selected = Array.from(files);
@@ -159,6 +169,7 @@ export function ProjectGalleryManager({
       onBusy(false);
     }
   }
+  /* Validate the draft, then stage or publish the next CMS revision according to the selected action. */
   async function apply(publish: boolean) {
     if (!draft || locked) return;
     if (!draft.title.trim()) {

@@ -1,3 +1,6 @@
+/*
+ * Enhance server-rendered Gallery cards with accessible tabs, category filters, safe DOM-built album/campaign dialogs and focus restoration.
+ */
 (() => {
   "use strict";
 
@@ -6,6 +9,7 @@
   if (!section || !projectData || section.dataset.pgReady) return;
   section.dataset.pgReady = "true";
 
+  /* Decode only an array from the server-owned Gallery JSON block, falling back safely on malformed data. */
   const readData = (node) => {
     try {
       const data = JSON.parse(node?.textContent || "[]");
@@ -17,18 +21,21 @@
   const projects = readData(projectData);
   const ads = readData(document.getElementById("ga-ad-data"));
 
+  /* Create a DOM node and assign user-visible values through textContent. */
   const element = (tag, className, text) => {
     const node = document.createElement(tag);
     if (className) node.className = className;
     if (text !== undefined) node.textContent = text;
     return node;
   };
+  /* Create an accessible non-submit button for Gallery navigation. */
   const button = (className, label, text) => {
     const node = element("button", className, text);
     node.type = "button";
     node.setAttribute("aria-label", label);
     return node;
   };
+  /* Swap failed artwork for its descriptive fallback without leaving a broken image. */
   const observeImage = (image, fallback) => {
     const update = () => {
       const failed = image.complete && image.naturalWidth === 0;
@@ -41,6 +48,7 @@
   };
 
   const tabs = Array.from(section.querySelectorAll(".ga-tab[data-ga-tab]"));
+  /* Synchronize active-tab semantics, keyboard focus and the visible Gallery panel. */
   const selectTab = (selected, focus = false) => {
     tabs.forEach((tab) => {
       const active = tab === selected;

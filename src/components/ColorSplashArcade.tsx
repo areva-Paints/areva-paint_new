@@ -1,3 +1,7 @@
+/*
+ * Run the optional canvas colour-bubble game, pointer interactions and sound effects.
+ * Scores and rewards are local UI state, with no account or payment integration.
+ */
 import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Trophy, X, RotateCcw, Home } from 'lucide-react';
 import { COLOR_SHADES } from '../data/paintsData';
@@ -42,6 +46,7 @@ interface ColorSplashArcadeProps {
   onApplyPaletteToVisualizer?: (shadeHex: string) => void;
 }
 
+/* Run the optional canvas colour-bubble game, pointer interactions and sound effects. */
 export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPaletteToVisualizer }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [score, setScore] = useState(0);
@@ -66,6 +71,7 @@ export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPal
 
   const colors = COLOR_SHADES.slice(0, 10);
 
+  /* Play a short browser-generated game sound when audio is available. */
   const playChime = (streak: number) => {
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -91,6 +97,7 @@ export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPal
     }
   };
 
+  /* Create the next local game target and its motion state. */
   const spawnBubble = () => {
     if (!arenaRef.current) return;
     const isRainbow = Math.random() < 0.12;
@@ -117,6 +124,7 @@ export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPal
     });
   };
 
+  /* Apply a successful hit to the local score and particle effects. */
   const popBubble = (bubble: GameBubble) => {
     if (bubble.isPopping) return;
     bubble.isPopping = true;
@@ -211,6 +219,7 @@ export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPal
     }, 180);
   };
 
+  /* Reset the local round and start its animation/timing state. */
   const handleStartGame = () => {
     setScore(0);
     setTimeLeft(45);
@@ -247,6 +256,7 @@ export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPal
     }, 1000);
   };
 
+  /* Finish the round and release active game work. */
   const handleEndGame = () => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     if (spawnIntervalRef.current) clearInterval(spawnIntervalRef.current);
@@ -272,8 +282,11 @@ export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPal
 
     handleStartGame();
 
+    /* Start pointer tracking and register the first game hit. */
     const handlePointerDown = () => { isPointerDownRef.current = true; };
+    /* Stop continuous pointer tracking for the current gesture. */
     const handlePointerUp = () => { isPointerDownRef.current = false; };
+    /* Test pointer movement against visible targets during an active gesture. */
     const handlePointerMove = (e: PointerEvent) => {
       if (!isPointerDownRef.current || !arenaRef.current) return;
       const rect = arenaRef.current.getBoundingClientRect();
@@ -294,6 +307,7 @@ export const ColorSplashArcade: React.FC<ColorSplashArcadeProps> = ({ onApplyPal
     window.addEventListener('pointercancel', handlePointerUp);
     window.addEventListener('pointermove', handlePointerMove);
 
+    /* Advance bubble/particle animation and render the next canvas frame. */
     const loop = () => {
       if (arenaRef.current) {
         const rect = arenaRef.current.getBoundingClientRect();

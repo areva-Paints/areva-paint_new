@@ -1,4 +1,6 @@
+/* Style the admin workspace, scrollable pastel sidebar, gradient banners, editors, private history and responsive layouts. Keep sticky save controls reachable at narrow viewport sizes. */
 .adm-root,
+/* Use the shared brand palette for sign-in while keeping fields readable. */
 .adm-login {
   font-family: "DM Sans", Arial, sans-serif;
   color: #231c39;
@@ -40,6 +42,7 @@
     radial-gradient(ellipse at top right, #e9ddf8 0%, transparent 55%),
     linear-gradient(135deg, #f1ebf8 0%, #f7f3fc 55%, #edf6f3 100%);
 }
+/* Keep the desktop navigation independently scrollable so every CMS section remains reachable. */
 .adm-sidebar {
   width: 246px;
   position: fixed;
@@ -205,6 +208,7 @@
   color: #7d6588;
   font-size: 10px;
 }
+/* Lay out the editable workspace beside navigation without reserving a removed utility header. */
 .adm-main {
   margin-left: 246px;
   flex: 1;
@@ -297,6 +301,7 @@
   padding: 10px 17px;
   font-size: 12px !important;
 }
+/* Display current catalogue totals as compact status cards. */
 .adm-overview {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -346,6 +351,7 @@
   background: #e9f4ef;
   color: #77ab94;
 }
+/* Share the card surface for content lists and section-specific managers. */
 .adm-panel {
   border: 1px solid #e8e2ef;
   background: #fff;
@@ -374,6 +380,7 @@
 .adm-cert-attachment { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; border: 1px solid #e8dfef; border-radius: 10px; padding: 12px; margin: 12px 0; }
 .adm-cert-attachment .adm-field { flex: 1 1 200px; min-width: 0; }
 .adm-cert-attachment a { font-size: 12px; margin-bottom: 8px; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 700px) { .adm-cert-grid, .adm-cert-tools { grid-template-columns: minmax(0, 1fr); } .adm-certifications .adm-panel-toolbar { flex-wrap: wrap; } .adm-cert-dialog .adm-dialog-footer { flex-wrap: wrap; padding: 14px; } }
 .adm-panel-toolbar {
   padding: 23px 25px;
@@ -394,6 +401,7 @@
   display: block;
   margin-top: 4px;
 }
+/* Keep search inputs and icons aligned within list toolbars. */
 .adm-search {
   display: flex;
   align-items: center;
@@ -515,6 +523,7 @@
   margin: 0;
   max-width: 740px;
 }
+/* Keep save state and the primary persistence action visible while content scrolls. */
 .adm-savebar {
   position: fixed;
   bottom: 0;
@@ -535,6 +544,7 @@
   font-size: 11px;
   color: #a18fae;
 }
+/* Contain wide data tables without forcing the entire page to overflow. */
 .adm-table-scroll {
   overflow: auto;
 }
@@ -628,6 +638,7 @@
   background: #eaf5ef;
   color: #4a8061;
 }
+/* Contain editor dialogs with reachable close/save controls and a scrollable body. */
 .adm-dialog {
   margin: auto;
   border: 0;
@@ -869,11 +880,13 @@
   letter-spacing: -1px;
   z-index: 1;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (min-width: 1500px) {
   .adm-gallery {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1100px) {
   .adm-sidebar {
     width: 210px;
@@ -907,6 +920,7 @@
     gap: 10px;
   }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 760px) {
   .adm-root {
     display: block;
@@ -1063,6 +1077,7 @@
   }
 }
 
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 760px) {
   .adm-sidebar nav {
     display: grid;
@@ -1078,6 +1093,7 @@
   }
 }
 
+/* Arrange manual shade editing, PDF references and import previews. */
 .adm-colour-manager {
   display: grid;
   gap: 24px;
@@ -1169,11 +1185,13 @@
   padding: 4px;
   height: 44px;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1100px) {
   .adm-colour-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 760px) {
   .adm-colour-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1223,6 +1241,7 @@
   font-weight: 600;
   text-decoration: underline;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 760px) {
   .adm-dialog-footer {
     flex-wrap: wrap;
@@ -1235,6 +1254,7 @@
   }
 }
 
+/* Arrange categorized project drafts and ordered album-photo controls. */
 .adm-project-tools {
   padding: 20px 24px 0;
   display: grid;
@@ -1308,6 +1328,7 @@
 .adm-project-manager > .adm-gallery:empty {
   padding: 0;
 }
+/* Make the active Gallery content type visibly selected in the admin editor. */
 .adm-gallery-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -1422,6 +1443,7 @@
   padding: 7px 10px;
   font-size: 11px !important;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 760px) {
   .adm-project-tools {
     padding: 16px 16px 0;
@@ -1465,9 +1487,12 @@
 .adm-history-pages { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 14px; padding: 20px; font-size: 12px; }
 .adm-history-pages button, .adm-history .adm-secondary { display: inline-flex; align-items: center; gap: 7px; border: 1px solid #ddd2e8; border-radius: 8px; background: #fff; padding: 9px 12px; color: #684a80; cursor: pointer; }
 .adm-history-pages button:disabled { opacity: .45; cursor: default; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:700px) { .adm-history-filters { grid-template-columns: 1fr; } .adm-history .adm-panel-toolbar { align-items: flex-start; gap: 12px; flex-wrap: wrap; } }
 .adm-pdf-row > .adm-updated { min-width: 135px; margin-top: 0; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:700px) { .adm-pdf-row { flex-wrap: wrap; } .adm-pdf-row > .adm-updated { flex-basis: 100%; } }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:700px) {
   .adm-history table, .adm-history tbody { display: block; min-width: 0; width: 100%; }
   .adm-history thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
@@ -1484,6 +1509,7 @@
 .adm-history-tabs button:focus-visible { outline: 3px solid #ba9bdf; outline-offset: 3px; }
 .adm-history-scope { margin: 0; padding: 18px 20px 0; color: #6b507e; font-size: 12px; line-height: 1.6; }
 .adm-history-filters-simple { grid-template-columns: 2fr 1fr; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:700px) { .adm-history-tabs { display: grid; grid-template-columns: 1fr 1fr; } .adm-history-tabs button { min-width: 0; white-space: normal; line-height: 1.5; } .adm-history-filters-simple { grid-template-columns: 1fr; } }
 
 .adm-users-search { display: grid; gap: 8px; margin: 0 20px 20px; font-size: 12px; color: #68467f; }
@@ -1511,5 +1537,7 @@
 .adm-project-manager .adm-gallery-image > .adm-project-category { top: auto; left: 12px; bottom: 12px; right: auto; border-radius: 99px; background: #fffffff0; color: #351453; font-size: 11px; text-transform: uppercase; }
 .adm-project-card-description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .adm-project-tools .adm-field { min-width: 0; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1100px) { .adm-project-manager .adm-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) { .adm-project-manager .adm-gallery { grid-template-columns: minmax(0, 1fr); } }

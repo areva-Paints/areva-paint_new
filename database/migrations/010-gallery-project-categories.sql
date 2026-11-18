@@ -1,3 +1,7 @@
+/* Add supported Gallery project categories and preserve existing albums under Other.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Run once after migrations 001–009. Existing projects stay uncategorized as Other.
 -- This does not move JSON content or change the running application's storage.
 BEGIN;

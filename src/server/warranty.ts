@@ -1,7 +1,12 @@
+/*
+ * Manage warranty demo entry, scoped sessions, private receipts, idempotent registration and admin review/search/PDF routes.
+ * Demo OTP never marks a phone as verified; final review decisions are immutable.
+ */
 import { createWarrantyPdf } from "./warranty-pdf";
 import { warrantySearch } from "./warranty-search";
 import express from "express";
 import crypto from "node:crypto";
+import { validContactPhone } from "../data/contactDetails";
 import fs from "node:fs";
 import path from "node:path";
 import { dataDir, readContent } from "../admin/content-store";
@@ -25,21 +30,29 @@ type Row = WarrantyRegistration & { submissionId: string };
 const sessions = new Map<string, Session>(),
   challenges = new Map<string, Challenge>();
 const cookieName = "areva_warranty";
+/* Locate private saved warranty registrations in the persistent data directory. */
 const storeFile = () => path.join(dataDir, "warranties.json");
+/* Locate private receipt files outside every public static root. */
 const receiptDir = () => path.join(dataDir, "warranty-receipts");
+/* Locate pending private receipt metadata used during registration. */
 const uploadsFile = () => path.join(dataDir, "warranty-uploads.json");
+/* Validate identifiers before using them for private registration lookups. */
 const uuid = (value: unknown): value is string =>
   typeof value === "string" &&
   /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value);
+/* Hash opaque public-entry values rather than storing their raw comparison material. */
 const digest = (value: string) =>
   crypto.createHash("sha256").update(value).digest("hex");
+/* Enable only the implemented demo mode or disable new warranty entry. */
 const mode = () =>
   (process.env.WARRANTY_OTP_MODE || "demo") === "demo" ? "demo" : "disabled";
+/* Read a private JSON file with an explicit empty-store fallback. */
 function readJson<T>(file: string, fallback: T): T {
   return fs.existsSync(file)
     ? JSON.parse(fs.readFileSync(file, "utf8"))
     : fallback;
 }
+/* Normalize compatible older records while preserving their login-phone and review snapshots. */
 export function readWarranties(): Row[] {
   const rows = readJson<Row[]>(storeFile(), []);
   if (!Array.isArray(rows)) throw Error("Invalid warranty store");
@@ -54,6 +67,7 @@ export function readWarranties(): Row[] {
     reviewHistory: row.reviewHistory ?? [],
   }));
 }
+/* Read the opaque warranty-session cookie independently from admin accounts. */
 const sessionKey = (req: express.Request) =>
   digest(
     req.headers.cookie
@@ -62,6 +76,7 @@ const sessionKey = (req: express.Request) =>
       .find((value) => value.startsWith(cookieName + "="))
       ?.slice(cookieName.length + 1) || "",
   );
+/* Resolve a live warranty session without treating demo entry as phone verification. */
 function current(req: express.Request): Session | null {
   const key = sessionKey(req),
     session = sessions.get(key);
@@ -71,6 +86,7 @@ function current(req: express.Request): Session | null {
   }
   return session;
 }
+/* Refuse receipt or registration actions when the scoped warranty session is absent or expired. */
 const requireWarranty: express.RequestHandler = (req, res, next) => {
   if (!current(req))
     return res.status(401).json({
@@ -79,6 +95,7 @@ const requireWarranty: express.RequestHandler = (req, res, next) => {
     });
   next();
 };
+/* Discard expired demo challenges and warranty sessions from bounded in-memory maps. */
 function prune() {
   const now = Date.now();
   for (const [id, value] of challenges)
@@ -86,6 +103,7 @@ function prune() {
   for (const [id, value] of sessions)
     if (value.until <= now) sessions.delete(id);
 }
+/* Use the India calendar date for purchase/application validation. */
 export function indiaToday() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -97,6 +115,7 @@ export function indiaToday() {
     .map((type) => parts.find((part) => part.type === type)!.value)
     .join("-");
 }
+/* Reject impossible or unsupported purchase/application calendar dates. */
 function date(value: string) {
   if (
     !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
@@ -110,6 +129,7 @@ function date(value: string) {
     parsed.toISOString().slice(0, 10) === value
   );
 }
+/* Normalize a supported Indian mobile number to its +91 snapshot form. */
 function mobile(value: unknown) {
   if (typeof value !== "string") return null;
   const normalized = value.replace(/[ ()-]/g, "");
@@ -117,6 +137,7 @@ function mobile(value: unknown) {
     ? "+91" + normalized.slice(-10)
     : null;
 }
+/* Remove expired unattached receipts while keeping files already used by registrations. */
 function pruneUploads() {
   const uploads = readJson<Record<string, Upload>>(uploadsFile(), {});
   let changed = false;
@@ -131,6 +152,7 @@ function pruneUploads() {
   if (changed) writePrivateJson(uploadsFile(), uploads);
   return uploads;
 }
+/* Resolve only server-generated private receipt filenames inside the receipt directory. */
 function receiptPath(receipt: ReceiptInfo) {
   if (!uuid(receipt.id)) throw Error("Invalid receipt identifier");
   const ext = {
@@ -145,6 +167,7 @@ function receiptPath(receipt: ReceiptInfo) {
 
 export const warrantyRouter = express.Router();
 warrantyRouter.use(sensitiveRequestGuard);
+/* GET /options: Return product/dealer choices required by the warranty form, without private records. */
 warrantyRouter.get("/options", (_req, res) => {
   const content = readContent();
   res.json({
@@ -155,6 +178,7 @@ warrantyRouter.get("/options", (_req, res) => {
     dealers: content.dealers,
   });
 });
+/* Allocate a bounded demo challenge; this endpoint sends no SMS or WhatsApp message. */
 warrantyRouter.post(
   "/otp/request",
   rateLimit(5, 15 * 60000),
@@ -201,6 +225,7 @@ warrantyRouter.post(
     });
   },
 );
+/* Exchange the demo challenge/code for a scoped session, keeping mobileVerified false. */
 warrantyRouter.post(
   "/otp/verify",
   rateLimit(20, 15 * 60000),
@@ -248,6 +273,7 @@ warrantyRouter.post(
       .json({ mobile: challenge.mobile, mode: "demo", mobileVerified: false });
   },
 );
+/* GET /session: Return only the current safe warranty/public-account session details. */
 warrantyRouter.get("/session", requireWarranty, (req, res) =>
   res.json({
     mobile: current(req)!.mobile,
@@ -255,12 +281,14 @@ warrantyRouter.get("/session", requireWarranty, (req, res) =>
     mobileVerified: false,
   }),
 );
+/* POST /logout: Invalidate the scoped session and expire its cookie. */
 warrantyRouter.post("/logout", (req, res) => {
   sessions.delete(sessionKey(req));
   res
     .clearCookie(cookieName, { path: "/api/warranty" })
     .json({ success: true });
 });
+/* POST /receipt: Validate receipt bytes and ownership before saving them privately. */
 warrantyRouter.post(
   "/receipt",
   requireWarranty,
@@ -353,6 +381,7 @@ warrantyRouter.post(
     res.status(201).json(receipt);
   },
 );
+/* Validate and idempotently save the purchase with its session-owned private receipt. */
 warrantyRouter.post(
   "/registrations",
   requireWarranty,
@@ -379,6 +408,7 @@ warrantyRouter.post(
           reference: previous.reference,
           status: previous.status,
         });
+      /* Validate a bounded text field before accepting it into a stored record. */
       const text = (key: string, max: number, required = false) => {
         const value = body[key] ?? "";
         if (
@@ -430,7 +460,7 @@ warrantyRouter.post(
         "dealerPhone",
         "applicatorPhone",
       ] as const)
-        if (input[key] && !/^\+?[0-9 ()-]{7,25}$/.test(input[key]))
+        if (input[key] && !validContactPhone(input[key]))
           throw Error("Enter a valid " + key + ".");
       if (!/^[0-9]{6}$/.test(input.pinCode))
         throw Error("Enter a six-digit site PIN code.");
@@ -522,6 +552,7 @@ warrantyRouter.post(
 
 export const warrantyAdminRouter = express.Router();
 warrantyAdminRouter.use(requireAdmin);
+/* Validate admin date filters before applying inclusive calendar-day bounds. */
 function validFilterDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || value < "1900-01-01") return false;
   const parsed = new Date(value + "T00:00:00Z");
@@ -530,10 +561,12 @@ function validFilterDate(value: string) {
     parsed.toISOString().slice(0, 10) === value
   );
 }
+/* Select a safe admin response, omitting internal idempotency/session storage keys. */
 const publicRow = ({
   submissionId: _privateSubmission,
   ...row
 }: Row): WarrantyRegistration => row;
+/* GET /: Search private registrations with validated category/status and inclusive date-range filters. */
 warrantyAdminRouter.get("/", (req, res) => {
   const keys = ["search", "category", "status", "dateBy", "from", "to", "page"];
   if (
@@ -605,6 +638,7 @@ warrantyAdminRouter.get("/", (req, res) => {
     registrations: rows.slice((page - 1) * 20, page * 20).map(publicRow),
   });
 });
+/* GET /:id: Load the complete private registration snapshot for an authorized admin. */
 warrantyAdminRouter.get("/:id", (req, res) => {
   const row = uuid(req.params.id)
     ? readWarranties().find((row) => row.id === req.params.id)
@@ -612,6 +646,7 @@ warrantyAdminRouter.get("/:id", (req, res) => {
   if (!row) return res.status(404).json({ error: "Registration not found." });
   res.json({ registration: publicRow(row) });
 });
+/* PATCH /:id: Save a version-checked review, require reasons/confirmation and lock final decisions. */
 warrantyAdminRouter.patch("/:id", rateLimit(60, 60000), (req, res) => {
   const body = req.body;
   if (
@@ -697,6 +732,7 @@ warrantyAdminRouter.patch("/:id", rateLimit(60, 60000), (req, res) => {
   res.json({ registration: publicRow(next) });
 });
 let activeReports = 0;
+/* GET /:id/report.pdf: Generate a private PDF only for a saved final decision. */
 warrantyAdminRouter.get(
   "/:id/report.pdf",
   rateLimit(30, 60000),
@@ -739,6 +775,7 @@ warrantyAdminRouter.get(
     }
   },
 );
+/* GET /:id/receipt: Stream an admin-authorized private receipt with download and sandbox headers. */
 warrantyAdminRouter.get("/:id/receipt", (req, res) => {
   const row = uuid(req.params.id)
     ? readWarranties().find((row) => row.id === req.params.id)

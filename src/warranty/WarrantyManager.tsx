@@ -1,3 +1,7 @@
+/*
+ * Provide private admin warranty search, date/category/status filters, receipt access and version-aware review.
+ * Final decisions close to the list and download the saved decision PDF.
+ */
 import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -24,6 +28,7 @@ type Page = {
   page: number;
   pages: number;
 };
+/* Format a stored date for display while retaining an empty-value fallback. */
 const date = (value: string) =>
   new Date(
     value.length === 10 ? value + "T12:00:00Z" : value,
@@ -33,6 +38,7 @@ const date = (value: string) =>
     year: "numeric",
     timeZone: "Asia/Kolkata",
   });
+/* Provide private admin warranty search, date/category/status filters, receipt access and version-aware review. */
 export function WarrantyManager() {
   const [search, setSearch] = useState(""),
     [category, setCategory] = useState(""),
@@ -58,9 +64,11 @@ export function WarrantyManager() {
     [pdfBusy, setPdfBusy] = useState(false);
   const noticeRef = useRef<HTMLParagraphElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
+  /* Focus the saved-decision notice after returning from the review dialog. */
   useEffect(() => {
     if (listNotice && !selected) noticeRef.current?.focus();
   }, [listNotice, selected]);
+  /* Download the saved private final-decision PDF without exposing a public receipt URL. */
   async function downloadPdf(row: WarrantyRegistration) {
     setPdfBusy(true);
     setPdfError("");
@@ -96,6 +104,7 @@ export function WarrantyManager() {
       setPdfBusy(false);
     }
   }
+  /* Debounce list filters and ignore stale responses after a newer query or unmount. */
   useEffect(() => {
     let active = true;
     setBusy(true);
@@ -131,16 +140,20 @@ export function WarrantyManager() {
       clearTimeout(timer);
     };
   }, [search, category, page, refresh, status, dateBy, from, to]);
+  /* Refresh private registration results when the browser window regains focus. */
   useEffect(() => {
+    /* Refresh the registration list when the admin returns to this browser window. */
     const focus = () => setRefresh((value) => value + 1);
     window.addEventListener("focus", focus);
     return () => window.removeEventListener("focus", focus);
   }, []);
+  /* Open/close the native details dialog to match the selected registration. */
   useEffect(() => {
     if (selected) {
       if (!dialog.current?.open) dialog.current?.showModal();
     } else dialog.current?.close();
   }, [selected]);
+  /* Load the selected registration and initialize a version-aware review draft. */
   function openReview(row: WarrantyRegistration) {
     setSelected(row);
     setPdfError("");
@@ -150,6 +163,7 @@ export function WarrantyManager() {
     setReviewError("");
     setReviewNotice("");
   }
+  /* Reload the server snapshot after a stale-version conflict. */
   async function reloadReview() {
     if (!selected) return;
     setReviewSaving(true);
@@ -166,6 +180,7 @@ export function WarrantyManager() {
       setReviewSaving(false);
     }
   }
+  /* Persist the review; final decisions return to the list and trigger the report download. */
   async function saveReview(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
@@ -213,6 +228,7 @@ export function WarrantyManager() {
       setReviewSaving(false);
     }
   }
+  /* Clear search, product/status and inclusive date filters together. */
   function resetFilters() {
     setSearch("");
     setCategory("");
@@ -225,6 +241,7 @@ export function WarrantyManager() {
   const hasFilters = Boolean(
     search || category || status || from || to || dateBy !== "registration",
   );
+  /* Render a labelled read-only registration detail. */
   function field(label: string, value: unknown) {
     return (
       <div key={label}>

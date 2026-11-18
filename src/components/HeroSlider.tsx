@@ -1,3 +1,6 @@
+/*
+ * Display CMS landing images with slide navigation and timer cleanup when the component unmounts.
+ */
 import { DreamsHero } from './DreamsHero';
 import '../../public/assets/dreams-hero.css';
 import { useSiteContent } from '../admin/ContentContext';
@@ -12,6 +15,7 @@ interface HeroSliderProps {
   onOpenLiveAR?: () => void;
 }
 
+/* Display CMS landing images with slide navigation and timer cleanup when the component unmounts.. */
 export const HeroSlider: React.FC<HeroSliderProps> = ({
   onOpenVisualizer,
   onExploreProducts,

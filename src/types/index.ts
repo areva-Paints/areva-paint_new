@@ -1,3 +1,7 @@
+/*
+ * Shared catalogue, shade and enquiry contracts consumed by the React studio.
+ * Server-side validation remains authoritative for incoming data.
+ */
 import type { ShadeFamily, ShadeTone } from '../data/shadeFamilies';
 export interface Product {
   id: string;

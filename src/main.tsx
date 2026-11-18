@@ -1,3 +1,7 @@
+/*
+ * Mount the React application and load shared styles.
+ * Server APIs and the legacy public layout are served separately by Express.
+ */
 import { WarrantyPage } from "./warranty/WarrantyPage";
 import { AdminPage } from "./admin/AdminPage";
 import { ContentProvider } from "./admin/ContentContext";

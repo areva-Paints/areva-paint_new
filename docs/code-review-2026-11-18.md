@@ -1,0 +1,54 @@
+# Code, SQL and hosting review — 18 November 2026
+
+Reviewed the working tree starting from `27601a5`, including Express composition, admin/accounts/content management, public React and preserved HTML renderers, browser controllers/styles, warranty entry/reviews/search/PDFs, private JSON persistence, upload/export boundaries, prepared SQL, deployment configuration and regression tests.
+
+This was a repository review and local verification. No hosted service, live database, real customer record or OTP provider was changed. The current hosting/stack instructions are in [README.md](../README.md).
+
+## Changes made
+
+| Finding                                                                                                    | Change and practical effect                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Contact syntax accepted punctuation-only values such as `-------`                                          | Added a shared contact validator requiring 7–15 digits while retaining supported international/landline formatting. Enquiries, dealer editing and optional warranty contacts use it. Warranty login retains its stricter Indian-mobile rule. Validation does not claim phone ownership.                                                                |
+| Prepared SQL did not enforce the API's rejection/information-request reason rules                          | Fresh schema and migration 012 require a non-whitespace reason and reviewer/time for those decisions, and permit approval confirmation only on Approved records. Existing verified-provider approval rules and final-review locking remain intact.                                                                                                     |
+| Enabling stronger SQL constraints could fail unclearly on older data                                       | Migration 012 chooses exactly one known application schema, reports conflict counts without customer data, and aborts the transaction. It does not rewrite records, change grants, disable triggers or bypass immutable final decisions.                                                                                                               |
+| There was no compact operational SQL inspection                                                            | Added `database/review-checks.sql`, executed in a read-only transaction. It reports table/RLS counts, direct private-table grants, unvalidated constraints and data-quality counts. It does not import JSON or modify a database.                                                                                                                      |
+| Production imported Vite eagerly, making build tools runtime dependencies                                  | Moved Vite and its React/Tailwind plugins to dev dependencies, dynamically imported Vite only for development, and removed the unused Google GenAI SDK/key example. The Render build now compiles before pruning dev dependencies.                                                                                                                     |
+| CI did not prove the pruned deployment could start                                                         | Added `npm run check:production` after the build/prune stage. It refuses installed build tools, uses a disposable store/random test credential and checks real startup, public/admin/warranty HTML, API health and private content authorization.                                                                                                      |
+| Source exports omitted hosting/supporting resources; the text manifest traversed hidden source directories | Included lockfile/runtime/deployment instructions and supporting scripts/docs/SQL. Text traversal skips hidden entries and non-files; listed roots must be ordinary files/directories, so symlinks are not followed. Binary artwork/fonts remain available in the full ZIP; the browser text manifest is a code-only export.                           |
+| Hosting documentation overstated integrations and runtime support                                          | Replaced the main README with the actual stack, Node 24 setup, Render Web Service/disk/env commands, separate-frontend setup, backup/restore, troubleshooting and explicit current-versus-future integration status.                                                                                                                                   |
+| Functional code boundaries were difficult to identify                                                      | Added block comments around maintained modules, handlers, storage/auth/upload/review boundaries, major UI lifecycle effects, SQL tables/upgrades, browser controllers, styles and build/test scripts. Comment-only edits were checked against the TypeScript AST or stripped CSS/SQL to avoid behavioral changes. JSON remains valid without comments. |
+
+## SQL status
+
+The prepared schema still has **23 tables**. No new duplicate product, receipt or warranty table was needed. Existing category/status/date indexes already support the current prepared relational design. The running search operates on private JSON snapshots, so adding speculative SQL search indexes would not speed up the website.
+
+- New installations use `schema.sql` plus `seed-categories.sql`, or the generated private-schema `supabase-setup.sql` alternative.
+- Existing installations after 011 use `012-contact-and-review-integrity.sql` once. Do not replay a fresh setup over existing data.
+- Migration tests cover both `public` and `areva`, invalid-data rollback, an ambiguous two-installation stop, repeat-migration failure, unchanged purchase records, final-review immutability, 23 RLS tables and API-role permission denials.
+- SQL access remains behind a future backend adapter; no database driver, browser policies, privileged browser key or JSON importer was added.
+- The read-only report also finds published document cards without attachments. The runtime requires attachments before publishing; a future SQL adapter must commit those cross-table changes transactionally. SQL currently permits parent rows before their children are inserted.
+
+## Verification
+
+The full application suite passed **34 tests**, including seven new contact/SQL checks. Type checking and the production Vite build passed. Existing coverage exercises CMS revisions, private data/receipt access, source export boundaries, account roles/password changes, idle expiry, warranty registration/search/date filters, final reviews/PDFs and SQL upgrades/permissions.
+
+A clean temporary copy installed the locked production dependencies with `npm ci --omit=dev` and passed `npm run check:production` with no Vite or build plugins installed. The maintained source retained its development tools for normal type/test/build work. The additional source-export assertions check required deployment resources, hidden-folder exclusion and root symlink exclusion.
+
+After the export changes, all three targeted security/export tests passed, including hidden-folder exclusion, root-symlink exclusion, uppercase ZIP exclusion and required hosting resources. Local Chromium checks passed for public card navigation, mobile layouts, admin sign-in/sign-out, Certifications as the initial section and document-editor access; no browser exceptions or unexpected CSP violations were observed. The development startup check also confirmed the dynamic Vite middleware serves the React entry and Express APIs. No live infrastructure checks are implied by these results.
+
+## Dependency advisory retained
+
+The final production audit reports **zero advisories**. The complete build/test tree reports **three related high-severity entries** for `picomatch`, `tinyglobby` and Vite, all inherited from [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf). The issue concerns pathological glob matching. At review time the registry's current `picomatch` release has no published fix; an automatic major Vite downgrade is not a suitable repair.
+
+The recommended production install prunes this tooling, and the server's production path no longer imports it. CI blocks production advisories and separately reports the complete-tree finding without hiding it. Build tooling should run on trusted project inputs, and a compatible patch should be adopted when published. This remains a build/development dependency issue; the full tree is not advisory-free.
+
+## Remaining engineering limits
+
+- **Storage/scaling:** synchronous full-file JSON persistence, session maps, rate limits and upload budgets assume one process/instance. A PostgreSQL/object-storage/shared-session implementation and rehearsed migration are needed before horizontal scaling. Atomic file replacement does not provide a cross-file transaction or a backup.
+- **Real integrations:** SMS/Meta WhatsApp OTP, email delivery, payment/UPI transfers, persisted sample orders and loyalty rewards are not implemented. Demo warranty entry remains explicitly unverified.
+- **Maintainability:** larger admin/warranty modules and the string-adapted legacy HTML remain candidates for gradual extraction. Existing escaping and CSP reduce injection risk, but exact template anchors need regression coverage when changed.
+- **Type discipline:** type checking passes; project-wide strict TypeScript and ESLint adoption are not complete. Existing broad casts remain follow-up refactoring work, not an assurance of complete type safety.
+- **Client size:** Vite still reports a main chunk above 500 kB. Route/component splitting can improve first-load performance; the warning is not suppressed.
+- **Operational controls:** HTTPS, private disk permissions, backups, correct proxy/origin settings and real provider credentials belong to hosting configuration. Admin MFA/password recovery, centralized monitoring, distributed anti-abuse and file malware scanning are not implemented by this review.
+
+These limits are documented rather than described as completed integrations. The repository changes do not apply SQL, deploy Render or push to GitHub automatically.

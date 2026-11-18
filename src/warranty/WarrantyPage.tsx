@@ -1,3 +1,7 @@
+/*
+ * Guide visitors through mobile entry, demo OTP and a complete purchase form.
+ * Submission stays on confirmation; leaving via Back to website clears entry so a later visit starts at the mobile screen.
+ */
 import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -23,6 +27,7 @@ type Options = {
   products: Product[];
   dealers: Dealer[];
 };
+/* Initialize a fresh purchase form with no inherited customer or receipt data. */
 const empty = (): WarrantyInput => ({
   customerName: "",
   email: "",
@@ -52,6 +57,7 @@ const empty = (): WarrantyInput => ({
   consent: false,
   submissionId: crypto.randomUUID(),
 });
+/* Guide visitors through mobile entry, demo OTP and a complete purchase form. */
 export function WarrantyPage() {
   const [options, setOptions] = useState<Options | null>(null),
     [step, setStep] = useState<"phone" | "otp" | "form" | "success">("phone");
@@ -70,6 +76,7 @@ export function WarrantyPage() {
   const uploadRef = useRef<HTMLInputElement>(null),
     headingRef = useRef<HTMLHeadingElement>(null);
   const remote = contentOrigin() !== location.origin;
+  /* Clear form/session UI so a later entry begins at the mobile screen. */
   function resetEntry() {
     setStep("phone");
     setPhone("");
@@ -84,6 +91,7 @@ export function WarrantyPage() {
     setError("");
     setBusy(false);
   }
+  /* Begin every visit with fresh mobile entry and clean up the back/forward-cache listener on unmount. */
   useEffect(() => {
     if (remote) {
       location.replace(contentUrl("/warranty") + location.search);
@@ -91,6 +99,7 @@ export function WarrantyPage() {
     }
     let active = true;
     let load = 0;
+    /* End any previous warranty session before opening a fresh entry flow. */
     function startEntry() {
       const currentLoad = ++load;
       resetEntry();
@@ -107,6 +116,7 @@ export function WarrantyPage() {
           if (active && currentLoad === load) setError(error.message);
         });
     }
+    /* Reset entry after browser back/forward restoration instead of reopening an old purchase form. */
     function restored(event: PageTransitionEvent) {
       if (event.persisted) startEntry();
     }
@@ -117,13 +127,16 @@ export function WarrantyPage() {
       window.removeEventListener("pageshow", restored);
     };
   }, [remote]);
+  /* Update the resend countdown while the page is mounted, then release its timer. */
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+  /* Move accessible focus to the current step heading after a warranty-flow transition. */
   useEffect(() => {
     headingRef.current?.focus();
   }, [step]);
+  /* Invalidate warranty entry and navigate back to the public website. */
   async function backToWebsite(event: React.MouseEvent<HTMLAnchorElement>) {
     if (
       event.button !== 0 ||
@@ -146,9 +159,11 @@ export function WarrantyPage() {
   }
   const product = options?.products.find((p) => p.id === form.productId);
   const wait = Math.max(0, Math.ceil((retryAt - now) / 1000));
+  /* Update one draft field while preserving the other form values. */
   function patch(key: keyof WarrantyInput, value: unknown) {
     setForm((previous) => ({ ...previous, [key]: value }));
   }
+  /* Start a demo mobile challenge and display the configured demonstration code. */
   async function requestOtp(e?: React.FormEvent) {
     e?.preventDefault();
     setBusy(true);
@@ -168,6 +183,7 @@ export function WarrantyPage() {
       setBusy(false);
     }
   }
+  /* Exchange the challenge/code for a scoped demo session without claiming phone ownership. */
   async function verify(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -185,6 +201,7 @@ export function WarrantyPage() {
       setBusy(false);
     }
   }
+  /* End the current entry session and return to the initial mobile step. */
   async function changeMobile() {
     setBusy(true);
     setError("");
@@ -202,6 +219,7 @@ export function WarrantyPage() {
       setBusy(false);
     }
   }
+  /* Attach an allowed receipt to the current private session before submission. */
   async function upload(file?: File) {
     if (!file) return;
     setError("");
@@ -235,6 +253,7 @@ export function WarrantyPage() {
       if (uploadRef.current) uploadRef.current.value = "";
     }
   }
+  /* Save the complete purchase once and remain on the confirmation screen. */
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!receipt) {
@@ -254,6 +273,7 @@ export function WarrantyPage() {
       setBusy(false);
     }
   }
+  /* Populate dealer fields from the selected catalogue snapshot while allowing manual details. */
   function chooseDealer(id: string) {
     const dealer = options?.dealers.find((d) => d.id === id);
     setForm((previous) => ({
@@ -265,6 +285,7 @@ export function WarrantyPage() {
       dealerCity: dealer?.city || "",
     }));
   }
+  /* Render a controlled form field using the shared label and change handler. */
   function input(
     key: keyof WarrantyInput,
     label: string,

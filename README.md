@@ -1,161 +1,221 @@
-# Areva Paints — Full-Stack Architectural Coatings & Color Studio
+# Areva Paints
 
-A modern, high-performance web platform and digital studio for **Areva Paints**, engineered for homeowners, architects, interior designers, and commercial painting contractors.
+Website, content administration and warranty registration for Areva Paints. One Node.js/Express service can serve the public website, `/admin`, `/warranty` and their APIs.
 
----
+**Current storage is private JSON on disk.** The PostgreSQL/Supabase files are a prepared schema, not an active database connection. Adding `DATABASE_URL` does not move records or change how the application saves them.
 
-## 🌟 Key Features
+## Technologies used
 
-1. **WebXR Live Camera Augmented Reality (AR) Studio**:
-   - Access real-time mobile camera video feed (`getUserMedia`) directly on iOS and Android.
-   - 60fps canvas-based color transfer algorithm with edge/luminance blending and room-finish shaders (Velvet Matte, Eggshell Satin, High Sheen).
-   - Interactive reticle target, tap-to-calibrate wall color picker, and frame capture snapshot tool.
-   - High-fidelity simulated room fallback for desktop devices without cameras.
+| Area            | Technology and purpose                                                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime         | Node.js 24 LTS; the tested version is pinned in `.nvmrc` and `render.yaml`                                                         |
+| Backend         | Express 4 and TypeScript, executed with `tsx`                                                                                      |
+| Frontend        | React 19, Vite 8, Tailwind CSS 4, Motion and Lucide icons                                                                          |
+| Public layout   | Preserved HTML adapted on the server to current CMS data; shared React fragments and browser controllers provide the branded pages |
+| Persistence     | Atomic private JSON files plus public uploads and private warranty receipts                                                        |
+| Accounts        | Node `crypto.scrypt`, opaque in-memory sessions and separate admin/public/warranty cookies                                         |
+| Documents       | PDF.js for shade-import previews; PDFKit/fontkit and committed Noto fonts for private warranty decision PDFs                       |
+| Source exports  | JSZip; archives are created separately from website builds                                                                         |
+| SQL preparation | PostgreSQL 16+ schema and migrations; PGlite runs isolated PostgreSQL regression tests                                             |
+| Checks          | TypeScript type checking, Node test runner, production dependency audit and GitHub Actions                                         |
 
-2. **Interactive Room Color Visualizer Studio**:
-   - High-definition room interior scenes (Contemporary Living Lounge, Master Bedroom, Minimalist Dining, Kitchen & Breakfast, Corporate Executive Suite).
-   - Real-time paint swatch preview across warm neutrals, cool tones, earth shades, and vibrant accents.
-   - Sheen selector simulating Matte, Silk Emulsion, Eggshell, and High Gloss reflections.
+The project does not currently enable TypeScript's `strict` option. `npm run lint` runs `tsc --noEmit`; it is not an ESLint or formatting command. Dependency versions are reproducible through `package-lock.json`.
 
-3. **Coating Formulation System & Dropdown**:
-   - Comprehensive formulation catalog featuring 14 specialized coating lines across Interior Luxury Emulsions, Exterior WeatherShield Coatings, Water-repellent Primers, Anti-Corrosion Metal Enamels, and Textured Finishes.
-   - Technical Data Sheets (TDS) detailing spreading rates (sq ft/L), VOC levels, washability cycles, and drying intervals.
+## Features and integration status
 
-4. **Precision Paint Quantity & Can Configuration Calculator**:
-   - Dynamic coating dropdown selecting specific spreading rates.
-   - Dimensional inputs (Length × Width × Ceiling Height) with opening deductions (doors & windows).
-   - Calculation of exact liters required, 10% safety buffer, and optimal can packing distribution (20L drums, 10L buckets, 4L cans, 1L tins).
-   - Synchronized with REST API endpoint `POST /api/calculator/estimate`.
+- Public catalogue with category pages, technical specifications, bases/packing, optional product warranty badges, shades, visualizers, calculator and dealer search.
+- Admin editing for Certifications and documents, products, landing images, dealers, colours/shade PDFs, Gallery projects/campaigns/reviews, accounts and activity history.
+- Warranty purchase registration with a captured login phone, dealer/invoice/site details, private receipt upload, admin search/date filters, final review decisions and decision PDFs.
+- Admin sign-out after five minutes without interaction, with an eight-hour absolute session cap. Server restarts clear in-memory sessions and require sign-in again.
+- Warranty entry currently uses **demo OTP `123456`**. It sends no SMS, WhatsApp or email and never marks the phone as verified. Meta WhatsApp Cloud API is a future integration, not an environment switch that is already implemented.
+- The optional React studio's loyalty wallet/UPI and swatch-order screens are demonstrations using local state. No payment, delivery, QR rewards or order backend is connected. Camera colour preview uses browser video/canvas, not spatial WebXR tracking.
 
-5. **Regional Authorized Dealer Depot Network**:
-   - Dealer depot coverage across 4 key southern states: Karnataka (Bengaluru, Mysuru, Hubli), Maharashtra (Pune, Mumbai, Nashik), Tamil Nadu (Chennai, Coimbatore, Madurai), and Andhra Pradesh (Hyderabad, Visakhapatnam, Vijayawada).
-   - Direct call assistance and one-click depot location routing.
+## Run locally
 
-6. **Project Quotation & Technical Specification Routing**:
-   - Direct quote request modal with automatic routing to the nearest regional distributor.
-   - Unique tracking ticket generation (`ARV-REQ-<UUID>`).
-   - Integrated with backend storage at `POST /api/enquiries`.
+Install Node.js 24 LTS, then:
 
-7. **"Pop the Colour Bubbles" Color Play Arena**:
-   - Engaging interactive mini-game with floating paint pigment bubbles, combo multipliers, and color unlocks.
-
-8. **One-Click Full Project Code Downloader**:
-   - Complete project source exporter via `GET /api/project/download` producing `areva-paints-fullstack.zip`.
-   - In-app Project Export dialog with quick copy scripts, file manifest, and architecture summary.
-
----
-
-## 🏗️ Architecture & Technology Stack
-
-- **Frontend**:
-  - React 19 (`react`, `react-dom`)
-  - TypeScript 5.8+ (Strict type checking)
-  - Vite 6+ / 8+ with `@vitejs/plugin-react`
-  - Tailwind CSS v4 (`@tailwindcss/vite`, `@import "tailwindcss";`)
-  - Lucide React (`lucide-react`)
-  - Motion / Framer Motion (`motion`)
-- **Backend**:
-  - Node.js (v18+ or v20+)
-  - Express 4.x (`express`) with typed request/response handlers
-  - `tsx` for direct TypeScript server execution (`tsx server.ts`)
-  - `jszip` for explicit source archive packaging (admin-only downloads)
-  - Vite Dev Server Middleware integration in development (`vite.middlewares`)
-  - Production static bundle serving with fallback SPA routing
-
----
-
-## 🚀 Quick Start Guide
-
-### 🪟 Windows Users: Unzipping the Project
-If you downloaded `areva-paints-fullstack.zip` on Windows 10 or 11:
-1. **Option A (File Explorer)**: Right-click `areva-paints-fullstack.zip` → select **Extract All...** → click **Extract**.
-2. **Option B (PowerShell)**: In PowerShell, navigate to your Downloads folder and run:
-   ```powershell
-   Expand-Archive -Path .\areva-paints-fullstack.zip -DestinationPath .
-   cd areva-paints-fullstack
-   ```
-
-### 1. Installation
-Navigate into the extracted `areva-paints-fullstack` directory and install dependencies:
 ```bash
+git clone https://github.com/areva-Paints/areva-paint_new.git
+cd areva-paint_new
 npm ci
+cp .env.example .env
 ```
 
-### 2. Run Development Server
-Starts the full-stack server running Express with Vite middleware on port 3000:
+On Windows, copy `.env.example` to `.env` using File Explorer or `Copy-Item .env.example .env`. Set a unique `ADMIN_PASSWORD` of at least 12 characters in the local `.env`; never commit that file. Keep `NODE_ENV=development` for local work.
+
 ```bash
 npm run dev
 ```
-Open your browser at `http://localhost:3000`.
 
-### 3. Production Build & Execution
-Build the optimized client bundle:
+Open `http://localhost:3000`, `http://localhost:3000/admin` or `http://localhost:3000/warranty`. Express and Vite share port 3000. The configured admin username defaults to `admin`. No customer or other created account is seeded automatically; an admin creates those accounts in the Users tab.
+
+For a local production check:
+
 ```bash
 npm run build
-```
-Start the production server:
-```bash
-npm start
+NODE_ENV=production npm start
 ```
 
-### 4. Type Checking & Code Quality
+In PowerShell, use `$env:NODE_ENV = "production"` followed by `npm start`. Keep the root `server.ts`, `src/`, `public/`, `assets/fonts/`, `package.json`, lockfile and configuration alongside `dist/`; the backend is not bundled into `dist`. `npm run preview` previews client assets only and does not run the backend APIs.
+
+## Configuration
+
+Use local `.env` during development and the hosting provider's environment settings in production. Express reads `PORT`; Render supplies it automatically.
+
+| Variable              | Setting                                                                                                                |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`            | `production` on the hosted Web Service; `development` locally                                                          |
+| `ADMIN_USERNAME`      | Recovery/admin sign-in name; default `admin`                                                                           |
+| `ADMIN_PASSWORD`      | Server secret with at least 12 characters; required to bootstrap administration                                        |
+| `ADMIN_TEST_LOGIN`    | Keep `false`; test login is ignored entirely in production                                                             |
+| `CONTENT_DATA_DIR`    | Private persistent directory; use `/var/data/areva` with the provided Render disk                                      |
+| `TRUST_PROXY_HOPS`    | `1` behind Render's proxy, `0` for direct local HTTP; match your actual reverse proxy                                  |
+| `PUBLIC_SITE_ORIGINS` | Comma-separated exact HTTP(S) public origins, without paths or trailing `/`; include each intended custom domain       |
+| `UPLOAD_STORAGE_MB`   | Public image/PDF upload budget; default `512` MiB                                                                      |
+| `WARRANTY_STORAGE_MB` | Private receipt storage budget; default `128` MiB                                                                      |
+| `WARRANTY_OTP_MODE`   | `demo` for the current flow; `disabled` to stop new warranty entry                                                     |
+| `VITE_CONTENT_ORIGIN` | Optional **build-time public backend origin** for a separately hosted frontend; rebuild the frontend after changing it |
+
+`VITE_*` values are exposed to the browser and must never contain passwords, API secrets or database credentials. The two existing Render public origins are included in the code's public allowlist; the variable adds other origins. Admin, auth and warranty writes remain same-origin. No AI API key is required by this application.
+
+## Host on Render
+
+### Recommended: one Web Service
+
+Use a Render **Web Service**, not a Static Site. The service runs Express and serves all three page routes and their APIs. The supplied [render.yaml](render.yaml) defines the service and its persistent disk.
+
+1. Connect the repository to Render and select the branch containing the reviewed changes. Use **New → Blueprint** with `render.yaml`, or **New → Web Service** for manual configuration.
+2. Select the Node runtime and a plan that supports a persistent disk. The blueprint selects `starter`; verify current availability/pricing in Render.
+3. Use these commands from the repository root:
+
+   | Render field      | Value                                                           |
+   | ----------------- | --------------------------------------------------------------- |
+   | Build Command     | `npm ci --include=dev && npm run build && npm prune --omit=dev` |
+   | Start Command     | `npm start`                                                     |
+   | Health Check Path | `/api/health`                                                   |
+   | Node version      | `24.22.1`                                                       |
+
+   Build tools are installed for compilation and then removed. The server imports Vite only in its development branch, so the live service can start with production dependencies alone.
+
+4. Add a **1 GB persistent disk** mounted at `/var/data/areva`. Set `CONTENT_DATA_DIR=/var/data/areva`. The runtime directory must be writable by the service and must not be inside `public`, `dist` or `src`.
+5. Set `NODE_ENV=production`, `TRUST_PROXY_HOPS=1`, `ADMIN_TEST_LOGIN=false` and a private `ADMIN_PASSWORD` of at least 12 characters. Set the remaining variables using the table above. The blueprint prompts for the admin secret; it does not contain a password.
+6. Deploy, then check `/api/health`, `/`, `/admin` and `/warranty` on the Web Service's HTTPS URL. The first admin section should be Certifications and documents.
+7. Save a small test content change and a test warranty purchase in staging, restart that service, then verify that the saved data and receipts remain. Restore the test content afterward.
+
+Use **one service instance and one Node process** with this JSON backend. Separate services/disks do not synchronize; multiple workers cannot safely share full-file read/modify/write operations. Sessions and rate limits are also in memory. Database/object-storage/shared-session adapters are required before scaling across instances.
+
+A Static Site alone cannot authenticate admins, save CMS/warranty records, accept receipt uploads or generate decision PDFs. A free/ephemeral filesystem can lose saved data across restarts or deploys; persistence needs a disk-capable service. The included upload budgets leave space for JSON files on the 1 GB disk, but monitor actual usage and back it up.
+
+### If the public frontend remains a separate Static Site
+
+Keep all admin and warranty pages on the Node Web Service. For the public Static Site:
+
+1. Set its build-time `VITE_CONTENT_ORIGIN` to the Web Service origin, for example `https://areva-paint-new-admin.onrender.com`.
+2. Use `npm ci --include=dev && npm run build` and publish `dist`. Configure a rewrite from `/*` to `/index.html` for client routes.
+3. Include the exact Static Site origin in the Web Service's `PUBLIC_SITE_ORIGINS`, then redeploy/restart the backend and rebuild the frontend as needed.
+4. Open `/admin` and `/warranty` on the backend origin. The app directs warranty entry to the configured backend so its private session and receipt requests remain same-origin.
+
+Two independently running Web Services will have different data directories unless a shared storage adapter is deliberately implemented. Point both public views at the one intended content backend.
+
+### Custom domain or other hosting
+
+For a GoDaddy-managed domain, add the domain in Render and copy the DNS records Render provides into GoDaddy DNS. Allow Render to issue its HTTPS certificate. Add each intended HTTPS origin, including `www` if used, to `PUBLIC_SITE_ORIGINS`. A separately hosted frontend also needs the correct `VITE_CONTENT_ORIGIN` and a rebuild.
+
+The Node service may also run on another Node-capable host/VPS with HTTPS, private persistent storage, one process, the same build/start commands and an appropriate proxy setting. Ordinary static-only shared hosting cannot run these Express APIs. Build in the repository root; do not upload only `dist` for a full-stack deployment.
+
+## Data and backups
+
+| Path inside `CONTENT_DATA_DIR` | Contents and access                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `content.json`                 | CMS content, created account password hashes/salts and private audit history; public APIs select safe fields |
+| `enquiries.json`               | Private customer enquiries and dealer snapshots                                                              |
+| `warranties.json`              | Private purchase/receipt metadata, captured login phone and review history                                   |
+| `warranty-uploads.json`        | Pending receipt metadata bound to warranty sessions                                                          |
+| `uploads/`                     | Public catalogue images and document/shade PDFs                                                              |
+| `warranty-receipts/`           | Private purchase receipts available only through authorized endpoints                                        |
+
+Files are created when needed. A new empty directory starts from committed catalogue seeds; it does not recover previous CMS edits automatically. JSON writes use restricted temporary files, flush and atomic rename. That prevents partially written individual files, but does not replace backups or multi-process transactions.
+
+Back up the **whole directory**, including both upload folders, to access-controlled storage outside the service disk. Use a provider snapshot or pause writes during a file-level backup so JSON and file attachments form one consistent set. Keep backups private because they contain customer details and password derivation material.
+
+To restore, stop writes/service, restore the complete matching backup to the configured directory with permissions readable/writable only by the service user, restart, then check content, admin accounts and private receipt/PDF downloads. Restarting clears old sessions. Do not copy private data into Git, `public`, `src` or `dist`. A Git push/deploy updates code, not the persistent content backup.
+
+## SQL files and upgrades
+
+The running service has no SQL driver/adapter and does not execute SQL files on startup. The prepared schema has **23 tables** for catalogue content, dealers, shades, galleries, documents, accounts, history, enquiries and warranties.
+
+| Situation                     | SQL path                                                                                                                                 |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| New empty PostgreSQL database | `database/schema.sql`, then `database/seed-categories.sql`                                                                               |
+| New Areva schema in Supabase  | Run `database/supabase-setup.sql` once through the authorized owner account; it creates the private `areva` schema and includes the seed |
+| Existing installation         | Apply only unapplied numbered migrations in order, after checking its current version and backing up; never rerun fresh setup            |
+| Read-only inspection          | `database/review-checks.sql` checks table/RLS counts, private role access, constraint state and data-quality counts                      |
+
+Migration [012-contact-and-review-integrity.sql](database/migrations/012-contact-and-review-integrity.sql) follows 001–011. It adds digit-count/format checks to contact numbers, requires rejection/information-request reasons and reviewer metadata, and prevents approval-confirmation flags on other statuses. Preflight reports conflicting legacy-record counts and stops the entire transaction without rewriting records. An operator must inspect/correct those conflicts before retrying. Fresh setup already includes these rules.
+
+All application tables use row-level security with no public browser policies and revoke direct Supabase API-role access. A future backend SQL adapter still needs a dedicated permission model, parameterized queries, transactions, JSON-to-SQL import, attachment migration and deployment cutover. Never expose an owner connection string or privileged key through the frontend. Setting up SQL tables alone does not connect the website.
+
+See [database layout](docs/database-layout.md), [Supabase setup](docs/supabase-setup.md) and [the current review](docs/code-review-2026-11-18.md). Regenerate the local combined setup after changing canonical schema/seed:
+
 ```bash
+node scripts/prepare_supabase_sql.cjs
+```
+
+This command only writes SQL; it does not connect to any database.
+
+## Code layout and comments
+
+```text
+server.ts                 Express composition, public APIs, static/dev serving
+src/admin/                CMS, accounts, validation, private JSON store and public HTML adapters
+src/server/               Security, enquiries, atomic storage, warranties, search and PDF reports
+src/warranty/             Public warranty flow and private admin registration manager
+src/components/           Shared public React components and optional studio tools
+src/data/                 Catalogue seeds, metadata and shared display/validation helpers
+public/assets/            Public browser controllers, styles and committed artwork
+assets/fonts/             Licensed fonts used by server-generated decision PDFs
+database/                 Prepared schema, ordered migrations and read-only review SQL
+tests/                    Local API, persistence, rendering and PostgreSQL regression checks
+scripts/                  Source packaging and SQL generation
+render.yaml               Render Web Service, disk and environment blueprint
+.github/workflows/        Automated type/test/build/audit checks
+```
+
+Block comments describe module responsibilities, functional handlers, storage/security boundaries, SQL tables, browser controllers and responsive style sections. Important effects explain their lifecycle and cleanup. JSON seed/config/lock files remain valid JSON, which does not support comments. Generated `dist`, binary assets and dependency code are not manually annotated; edit their maintained source instead. The preserved HTML prototype stays compatible with the server adapters' exact anchors.
+
+## Verification and dependency status
+
+```bash
+npm ci
 npm run lint
+npm test
+npm run build
+npm audit --omit=dev --audit-level=moderate
+npm audit --audit-level=moderate
 ```
 
----
+To verify the exact deployment shape in a disposable checkout, run `npm run build`, `npm prune --omit=dev` and `npm run check:production`. This checks real production startup without Vite using a temporary data directory and random test credential. Run `npm ci` afterward to restore development tools. CI performs this check after the full suite.
 
-## 🔌 REST API Endpoints
+Full source ZIPs include supporting scripts, documentation, SQL and Render settings. The browser-generated text export omits binary artwork/fonts; use Git or the full ZIP for a complete deployment. Archives are created only by `npm run package:source` and are stored privately in `artifacts/source`, with download access limited to admins.
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health status, uptime, and catalog statistics |
-| `GET` | `/api/products` | Retrieve paint catalog; filters: `?category=...&search=...` |
-| `GET` | `/api/products/:id` | Detailed specification for a single coating formulation |
-| `GET` | `/api/shades` | Complete shade palette with HEX and family groupings |
-| `GET` | `/api/dealers` | Authorized regional dealer depots; filter: `?state=...` |
-| `POST` | `/api/calculator/estimate` | Calculate paintable sq ft, liters, and can distribution |
-| `POST` | `/api/enquiries` | Submit quotation or technical inquiry (returns ticket ID) |
-| `GET` | `/api/enquiries` | List saved inquiries (admin authentication required) |
-| `GET` | `/api/project/download` | Admin-only project archive download |
-| `GET` | `/api/project/info` | Admin-only project architecture information |
+Tests create temporary local data directories and isolated PGlite databases; they do not migrate the hosted database. They cover auth/idle expiry, input validation, private uploads/storage, content conflicts, warranty entry/search/review/PDF behavior and SQL permissions/migrations. Build tools and PGlite must be present to run these checks; do not run tests after pruning dev dependencies.
 
----
+On **18 November 2026**, the production dependency audit reports **zero advisories**. The complete build/test dependency tree reports the unpatched `picomatch` advisory [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf), inherited through `tinyglobby` and Vite. There is no published patched `picomatch` release in the reviewed registry at this time. Vite and its plugins are development dependencies and are pruned from the recommended production installation; Express dynamically imports Vite only in development. CI enforces the production audit and separately reports the build dependency advisory. Do not expose a development server publicly or claim the complete dependency tree is advisory-free. Recheck for a compatible patched release before the next release.
 
-## 📱 Mobile Responsiveness & WebXR Camera Guidelines
+## Troubleshooting
 
-- **Mobile Viewport Optimization**: Fixed sticky navigation (<15% viewport height) with thumb-friendly controls.
-- **WebXR AR Camera**:
-  - Requires HTTPS or `localhost` to access camera hardware.
-  - Automatically requests standard `facingMode: 'environment'` (rear camera) on mobile devices and front camera on laptops.
-  - Interactive target reticle allows picking reference pixels directly from walls to blend target paint formulations.
+| Symptom                                       | Check                                                                                                                                              |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| “Set ADMIN_PASSWORD … at least 12 characters” | Open Render **Web Service → Environment**, set the backend secret and save/redeploy. A Static Site environment cannot configure the backend admin. |
+| Cannot find a backend service                 | In Render, locate/create a **Node Web Service** connected to this repository; a Static Site only publishes client files.                           |
+| Website opens but APIs return 404             | Use the Node service URL, not Vite preview or a static-only host; check its start command and `/api/health`.                                       |
+| CMS changes disappear after deploy            | Verify the persistent disk mount and `CONTENT_DATA_DIR`; check whether the frontend is reading a different backend origin.                         |
+| Public uploads do not load                    | Restore the matching `uploads` directory and use the correct content backend origin; changing JSON alone cannot recover missing files.             |
+| Login fails on a custom domain/proxy          | Use HTTPS and same-origin admin URLs, exact allowed public origins and the actual trusted proxy hop count.                                         |
+| Admin signs out while idle                    | This is the configured five-minute policy. Unsaved drafts are cleared on expiry; sign in and reload saved content.                                 |
+| Warranty OTP does not arrive                  | Only on-screen demo OTP is implemented. SMS/Meta WhatsApp delivery still requires backend provider integration.                                    |
+| SQL table is empty after an admin save        | Current saves go to private JSON; no runtime SQL adapter/import has been enabled.                                                                  |
+| Decision saved but PDF did not download       | Use Download decision PDF in the list/details; check that `assets/fonts` was deployed and the admin session is still active.                       |
+| Production cannot find Vite                   | Use this revision's dynamic development import, build before pruning and start with `NODE_ENV=production`.                                         |
 
----
-
-## 📄 License & Brand
-© Areva Paints — Engineered for architectural brilliance and protective wall coatings.
-All rights reserved.
-
-## Security and storage
-
-See [the security review](docs/security-review.md) for implemented protections and deployment requirements. Content/accounts/history and enquiries use private JSON files on a persistent `CONTENT_DATA_DIR`; PostgreSQL/Supabase integration is still a prepared schema, not an active adapter. Source manifests and all ZIP downloads require an admin session. Archives are generated outside public/static builds in ignored `artifacts/source/`. `npm run build` builds the website only; source packaging is the separate `npm run package:source` command.
-
-Use `npm ci`, `npm run lint`, `npm test`, `npm run build` and `npm audit --audit-level=moderate` before release. GitHub Actions runs the same checks, including isolated PostgreSQL permission tests. Production requires HTTPS, the correct proxy setting, a private persistent data directory, backups and configured admin credentials. Adding a GoDaddy domain requires adding its exact HTTPS origin to `PUBLIC_SITE_ORIGINS` and rebuilding a separately hosted frontend with the intended `VITE_CONTENT_ORIGIN` when applicable.
-
-## Warranty Registration
-
-The public **Warranty Registration** tab opens `/warranty`, using an on-screen demo OTP `123456` followed by a product/purchase/dealer/site form and private receipt upload. Records are available in **Admin → Warranty registrations** with search, full details and authenticated receipt download. Demo submissions never count as verified mobile numbers or approved warranties. No SMS or WhatsApp integration is active. See [the warranty guide](docs/warranty-registration.md) for persistence, new private SQL table/migration 006 and later Meta setup.
-
-Final Approved/Rejected warranty decisions now close back to the admin list and automatically download an Areva Decision PDF with all saved fields and review details. Final decisions are read-only; reports can be downloaded again from the list/details. Existing SQL installations after migration 007 need migration 008. See the warranty guide for privacy and recovery behavior.
-
-## Certifications and documents
-
-Manage public certificate/report/data-sheet/warranty cards through **Admin → Certifications and documents**, including PDF uploads, linked products, issuer/reference/dates, visibility and display order. Both website views show the same cards and product downloads. See [the guide](docs/certifications-and-documents.md) for fields, storage and prepared migration 009. No live database migration is performed.
-
-Admin navigation scrolls vertically on desktop; mobile navigation wraps into two columns at the top. Admin sign-in now expires after five idle minutes, with an eight-hour absolute cap. See [the session guide](docs/admin-navigation-and-sessions.md) for interaction, multi-tab and unsaved-edit behavior.
-
-Gallery now uses the reference gradient header, highlighted Projects/Ads & Campaigns/Customer Reviews tabs, category filters and image-first project cards. Admins manage categories and card descriptions in **Gallery → Projects**. See [the Gallery guide](docs/gallery-project-categories.md) for backward compatibility and prepared SQL migration 010.
-
-**About Areva** now opens Explore Areva, a six-card resource hub linking to the preserved story, dealer network, documents, Customer Care, Warranty Registration and the admin portal. See [the resource navigation guide](docs/explore-areva.md).
-
-Public headers (except Home and Products) now share the reference gradient and typography; public/admin pages use the official Areva logo. Warranty invoice/date fields sit together, and admin records/search/PDFs include the captured login phone. See [the shared header guide](docs/shared-brand-and-page-headers.md) for the prepared SQL upgrade.
+Additional guides: [warranty workflow](docs/warranty-registration.md), [certifications/documents](docs/certifications-and-documents.md), [admin sessions](docs/admin-navigation-and-sessions.md), [Gallery categories](docs/gallery-project-categories.md), [shared branding](docs/shared-brand-and-page-headers.md) and [security protections](docs/security-review.md).

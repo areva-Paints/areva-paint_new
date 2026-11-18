@@ -1,3 +1,7 @@
+/*
+ * Generate private final-decision PDFs from saved registration/review snapshots with Unicode fonts, wrapping and pagination.
+ * No PDF contents are published to public CMS APIs.
+ */
 import PDFDocument from "pdfkit";
 import * as fontkit from "fontkit";
 import { fileURLToPath } from "node:url";
@@ -25,12 +29,14 @@ const paths = Object.fromEntries(
 let coverage:
   | Array<{ name: string; hasGlyphForCodePoint: (code: number) => boolean }>
   | undefined;
+/* Cache glyph coverage from committed Unicode fonts for report text fallback. */
 function fonts() {
   return (coverage ??= fontNames.map((name) => {
     const font = fontkit.openSync(paths[name]) as any;
     return { name, hasGlyphForCodePoint: font.hasGlyphForCodePoint.bind(font) };
   }));
 }
+/* Split text into font-compatible runs so customer names and symbols remain readable. */
 function runs(value: string) {
   const result: Array<{ font: string; text: string }> = [];
   for (const character of value.replace(/\r\n?/g, "\n")) {
@@ -53,6 +59,7 @@ function runs(value: string) {
   }
   return result.length ? result : [{ font: fontNames[0], text: "—" }];
 }
+/* Format report timestamps in the intended customer-facing timezone. */
 const date = (value: string) =>
   value
     ? new Date(
@@ -95,11 +102,14 @@ export async function createWarrantyPdf(
     for (const name of [...fontNames, "NotoSans-Bold"])
       doc.registerFont(name, paths[name]);
     const width = doc.page.width - 88;
+    /* Restore the report body font, size and colour after a heading or page break. */
     const body = () =>
       doc.font(fontNames[0]).fontSize(9.5).fillColor("#30233b");
+    /* Start another page before the next block would overflow. */
     function room(height: number) {
       if (doc.y + height > doc.page.height - 56) doc.addPage();
     }
+    /* Wrap and render report text while tracking the available page height. */
     function text(value: string) {
       const parts = runs(value);
       parts.forEach((part, index) =>
@@ -114,6 +124,7 @@ export async function createWarrantyPdf(
           }),
       );
     }
+    /* Start a clearly separated report section with enough space for its first field. */
     function heading(label: string) {
       room(54);
       doc
@@ -124,6 +135,7 @@ export async function createWarrantyPdf(
         .text(label);
       doc.moveDown(0.55);
     }
+    /* Render one labelled snapshot value, preserving line wrapping and empty-value handling. */
     function field(label: string, value: unknown) {
       room(43);
       doc

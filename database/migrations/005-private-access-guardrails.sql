@@ -1,3 +1,7 @@
+/* Restrict direct application-table access and harden the login trigger while preserving unrelated schemas and records.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Apply once after migrations 001–004 to an existing Areva installation.
 -- Review permissions with your operator: browser roles lose application-table access.
 -- Does not connect the current JSON-backed app, migrate data or create a backend role.

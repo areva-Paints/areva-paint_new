@@ -63,3 +63,10 @@ After migration 009, existing installations use [010-gallery-project-categories.
 ## Warranty login phone snapshot
 
 Existing installations after migration 010 use [011-warranty-login-mobile.sql](../database/migrations/011-warranty-login-mobile.sql) once. It adds required `login_mobile` and backfills it from each record's existing mobile number without changing review decisions. Fresh schema/setup includes the column. The count remains 23 tables; the runtime continues to use private JSON files. No live migration is performed here.
+
+
+## Contact and review integrity — 18 November 2026
+
+For an existing installation after migration 011, apply [012-contact-and-review-integrity.sql](../database/migrations/012-contact-and-review-integrity.sql) once. It rejects punctuation-only/invalid contact numbers, requires nonblank reasons and reviewer metadata for rejected/needs-information reviews, and limits approval confirmation to Approved records. Preflight stops and reports counts if older records conflict; it never silently rewrites data or bypasses the final-review lock. Fresh schema/setup already includes these checks and still has 23 tables.
+
+The optional [review-checks.sql](../database/review-checks.sql) runs in a read-only transaction and reports table/RLS counts, private role grants, unvalidated constraints and data-quality counts without printing customer data. Run it as the intended installation owner after setup/upgrades. It does not connect the app to SQL. See [README.md](../README.md) for the complete current hosting/storage guide. No live database was changed during this review.

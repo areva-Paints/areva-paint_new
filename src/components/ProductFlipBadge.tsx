@@ -1,3 +1,6 @@
+/*
+ * Animate the product badge/photo only when visible and allowed by the motion preference, releasing observers and timers on cleanup.
+ */
 import React, { useEffect, useState } from 'react';
 
 interface ProductFlipBadgeProps {
@@ -25,7 +28,9 @@ export function ProductFlipBadge({ name, image, sheen, onOpen }: ProductFlipBadg
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    /* Apply reduced-motion changes to the product animation state. */
     const updateMotion = () => setReducedMotion(media.matches);
+    /* Pause badge animation when its card is outside the viewport. */
     const updateVisibility = () => setPageVisible(!document.hidden);
     updateMotion();
     updateVisibility();

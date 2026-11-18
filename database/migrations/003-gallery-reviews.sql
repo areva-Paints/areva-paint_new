@@ -1,3 +1,7 @@
+/* Add curated Gallery review records and their saved-event section.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Run once for an existing Areva application database; fresh setup includes this table.
 -- Supports private Supabase areva and ordinary public-schema installations.
 -- Does not import reviews or connect the JSON-backed website to PostgreSQL.

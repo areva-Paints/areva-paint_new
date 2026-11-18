@@ -1,3 +1,7 @@
+/* Capture a required login-phone snapshot and backfill older purchases from their existing mobile number.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Run once after migrations 001–010 on an existing installation.
 -- Snapshot the entry phone separately. Existing records used mobile for entry.
 -- This prepares SQL storage only; it does not change the running JSON store.

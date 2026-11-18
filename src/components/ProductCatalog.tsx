@@ -1,3 +1,6 @@
+/*
+ * Coordinate category browsing and catalogue filtering with the current URL and CMS products.
+ */
 import { getProductDisplayDetails } from '../data/productDetails';
 import { ProductSummaryHeading } from './ProductSummaryHeading';
 import { useSiteContent } from '../admin/ContentContext';
@@ -20,6 +23,7 @@ interface ProductCatalogProps {
   onRequestQuoteForProduct: (product: Product) => void;
 }
 
+/* Coordinate category browsing and catalogue filtering with the current URL and CMS products.. */
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   selectedColorHex,
   selectedColorName,
@@ -41,6 +45,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   const destinationAfterChange = useRef<'hub' | 'range'>('hub');
   const activeCategory = CATEGORIES.find((category) => category.id === selectedCategory);
 
+  /* Focus the catalogue overview after navigating out of a category. */
   function focusOverview(destination: 'hub' | 'range') {
     const heading = destination === 'range' ? rangeHeading.current : overviewHeading.current;
     const target = destination === 'range' ? rangeRef.current : hubRef.current;
@@ -48,6 +53,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     target?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
 
+  /* Focus a selected category after its content has rendered. */
   function focusCategory() {
     categoryHeading.current?.focus({ preventScroll: true });
     sectionRef.current?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -55,6 +61,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
 
   // Products opens Interior Paints; explicit hub and complete-catalogue links retain their destinations.
   useEffect(() => {
+    /* Reconcile category/filter state with a public navigation change. */
     const resetFromNavigation = (event: MouseEvent) => {
       if (!(event.target instanceof Element) || event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       const link = event.target.closest('a[href="#solutions"], a[href="#products"], a[href="#products/all"]');
@@ -88,6 +95,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     else focusCategory();
   }, [selectedCategory]);
 
+  /* Set the current category and expose its product collection. */
   function openCategory(categoryId: string) {
     destinationAfterChange.current = 'hub';
     focusAfterChange.current = true;

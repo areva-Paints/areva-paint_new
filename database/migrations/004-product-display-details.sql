@@ -1,3 +1,7 @@
+/* Add free-text technical fields, bases/packing arrays and curated warranty labels without replacing calculator inputs.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Apply once to an existing Areva database; fresh schema includes these fields.
 -- Preserves numeric calculator values and existing warranties. No content import or live connection.
 BEGIN;

@@ -1,3 +1,6 @@
+/*
+ * Share the six illustrated More navigation cards between React and server-rendered public layouts.
+ */
 import { ArrowRight, X } from "lucide-react";
 
 const links = [

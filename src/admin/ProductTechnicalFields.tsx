@@ -1,6 +1,11 @@
+/*
+ * Edit free-text product specifications and comma-separated base/packing values.
+ * These display values remain separate from numeric calculator inputs.
+ */
 import React, { useId, useState } from "react";
 import type { Product } from "../types";
 
+/* Keep label, required state and validation layout consistent across editor fields. */
 function Field({
   label,
   hint,
@@ -22,6 +27,7 @@ function Field({
     </div>
   );
 }
+/* Edit free-text product specifications and comma-separated base/packing values. */
 function CommaList({
   label,
   values,
@@ -82,6 +88,7 @@ function CommaList({
     </Field>
   );
 }
+/* Edit free-text product specifications and comma-separated base/packing values. */
 export function ProductTechnicalFields({
   product,
   onChange,
@@ -90,6 +97,7 @@ export function ProductTechnicalFields({
   onChange: (change: Partial<Product>) => void;
 }) {
   const specs = product.specs;
+  /* Update one draft field while preserving the other form values. */
   const patch = (change: Partial<Product["specs"]>) =>
     onChange({ specs: { ...specs, ...change } });
   const textField = (

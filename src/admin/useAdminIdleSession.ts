@@ -1,3 +1,7 @@
+/*
+ * Track real admin interactions and synchronize session-scoped activity across tabs.
+ * Visibility changes recheck expiry; background network traffic cannot keep an idle session alive.
+ */
 import { useEffect, useRef } from "react";
 import {
   ADMIN_ACTIVITY_INTERVAL_MS,
@@ -9,6 +13,7 @@ import {
 const storageKey = "areva-admin-session-activity";
 type SignoutReason = "idle" | "expired" | "signed_out" | "changed";
 type Message = { scope: string; kind: "activity" | "logout"; at: number };
+/* Publish a session-scoped activity/sign-out message to other admin tabs. */
 function announce(message: Message) {
   try {
     localStorage.setItem(storageKey, JSON.stringify(message));
@@ -16,10 +21,12 @@ function announce(message: Message) {
     /* Per-tab expiry still works if storage is disabled. */
   }
 }
+/* Notify same-origin admin tabs that the current session has ended. */
 export function announceAdminSignout(scope?: string) {
   if (scope) announce({ scope, kind: "logout", at: Date.now() });
 }
 
+/* Observe user interactions and reconcile the five-minute idle deadline with the server. */
 export function useAdminIdleSession(
   authenticated: boolean,
   timing: AdminSessionTiming | null,
@@ -44,6 +51,7 @@ export function useAdminIdleSession(
     let expiryTimer: ReturnType<typeof setTimeout>,
       activityTimer: ReturnType<typeof setTimeout>;
 
+    /* Stop session activity and notify the parent that authentication has expired. */
     function end(reason: SignoutReason, notify = true) {
       if (ended || disposed) return;
       ended = true;
@@ -61,6 +69,7 @@ export function useAdminIdleSession(
       }
       callback.current(reason);
     }
+    /* Accept only activity messages for the current server session scope. */
     function syncSharedActivity() {
       try {
         const value = JSON.parse(
@@ -80,6 +89,7 @@ export function useAdminIdleSession(
         /* Ignore malformed/unavailable shared metadata. */
       }
     }
+    /* Compare idle and absolute deadlines and end sessions that have expired. */
     function check() {
       if (ended || disposed) return;
       syncSharedActivity();
@@ -99,6 +109,7 @@ export function useAdminIdleSession(
         Math.min(absoluteDeadline, lastActivity + ADMIN_IDLE_TIMEOUT_MS) - now,
       );
     }
+    /* Reconcile server timing with browser elapsed time without reviving expired sessions. */
     function acceptTiming(value: AdminSessionTiming) {
       if (ended || disposed || !value) return;
       if (value.activityId !== scope) {
@@ -111,6 +122,7 @@ export function useAdminIdleSession(
         Date.now() + (value.expiresAt - value.serverTime),
       );
     }
+    /* Send the most recent real interaction to the server with bounded request frequency. */
     async function flushActivity() {
       check();
       if (ended || disposed || !pending || inFlight) return;
@@ -139,6 +151,7 @@ export function useAdminIdleSession(
         if (pending) queueActivity();
       }
     }
+    /* Batch interaction notifications instead of sending one request per input event. */
     function queueActivity() {
       if (ended || disposed || !pending || inFlight) return;
       clearTimeout(activityTimer);
@@ -148,6 +161,7 @@ export function useAdminIdleSession(
           : Math.max(0, ADMIN_ACTIVITY_INTERVAL_MS - (Date.now() - lastSent));
       activityTimer = setTimeout(() => void flushActivity(), delay);
     }
+    /* Record a trusted foreground interaction as admin activity. */
     function interaction(event: Event) {
       if (!event.isTrusted || ended || disposed) return;
       // Check before counting the first event after sleep/idle; it cannot revive a session.
@@ -162,6 +176,7 @@ export function useAdminIdleSession(
       check();
       queueActivity();
     }
+    /* Recheck expiration when a suspended or hidden page becomes active. */
     async function resumed() {
       check();
       if (
@@ -184,6 +199,7 @@ export function useAdminIdleSession(
         verifying = false;
       }
     }
+    /* Handle a same-session activity or sign-out message from another tab. */
     const shared = (event: StorageEvent) => {
       if (event.key === storageKey) check();
     };

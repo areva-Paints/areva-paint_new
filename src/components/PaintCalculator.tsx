@@ -1,3 +1,7 @@
+/*
+ * Estimate area, coats, volume and pack counts from catalogue coverage.
+ * Quantities are guidance and can be passed into an enquiry.
+ */
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useEffect } from 'react';
 import { Calculator, MessageSquare, Check, Layers, Sparkles, ChevronDown } from 'lucide-react';
@@ -16,6 +20,7 @@ interface PaintCalculatorProps {
   selectedColorName: string;
 }
 
+/* Estimate area, coats, volume and pack counts from catalogue coverage. */
 export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
   onRequestQuoteWithEstimate,
   selectedColorHex,
@@ -58,6 +63,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
   const totalLitersWithWastage = Math.ceil(exactLiters * (1 + safetyAllowance / 100) * 2) / 2;
 
   // Package sizing optimizer
+  /* Choose supported pack counts for the estimated paint volume. */
   const calculateCans = (liters: number) => {
     let remaining = liters;
     const cans20L = Math.floor(remaining / 20);
@@ -81,6 +87,7 @@ export const PaintCalculator: React.FC<PaintCalculatorProps> = ({
     .map((c) => `${c.count} × ${c.size}${unit}`)
     .join(' + ');
 
+  /* Open an enquiry with the current calculation and product context. */
   const handleSendEstimate = () => {
     onRequestQuoteWithEstimate({
       productName: selectedProduct.name,

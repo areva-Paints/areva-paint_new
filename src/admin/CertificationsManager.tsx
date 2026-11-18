@@ -1,3 +1,7 @@
+/*
+ * Edit document-card drafts, product links and uploaded PDFs.
+ * Saving a document uses the parent revision-aware publish action; uploads are authenticated separately.
+ */
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -17,6 +21,7 @@ import {
 } from "./content-types";
 import { AdminUpdated } from "./ActivityHistory";
 
+/* Keep label, required state and validation layout consistent across editor fields. */
 function Field({
   label,
   children,
@@ -32,6 +37,7 @@ function Field({
     </div>
   );
 }
+/* Edit document-card drafts, product links and uploaded PDFs. */
 export function CertificationsManager({
   content,
   onChange,
@@ -59,6 +65,7 @@ export function CertificationsManager({
     if (draft) dialog.current?.showModal();
     else dialog.current?.close();
   }, [Boolean(draft)]);
+  /* Initialize an isolated editor draft from the selected record before showing its dialog. */
   function open(item?: CertificationDocument) {
     setError("");
     setAttempted(false);
@@ -83,12 +90,14 @@ export function CertificationsManager({
           },
     );
   }
+  /* Update one draft field while preserving the other form values. */
   function patch<K extends keyof CertificationDocument>(
     key: K,
     value: CertificationDocument[K],
   ) {
     setDraft((item) => (item ? { ...item, [key]: value } : item));
   }
+  /* Send the selected file to its authenticated upload API and keep the returned server-owned URL. */
   async function upload(files: FileList | null) {
     if (!files?.length || !draft) return;
     const chosen = Array.from(files);
@@ -159,6 +168,7 @@ export function CertificationsManager({
       onBusy(false);
     }
   }
+  /* Validate the card and publish its complete CMS revision through the parent persistence action. */
   async function save() {
     if (!draft || locked) return;
     if (!draft.title.trim() || !draft.description.trim()) {
@@ -200,6 +210,7 @@ export function CertificationsManager({
       setSaving(false);
     }
   }
+  /* Reorder the selected card without changing its stable identifier. */
   function move(id: string, offset: number) {
     const next = [...items],
       index = next.findIndex((item) => item.id === id),

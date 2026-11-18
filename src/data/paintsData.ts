@@ -1,3 +1,7 @@
+/*
+ * Provide seed catalogue, shade and category data for a new JSON store and the optional React studio.
+ * Existing CMS records take precedence after persistence.
+ */
 import { normalizeShade } from './shadeFamilies';
 import { Category, Product, ColorShade, RoomPreset } from '../types';
 

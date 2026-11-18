@@ -1,7 +1,12 @@
+/*
+ * Display CMS dealer/service information and open an enquiry for a selected service.
+ * Booking is an enquiry request, not an appointment scheduler.
+ */
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useState } from 'react';
 import { MapPin, Phone, MessageSquare, Check, Calendar, ArrowRight, ShieldCheck } from 'lucide-react';
 
+/* Display CMS dealer/service information and open an enquiry for a selected service. */
 export const DealersAndServices: React.FC = () => {
   const [pincodeQuery, setPincodeQuery] = useState<string>('560038');
   const [selectedState, setSelectedState] = useState<string>('All');
@@ -41,6 +46,7 @@ export const DealersAndServices: React.FC = () => {
     return d.city.toLowerCase().includes(q) || d.name.toLowerCase().includes(q) || d.address.toLowerCase().includes(q);
   });
 
+  /* Open the enquiry flow with the selected service already described. */
   const handleBookService = (e: React.FormEvent) => {
     e.preventDefault();
     setServiceBooked(true);

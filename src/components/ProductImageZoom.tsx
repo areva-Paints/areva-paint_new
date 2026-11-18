@@ -1,3 +1,6 @@
+/*
+ * Provide pointer/touch product-image magnification with bounded image coordinates and a usable fallback.
+ */
 import React, { useState, useRef } from 'react';
 import { ZoomIn, Search } from 'lucide-react';
 
@@ -10,6 +13,7 @@ interface ProductImageZoomProps {
   selectedColorName?: string;
 }
 
+/* Provide pointer/touch product-image magnification with bounded image coordinates and a usable fallback.. */
 export const ProductImageZoom: React.FC<ProductImageZoomProps> = ({
   src,
   alt,
@@ -22,6 +26,7 @@ export const ProductImageZoom: React.FC<ProductImageZoomProps> = ({
   const [origin, setOrigin] = useState({ x: 50, y: 50 });
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  /* Translate the pointer position into the magnified image origin. */
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -30,6 +35,7 @@ export const ProductImageZoom: React.FC<ProductImageZoomProps> = ({
     setOrigin({ x, y });
   };
 
+  /* Translate a touch gesture into the bounded magnified image origin. */
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     if (!containerRef.current || e.touches.length === 0) return;
     const touch = e.touches[0];

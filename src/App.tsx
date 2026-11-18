@@ -1,3 +1,6 @@
+/*
+ * Choose the public, admin or warranty experience from the URL and coordinate the optional React studio, shared content and enquiry dialogs.
+ */
 import { ProjectGallery } from './components/ProjectGallery';
 import { Certifications } from './components/Certifications';
 import { ExploreAreva } from './components/ExploreAreva';
@@ -30,6 +33,7 @@ import '../public/assets/shade-library.css';
 import '../public/assets/product-details.css';
 import '../public/assets/explore-areva.css';
 
+/* Route the page and coordinate studio selections, overlays and public enquiry context. */
 export default function App() {
   // View mode switcher: 'attached' (shows the user's attached HTML file), 'react' (modern React platform), 'split' (side-by-side)
   const [viewMode, setViewMode] = useState<'attached' | 'react' | 'split'>('attached');
@@ -56,6 +60,7 @@ export default function App() {
 
   // Scroll listener for back to top
   useEffect(() => {
+    /* Track the current page section for public navigation highlighting. */
     const handleScroll = () => {
       setShowScrollTop(window.scrollY > 500);
     };
@@ -63,11 +68,13 @@ export default function App() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  /* Select a shade and focus the colour visualization tool. */
   const handleSelectColor = (hex: string, name: string) => {
     setSelectedColorHex(hex);
     setSelectedColorName(name);
   };
 
+  /* Collect product/shade context before opening the enquiry dialog. */
   const handleOpenEnquiry = (options?: {
     topic?: string;
     product?: string;
@@ -78,6 +85,7 @@ export default function App() {
     setIsEnquiryOpen(true);
   };
 
+  /* Navigate to a section while allowing React to render the requested view. */
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };

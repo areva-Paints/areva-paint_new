@@ -1,3 +1,7 @@
+/*
+ * Stage customer-review cards and optional portraits for the Gallery.
+ * The selected action either stages the draft or publishes through the parent revision-aware save.
+ */
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
   ImagePlus,
@@ -13,6 +17,7 @@ import type { GalleryReview, SiteContent } from "./content-types";
 import { AdminUpdated } from "./ActivityHistory";
 import { ImagePreview, checkImage } from "./ImagePreview";
 
+/* Keep label, required state and validation layout consistent across editor fields. */
 function Field({
   label,
   children,
@@ -28,6 +33,7 @@ function Field({
     </div>
   );
 }
+/* Stage customer-review cards and optional portraits for the Gallery. */
 export function GalleryReviewsManager({
   content,
   onChange,
@@ -55,6 +61,7 @@ export function GalleryReviewsManager({
     if (draft) dialog.current?.showModal();
     else dialog.current?.close();
   }, [Boolean(draft)]);
+  /* Initialize an isolated editor draft from the selected record before showing its dialog. */
   function open(review?: GalleryReview) {
     const now = new Date().toISOString();
     setDraft(
@@ -74,9 +81,11 @@ export function GalleryReviewsManager({
     setProgress("");
     setPublishAttempted(false);
   }
+  /* Update one draft field while preserving the other form values. */
   function patch(key: "name" | "detail" | "text" | "image", value: string) {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
   }
+  /* Send the selected file to its authenticated upload API and keep the returned server-owned URL. */
   async function upload(file?: File) {
     if (!file || !draft) return;
     if (
@@ -119,6 +128,7 @@ export function GalleryReviewsManager({
       onBusy(false);
     }
   }
+  /* Validate the draft, then stage or publish the next CMS revision according to the selected action. */
   async function apply(publish: boolean) {
     if (!draft || locked) return;
     const review = {

@@ -1,3 +1,7 @@
+/*
+ * Coordinate authenticated CMS editing, section navigation and revision-aware saves.
+ * Fresh sessions start on Certifications and documents; inactivity is handled by the shared session hook.
+ */
 import { WarrantyManager } from "../warranty/WarrantyManager";
 import { BrandLogo } from "../components/BrandLogo";
 import { CertificationsManager } from "./CertificationsManager";
@@ -124,6 +128,7 @@ const sections = [
     description: "Help customers find a trusted stockist close to home.",
   },
 ];
+/* Send a no-store admin API request and surface structured server failures. */
 async function request(url: string, options: RequestInit = {}) {
   const r = await fetch(url, {
     ...options,
@@ -133,7 +138,9 @@ async function request(url: string, options: RequestInit = {}) {
   if (!r.ok) throw Error(d.error || "Request failed. Please try again.");
   return d;
 }
+/* Allocate stable identifiers for new CMS draft entries. */
 const uid = () => crypto.randomUUID();
+/* Keep label, required state and validation layout consistent across editor fields. */
 function Field({
   label,
   children,
@@ -158,6 +165,7 @@ function Field({
   );
 }
 
+/* Coordinate authenticated CMS editing, section navigation and revision-aware saves. */
 export function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false),
     [checking, setChecking] = useState(true),
@@ -176,6 +184,7 @@ export function AdminPage() {
   const authEpoch = useRef(0);
   const [activity, setActivity] = useState<ActivitySummary | null>(null);
   const [activityError, setActivityError] = useState("");
+  /* Reload audit summaries after a saved operation without publishing private events. */
   async function refreshActivity() {
     const epoch = authEpoch.current;
     try {
@@ -190,6 +199,7 @@ export function AdminPage() {
       );
     }
   }
+  /* Refresh saved-event summaries after authentication, uploads or an accepted CMS revision. */
   useEffect(() => {
     if (authenticated && !uploading) void refreshActivity();
   }, [authenticated, uploading, content?.revision]);
@@ -203,6 +213,7 @@ export function AdminPage() {
     ),
     [isNew, setIsNew] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  /* Discard authenticated editing state when the session ends. */
   function clearAdminSession(message = "") {
     authEpoch.current++;
     setAuthenticated(false);
@@ -227,6 +238,7 @@ export function AdminPage() {
     );
   });
   const section = sections.find((s) => s.id === tab)!;
+  /* Restore the authenticated CMS snapshot and its server revision. */
   async function load() {
     const epoch = authEpoch.current;
     const [c, session] = await Promise.all([
@@ -243,12 +255,15 @@ export function AdminPage() {
     setContent(c);
     setAuthenticated(true);
   }
+  /* Restore an existing session on mount; unauthenticated visitors remain on the login screen. */
   useEffect(() => {
     load()
       .catch(() => {})
       .finally(() => setChecking(false));
   }, []);
+  /* Register and clean up the unsaved-change warning for browser unloads. */
   useEffect(() => {
+    /* Warn before a page unload would discard unsaved CMS edits. */
     const guard = (e: BeforeUnloadEvent) => {
       if (dirty) {
         e.preventDefault();
@@ -258,21 +273,25 @@ export function AdminPage() {
     window.addEventListener("beforeunload", guard);
     return () => window.removeEventListener("beforeunload", guard);
   }, [dirty]);
+  /* Keep the native editor dialog synchronized with the current draft and focus its first field. */
   useEffect(() => {
     if (editor) {
       dialogRef.current?.showModal();
       dialogRef.current?.querySelector<HTMLInputElement>("input")?.focus();
     } else dialogRef.current?.close();
   }, [!!editor]);
+  /* Stage a complete content draft and mark it as unsaved. */
   function update(c: SiteContent) {
     setContent(c);
     setDirty(true);
     setNotice("");
     setError("");
   }
+  /* Change one field in the open product, dealer or landing-image draft. */
   function patch(key: string, value: unknown) {
     setEditor((e) => ({ ...e, [key]: value }) as typeof e);
   }
+  /* Sign in and load the initial Certifications and documents workspace. */
   async function login(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -291,6 +310,7 @@ export function AdminPage() {
       setBusy(false);
     }
   }
+  /* Send revision-aware content to the server and refresh the accepted snapshot. */
   async function persist(next: SiteContent): Promise<boolean> {
     if (busy || uploading) return false;
     const epoch = authEpoch.current;
@@ -316,6 +336,7 @@ export function AdminPage() {
       if (epoch === authEpoch.current) setBusy(false);
     }
   }
+  /* End the admin session and clear local editing state. */
   async function logout() {
     if (busy || uploading) return;
     if (dirty && !confirm("Discard unsaved changes and log out?")) return;
@@ -327,9 +348,11 @@ export function AdminPage() {
       setError((e as Error).message);
     }
   }
+  /* Persist the staged full-content revision and report server conflicts. */
   async function save() {
     if (content) await persist(content);
   }
+  /* Start a new entry for the selected content section. */
   function add() {
     setIsNew(true);
     setError("");
@@ -382,6 +405,7 @@ export function AdminPage() {
         },
       });
   }
+  /* Validate the modal draft, then stage it or persist the next revision using the selected submit action. */
   async function apply(e: React.FormEvent) {
     e.preventDefault();
     if (
@@ -428,6 +452,7 @@ export function AdminPage() {
       setEditor(null);
     }
   }
+  /* Remove an entry from the staged content after the editor confirmation. */
   function remove(id: string) {
     if (
       !content ||
@@ -451,6 +476,7 @@ export function AdminPage() {
       return;
     update({ ...content, [key]: content[key].filter((i) => i.id !== id) });
   }
+  /* Upload media to the protected server endpoint and use its returned URL. */
   async function upload(file?: File) {
     if (!file) return;
     if (
@@ -480,6 +506,7 @@ export function AdminPage() {
       setUploading(false);
     }
   }
+  /* Render a controlled form field using the shared label and change handler. */
   const input = (
     key: string,
     label: string,

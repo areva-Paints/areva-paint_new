@@ -1,3 +1,6 @@
+/*
+ * Render the branded home-page campaign artwork and responsive calls to explore products or colour tools.
+ */
 import React from 'react';
 
 /** Shared live hero for the embedded homepage and React Studio. */

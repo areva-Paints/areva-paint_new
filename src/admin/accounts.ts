@@ -1,3 +1,7 @@
+/*
+ * Authenticate environment and stored accounts with bounded password work and opaque server sessions.
+ * Admin authorization rechecks role, account status, password version and idle expiry on every request.
+ */
 import { sensitiveRequestGuard } from "../server/security";
 import express from "express";
 import crypto from "node:crypto";
@@ -17,6 +21,7 @@ import {
 } from "./user-types";
 const scrypt = promisify(crypto.scrypt);
 let pendingHashes = 0;
+/* Bound concurrent scrypt work so repeated sign-in attempts cannot create unlimited password tasks. */
 async function derive(password: string, salt: string, length: number) {
   if (pendingHashes >= 4) throw Error("Password verification capacity reached");
   pendingHashes++;
@@ -38,16 +43,21 @@ const sessions = new Map<
   }
 >();
 const attempts = new Map<string, { count: number; until: number }>();
+/* Normalize an identifier for case-insensitive comparison. */
 const normalize = (value: string) => value.trim().toLowerCase();
+/* Build a fixed-length comparison value for the environment-admin password signature. */
 const digest = (value: string) =>
   crypto.createHash("sha256").update(value).digest();
+/* Keep admin and public account sessions in separate cookie namespaces. */
 const cookieName = (admin: boolean) => (admin ? "areva_admin" : "areva_user");
+/* Read the opaque session token from the expected cookie namespace. */
 const token = (req: express.Request, admin: boolean) =>
   req.headers.cookie
     ?.split(";")
     .map((c) => c.trim())
     .find((c) => c.startsWith(cookieName(admin) + "="))
     ?.slice(cookieName(admin).length + 1) || "";
+/* Build the configured recovery admin only when its server-side password is usable. */
 function environmentUser(): { user: AccountUser; password: string } | null {
   const password =
     process.env.ADMIN_PASSWORD ||
@@ -72,6 +82,7 @@ function environmentUser(): { user: AccountUser; password: string } | null {
     },
   };
 }
+/* Select account response fields explicitly so password material never leaves the server. */
 function safe(user: StoredUser): AccountUser {
   return {
     id: user.id,
@@ -84,6 +95,7 @@ function safe(user: StoredUser): AccountUser {
     updatedAt: user.updatedAt,
   };
 }
+/* Validate expiry and current account state before returning an authorized identity. */
 export function currentUser(
   req: express.Request,
   admin = true,
@@ -122,6 +134,7 @@ export function currentUser(
   }
   return safe(user);
 }
+/* Expose only timing and activity scope needed by the admin inactivity hook. */
 export function adminSessionTiming(
   req: express.Request,
 ): AdminSessionTiming | null {
@@ -134,6 +147,7 @@ export function adminSessionTiming(
     expiresAt: session.until,
   };
 }
+/* Advance the idle clock only after validating an unexpired admin session. */
 export function recordAdminInteraction(
   req: express.Request,
   idleForMs: number,
@@ -147,18 +161,22 @@ export function recordAdminInteraction(
   );
   return adminSessionTiming(req);
 }
+/* Reject private API access unless the opaque session still identifies an active admin. */
 export const requireAdmin: express.RequestHandler = (req, res, next) => {
   if (!currentUser(req))
     return res.status(401).json({ error: "Please sign in as an admin." });
   next();
 };
+/* Generate a fresh salt and derive the stored password hash with scrypt. */
 async function passwordHash(password: string) {
   const passwordSalt = crypto.randomBytes(16).toString("hex");
   const key = (await derive(password, passwordSalt, 64)) as Buffer;
   return { passwordSalt, passwordHash: key.toString("hex") };
 }
+/* Accept only bounded passwords of the supported registration length. */
 const validPassword = (value: unknown): value is string =>
   typeof value === "string" && value.length >= 12 && value.length <= 128;
+/* Build a role-specific sign-in handler with bounded attempts, session limits and audit logging. */
 function login(admin: boolean): express.RequestHandler {
   return async (req, res) => {
     try {
@@ -308,6 +326,7 @@ function login(admin: boolean): express.RequestHandler {
   };
 }
 export const adminLogin = login(true);
+/* Delete the admin session and expire its cookie before returning to sign-in. */
 export const adminLogout: express.RequestHandler = (req, res) => {
   const scopedId = req.body?.activityId;
   if (scopedId !== undefined && typeof scopedId !== "string")
@@ -330,12 +349,15 @@ export const adminLogout: express.RequestHandler = (req, res) => {
 };
 export const publicAccountRouter = express.Router();
 publicAccountRouter.use(sensitiveRequestGuard);
+/* POST /login: Sign in public roles through a cookie namespace distinct from admin access. */
 publicAccountRouter.post("/login", login(false));
+/* GET /session: Return only the current safe warranty/public-account session details. */
 publicAccountRouter.get("/session", (req, res) => {
   const user = currentUser(req, false);
   if (!user) return res.status(401).json({ error: "Please sign in." });
   res.json({ authenticated: true, user });
 });
+/* POST /logout: Invalidate the scoped session and expire its cookie. */
 publicAccountRouter.post("/logout", (req, res) => {
   sessions.delete(token(req, false));
   res.clearCookie("areva_user", { path: "/" }).json({ success: true });
@@ -343,6 +365,7 @@ publicAccountRouter.post("/logout", (req, res) => {
 
 export const usersRouter = express.Router();
 usersRouter.use(requireAdmin);
+/* GET /: List safe created-account fields without password hashes or salts. */
 usersRouter.get("/", (_req, res) =>
   res.json({
     users: [
@@ -351,6 +374,7 @@ usersRouter.get("/", (_req, res) =>
     ],
   }),
 );
+/* POST /: Create a unique website account, rechecking identifiers and admin authorization after password hashing. */
 usersRouter.post("/", async (req, res) => {
   try {
     const { username, email = "", name, role, password } = req.body;
@@ -375,6 +399,7 @@ usersRouter.post("/", async (req, res) => {
     const all = readUsers(),
       reserved = normalize(process.env.ADMIN_USERNAME || "admin");
     const identifiers = [normalized, ...(mail ? [mail] : [])];
+    /* Recheck the shared username/email namespace, including after asynchronous hashing. */
     const conflict = () =>
       identifiers.includes(reserved) ||
       readUsers().some(
@@ -432,6 +457,7 @@ usersRouter.post("/", async (req, res) => {
       .json({ error: "The user could not be created. Please try again." });
   }
 });
+/* PATCH /:id: Update role/status/password with authorization rechecks and session invalidation. */
 usersRouter.patch("/:id", async (req, res) => {
   try {
     if (

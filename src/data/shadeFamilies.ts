@@ -1,3 +1,6 @@
+/*
+ * Define supported shade families/tones, preserve older palette metadata and apply consistent search filters across admin and public views.
+ */
 import type { ColorShade } from "../types";
 
 export const SHADE_FAMILIES = [
@@ -83,6 +86,7 @@ export function legacyGrouping(hex: string): {
   if (saturation >= 0.5 && light >= 0.3 && light < 0.75) tones.push("Vibrant");
   return { family, tones };
 }
+/* Convert legacy family metadata without overriding explicit current tone selections. */
 export function normalizeShade<
   T extends { family: string; hex: string; tones?: readonly ShadeTone[] },
 >(shade: T): T & { family: ShadeFamily; tones: ShadeTone[] } {
@@ -94,6 +98,7 @@ export function normalizeShade<
     tones: shade.tones ? [...shade.tones] : old ? defaults.tones : [],
   };
 }
+/* Apply shared family, tone and multi-field text matching to the shade collection. */
 export function filterShades(
   shades: ColorShade[],
   family: string,

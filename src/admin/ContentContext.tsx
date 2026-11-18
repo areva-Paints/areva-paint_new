@@ -1,11 +1,18 @@
+/*
+ * Provide public CMS content to React consumers and refresh it after focus or saved-content notifications.
+ * Private accounts and history never enter this context.
+ */
 import { contentUrl, resolveContentImages } from "../site-content";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import type { SiteContent } from "./content-types";
 const Context = createContext<SiteContent | null>(null);
+/* Read the public CMS snapshot from the nearest content provider. */
 export const useSiteContent = () => useContext(Context);
+/* Load public content and keep consumers in sync with saved-content notifications. */
 export function ContentProvider({ children }: { children: React.ReactNode }) {
   const [content, setContent] = useState<SiteContent | null>(null);
   useEffect(() => {
+    /* Refresh public content from the configured shared backend. */
     const load = () =>
       fetch(contentUrl("/api/content"), { cache: "no-store" })
         .then((r) => (r.ok ? r.json() : null))
@@ -14,6 +21,7 @@ export function ContentProvider({ children }: { children: React.ReactNode }) {
         })
         .catch(() => {});
     load();
+    /* Reload content when another same-origin tab announces a saved CMS change. */
     const changed = (event: StorageEvent) => {
       if (event.key === "areva-content-updated") void load();
     };

@@ -1,3 +1,7 @@
+/*
+ * Own the current private JSON persistence layer for CMS content, accounts and audit history.
+ * Revision checks prevent stale full-content saves; SQL files are a separate future storage design.
+ */
 import { writePrivateJson } from "../server/storage";
 import { normalizeShade } from "../data/shadeFamilies";
 import { projectCategory } from "../data/galleryCategories";
@@ -21,6 +25,7 @@ const categoryIds = [
   "textures",
   "chemicals",
 ];
+/* Build the initial CMS snapshot from the committed seed data. */
 export function defaults(): SiteContent {
   return {
     revision: 0,
@@ -71,6 +76,7 @@ export function defaults(): SiteContent {
     landingImages: [],
   };
 }
+/* Read the private JSON snapshot and normalize compatible legacy content fields. */
 export function readContent(): SiteContent {
   const file = path.join(dataDir, "content.json");
   if (!fs.existsSync(file)) return defaults();
@@ -100,6 +106,7 @@ export function readContent(): SiteContent {
     })),
   };
 }
+/* Select public CMS fields and published documents, excluding accounts and audit history. */
 export function readPublicContent(): SiteContent {
   const content = readContent();
   return {
@@ -107,6 +114,7 @@ export function readPublicContent(): SiteContent {
     certifications: content.certifications.filter((item) => item.published),
   };
 }
+/* Read saved audit history from the private content store. */
 export function readActivity(): ActivityStore {
   const file = path.join(dataDir, "content.json");
   if (!fs.existsSync(file)) return { startedAt: null, events: [] };
@@ -117,6 +125,7 @@ export function readActivity(): ActivityStore {
     }
   );
 }
+/* Atomically save the accepted CMS snapshot and audit events; the route checks its expected revision before calling this writer. */
 export function saveContent(
   content: SiteContent,
   events: ActivityEvent[] = [],
@@ -134,15 +143,18 @@ export function saveContent(
   });
 }
 
+/* Append a saved account/upload event to private history. */
 export function recordActivity(event: ActivityEvent) {
   saveContent(readContent(), [event]);
 }
 
+/* Read password-bearing stored users only inside the backend. */
 export function readUsers(): StoredUser[] {
   const file = path.join(dataDir, "content.json");
   if (!fs.existsSync(file)) return [];
   return JSON.parse(fs.readFileSync(file, "utf8")).users ?? [];
 }
+/* Persist accounts and their associated audit events in the same private snapshot. */
 export function saveUsers(users: StoredUser[], events: ActivityEvent[]) {
   saveContent(readContent(), events, users);
 }

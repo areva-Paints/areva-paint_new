@@ -1,3 +1,4 @@
+/* Style the Gallery tabs, category filters, project/review/campaign cards and accessible detail dialogs. */
 /* Shared by the React website and the original public page. */
 /* Optional brand tokens theme both the section and the body-level album dialog. */
 .pg-section, .pg-dialog {
@@ -169,9 +170,11 @@
 .ga-link { display: inline-flex; align-items: center; gap: 10px; padding: 11px 19px; border: 1px solid var(--pg-deep); border-radius: 12px; background: var(--pg-deep); color: var(--pg-on-deep); font-size: 14px; line-height: 1.5; font-weight: 650; text-decoration: none; }
 .ga-link:hover { opacity: .9; }
 .ga-link svg { width: 17px; height: 17px; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 900px) {
   .pg-grid, .ga-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) {
   .pg-section { padding: 48px 0; scroll-margin-top: 95px; }
   .pg-heading { margin-bottom: 24px; }
@@ -198,6 +201,7 @@
   .ga-preview-image, .ga-preview-frame > .pg-image-fallback { height: 48dvh; min-height: 180px; }
   .ga-preview-body { padding: 20px 18px; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (prefers-reduced-motion: reduce) {
   .pg-card, .pg-cover > img, .ga-card { transition: none; }
   .pg-card:hover, .pg-card:hover .pg-cover > img, .ga-card:hover { transform: none; }
@@ -216,8 +220,11 @@
 .gr-author { padding-top: 18px; border-top: 1px solid var(--pg-line); }
 .gr-author h3 { margin: 0; color: var(--pg-deep); font-size: 18px; line-height: 1.5; overflow-wrap: anywhere; }
 .gr-author p { margin: 6px 0 0; color: var(--pg-muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 900px) { .gr-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) { .gr-grid { grid-template-columns: minmax(0, 1fr); } }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 400px) { .ga-tabs { display: flex; max-width: 100%; } .ga-tabs .ga-tab { min-width: 0; flex: 1; padding: 10px 12px; font-size: 13px; } }
 
 /* Gallery category cards use the shared public page banner. */
@@ -254,4 +261,5 @@
 #gallery .pg-photo-count { top: 14px; right: 14px; bottom: auto; left: auto; background: #351453bf; color: white; }
 .pg-card-description { color: #746d7c; font-size: 15px; line-height: 1.65; white-space: pre-line; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 #gallery .pg-card-title { color: #351453; font-size: 22px; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) { #gallery .ga-tab { font-size: 13px; padding: 12px 18px; } #gallery .pg-card-title { font-size: 21px; } .pg-category-filter { padding: 8px 12px; font-size: 12px; } }

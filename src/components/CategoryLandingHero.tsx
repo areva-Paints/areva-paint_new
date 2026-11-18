@@ -1,3 +1,6 @@
+/*
+ * Render category-specific artwork and copy while preserving the shared product-navigation layout.
+ */
 import type { CSSProperties, Ref } from "react";
 import {
   ArrowLeft,

@@ -1,3 +1,7 @@
+/*
+ * Extract text from a shade-reference PDF in a browser worker.
+ * Page limits and cleanup bound preview work; the PDF upload itself is handled by a separate authenticated API.
+ */
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist";
 import worker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 GlobalWorkerOptions.workerSrc = worker;

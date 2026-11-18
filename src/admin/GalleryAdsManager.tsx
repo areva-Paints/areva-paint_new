@@ -1,3 +1,7 @@
+/*
+ * Stage Gallery campaign cards with channel, description, image and HTTPS link fields.
+ * Uploads are authenticated; the parent persists staged content.
+ */
 import { AdminUpdated } from "./ActivityHistory";
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
@@ -14,6 +18,7 @@ import {
 import type { GalleryAd, SiteContent } from "./content-types";
 import { checkImage, ImagePreview } from "./ImagePreview";
 
+/* Keep label, required state and validation layout consistent across editor fields. */
 function Field({
   label,
   children,
@@ -30,6 +35,7 @@ function Field({
   );
 }
 
+/* Stage Gallery campaign cards with channel, description, image and HTTPS link fields. */
 export function GalleryAdsManager({
   content,
   onChange,
@@ -61,6 +67,7 @@ export function GalleryAdsManager({
     } else dialog.current?.close();
   }, [Boolean(draft)]);
 
+  /* Initialize an isolated editor draft from the selected record before showing its dialog. */
   function open(ad?: GalleryAd) {
     const now = new Date().toISOString();
     setError("");
@@ -81,12 +88,14 @@ export function GalleryAdsManager({
           },
     );
   }
+  /* Update one draft field while preserving the other form values. */
   function patch(
     key: "title" | "channel" | "image" | "description" | "link",
     value: string,
   ) {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
   }
+  /* Send the selected file to its authenticated upload API and keep the returned server-owned URL. */
   async function upload(file?: File) {
     if (!file || !draft) return;
     if (
@@ -132,6 +141,7 @@ export function GalleryAdsManager({
       onBusy(false);
     }
   }
+  /* Validate the draft, then stage or publish the next CMS revision according to the selected action. */
   async function apply(publish: boolean) {
     if (!draft || locked) return;
     const ad = {

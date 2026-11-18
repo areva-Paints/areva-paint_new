@@ -1,3 +1,6 @@
+/* Regression coverage for shade import parsing and metadata.
+ * Fixtures use disposable local stores/databases; hosted customer records are not changed.
+ */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseColourRows } from "../src/admin/colour-import.ts";

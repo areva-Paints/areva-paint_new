@@ -1,3 +1,6 @@
+/*
+ * Render the public enquiry call to action using the shared brand palette.
+ */
 import React from 'react';
 import { Eye, Upload, MessageSquare, Sparkles, ArrowRight, Download } from 'lucide-react';
 
@@ -7,6 +10,7 @@ interface GrandCtaBannerProps {
   onOpenDownload?: () => void;
 }
 
+/* Render the public enquiry call to action using the shared brand palette.. */
 export const GrandCtaBanner: React.FC<GrandCtaBannerProps> = ({
   onOpenVisualizer,
   onOpenEnquiry,

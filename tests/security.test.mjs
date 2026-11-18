@@ -1,7 +1,10 @@
+/* Regression coverage for authorization, request validation, private persistence and quotas.
+ * Fixtures use disposable local stores/databases; hosted customer records are not changed.
+ */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, rm, readFile, stat } from "node:fs/promises";
+import { mkdtemp, rm, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -202,7 +205,34 @@ test("security boundaries, validation, private persistence, quotas and productio
     const login = await req("/api/admin/login", "POST", { password });
     assert.equal(login.status, 200);
     cookie = login.headers.get("set-cookie").split(";")[0];
-    assert.equal((await req("/api/project/source-files")).status, 200);
+    /* Export setup sources, but never descend into hidden operator directories. */
+    const hiddenSource = await mkdtemp(
+      path.resolve("src/.areva-export-check-"),
+    );
+    try {
+      const hiddenValue = crypto.randomBytes(24).toString("hex");
+      await writeFile(
+        path.join(hiddenSource, "credentials.json"),
+        hiddenValue,
+      );
+      const manifestResponse = await req("/api/project/source-files");
+      assert.equal(manifestResponse.status, 200);
+      const manifest = await manifestResponse.json();
+      for (const file of [
+        "README.md",
+        "package-lock.json",
+        ".nvmrc",
+        "render.yaml",
+        "scripts/check_production_start.cjs",
+        "database/migrations/012-contact-and-review-integrity.sql",
+        "public/assets/project-gallery.js",
+      ])
+        assert.equal(typeof manifest.files[file], "string", file);
+      assert.ok(!JSON.stringify(manifest).includes(hiddenValue));
+      assert.ok(!Object.hasOwn(manifest.files, ".env"));
+    } finally {
+      await rm(hiddenSource, { recursive: true, force: true });
+    }
     assert.equal(
       (await req("/api/project/download")).headers.get("cache-control"),
       "no-store",
@@ -370,6 +400,21 @@ test("source packaging stays outside public and excludes hidden files, ZIPs and 
     await mkdir(path.join(dir, "public"));
     await mkdir(path.join(dir, "src"));
     await writeFile(path.join(dir, "package.json"), "{}");
+    /* Reproducible source exports include deployment resources and ignore root symlinks. */
+    for (const folder of ["scripts", "docs", "database"])
+      await mkdir(path.join(dir, folder));
+    await writeFile(
+      path.join(dir, "scripts", "check_production_start.cjs"),
+      "// fixture",
+    );
+    await writeFile(path.join(dir, "docs", "hosting.md"), "Hosting fixture");
+    await writeFile(
+      path.join(dir, "database", "review-checks.sql"),
+      "SELECT 1;",
+    );
+    await writeFile(path.join(dir, "docs", "old.ZIP"), "OLD_SOURCE_ZIP");
+    await writeFile(path.join(dir, "render.yaml"), "services: []");
+    await writeFile(path.join(dir, ".nvmrc"), "24.22.1");
     await writeFile(
       path.join(dir, "src", "main.ts"),
       "export const safe = true;",
@@ -377,6 +422,7 @@ test("source packaging stays outside public and excludes hidden files, ZIPs and 
     await writeFile(path.join(dir, "public", "image.png"), "public fixture");
     await writeFile(path.join(dir, "public", ".env"), "PRIVATE_TEST_SECRET");
     await writeFile(path.join(dir, "private.env"), "PRIVATE_TEST_SECRET");
+    await symlink(path.join(dir, "private.env"), path.join(dir, "README.md"));
     await writeFile(path.join(dir, "public", "old.zip"), "OLD_SOURCE_ZIP");
     await symlink(
       path.join(dir, "private.env"),
@@ -406,6 +452,20 @@ test("source packaging stays outside public and excludes hidden files, ZIPs and 
       assert.equal(zip.file("public/.env"), null);
       assert.equal(zip.file("public/linked.txt"), null);
       assert.equal(zip.file("public/old.zip"), null);
+      assert.equal(zip.file("docs/old.ZIP"), null);
+      assert.equal(
+        zip.file("README.md"),
+        null,
+        "Explicit root files must not follow symlinks",
+      );
+      for (const file of [
+        "scripts/check_production_start.cjs",
+        "docs/hosting.md",
+        "database/review-checks.sql",
+        "render.yaml",
+        ".nvmrc",
+      ])
+        assert.ok(zip.file(file), file);
     }
     assert.deepEqual(
       (await readdir(path.join(dir, "public"))).filter((name) =>

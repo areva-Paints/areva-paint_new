@@ -1,3 +1,7 @@
+/* Add private warranty purchase snapshots and receipt metadata, with an explicit demo-phone boundary.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Apply ONCE after migrations 001–005 to an existing Areva application database.
 -- Creates private warranty submissions; does not connect the JSON-backed website to SQL.
 BEGIN;

@@ -1,3 +1,6 @@
+/*
+ * Coordinate hash navigation, category visibility, product-photo animation and the illustrated More panel in the preserved public layout.
+ */
 (() => {
   "use strict";
   const main = document.querySelector("main#top");
@@ -5,11 +8,13 @@
   const more = document.querySelector(".ref-more");
   const moreSummary = more?.querySelector("summary");
   const morePanel = more?.querySelector(".ref-more-panel");
+  /* Close the native More details panel and optionally restore focus to its summary. */
   function closeMore(restoreFocus = false) {
     if (!more?.open) return;
     more.open = false;
     if (restoreFocus) moreSummary.focus({ preventScroll: true });
   }
+  /* Keep the open card panel within the available viewport below the sticky header. */
   function fitMore() {
     if (!more?.open) return;
     const bottom = document
@@ -74,6 +79,7 @@
   let currentCategory = null;
   let productFlipTimer = null;
   const productMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  /* Schedule product artwork changes only while the current view permits animation. */
   function scheduleProductFlip() {
     clearInterval(productFlipTimer);
     productFlipTimer = null;
@@ -89,6 +95,7 @@
         });
     }, 5000);
   }
+  /* Switch one product badge between its artwork and product-photo side. */
   function setProductPhotoSide(badge, showPhoto) {
     badge.classList.toggle("is-flipped", showPhoto);
     badge.setAttribute("aria-pressed", String(showPhoto));
@@ -98,6 +105,7 @@
         badge.dataset.productName,
     );
   }
+  /* Track image availability so a missing product photo retains the card fallback. */
   function updatePhoto(image) {
     const badge = image.closest(".ref-flip-badge");
     if (!badge || !image.complete) return;
@@ -116,6 +124,7 @@
         "Product photo unavailable for " + badge.dataset.productName,
       );
   }
+  /* Restore product-image state when leaving or rebuilding the catalogue. */
   function resetProductPhotos() {
     main.querySelectorAll(".ref-flip-badge").forEach((badge) => {
       badge.dataset.photoRequested = "false";
@@ -152,6 +161,7 @@
     }
     scheduleProductFlip();
   });
+  /* Restart the product-photo timer after navigation or visibility changes. */
   function restartProductFlip() {
     if (!document.hidden) resetProductPhotos();
     scheduleProductFlip();
@@ -161,6 +171,7 @@
   window.addEventListener("pageshow", restartProductFlip);
   window.addEventListener("pagehide", () => clearInterval(productFlipTimer));
   const categories = window.arevaProductCategories || [];
+  /* Bring the active category into its horizontal navigation viewport. */
   function revealSelectedCategory() {
     const tabs = document.querySelector("#products [data-category-tabs]");
     const selected = tabs?.querySelector('[aria-current="page"]');
@@ -169,6 +180,7 @@
         selected.offsetLeft - (tabs.clientWidth - selected.offsetWidth) / 2;
   }
   window.addEventListener("resize", revealSelectedCategory);
+  /* Render the selected category using the safe server-generated product fragments. */
   function updateCatalogue(index) {
     window.arevaSetProductCategory?.(index);
     currentCategory = index;
@@ -197,6 +209,7 @@
         " collection. Compare finishes, coverage and specifications to find the right product for your project."
       : "";
   }
+  /* Change the visible public section and synchronize history, active links and category state. */
   function navigate(id, options = {}, updateHistory = true) {
     if (id === "products") id = "products/interior";
     const allProductsPath = id === "products/all";

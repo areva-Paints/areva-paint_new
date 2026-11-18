@@ -8,7 +8,7 @@ Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. Thi
 
 Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
-If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007, 008, 009, 010 and 011 in order. Back up and rehearse either route on staging first.
+If you already ran the earlier **15-table** proposal, run [001-users-and-activity.sql](../database/migrations/001-users-and-activity.sql) **once** instead of rerunning `schema.sql`. The upgrade adds three private/account tables and one column without dropping existing content. It does not import live JSON records. Do not run the upgrade on a fresh database created with the revised schema; those additions are already included. For the old-schema route, follow migration 001 with migrations 002, 003, 004, 005, 006, 007, 008, 009, 010, 011 and 012 in order. Back up and rehearse either route on staging first.
 
 ## Database access guardrails (14 November 2026)
 
@@ -314,3 +314,10 @@ The original schema/category seed passed isolated PostgreSQL-engine (PGlite) exe
 ## Gallery project categories — 16 November 2026
 
 `gallery_projects.category varchar(20)` is non-null, defaults to `other` and accepts `interior`, `exterior`, `textures`, `waterproofing`, `commercial`, `other`. The category/update/order index supports future SQL filtering. Migration 010 adds the field/index to existing installations after 009 without rewriting titles, photos or timestamps. The runtime still uses JSON; the table count remains 23. See [gallery-project-categories.md](gallery-project-categories.md).
+
+
+## Contact and review integrity — 18 November 2026
+
+For an existing installation after migration 011, apply [012-contact-and-review-integrity.sql](../database/migrations/012-contact-and-review-integrity.sql) once. It rejects punctuation-only/invalid contact numbers, requires nonblank reasons and reviewer metadata for rejected/needs-information reviews, and limits approval confirmation to Approved records. Preflight stops and reports counts if older records conflict; it never silently rewrites data or bypasses the final-review lock. Fresh schema/setup already includes these checks and still has 23 tables.
+
+The optional [review-checks.sql](../database/review-checks.sql) runs in a read-only transaction and reports table/RLS counts, private role grants, unvalidated constraints and data-quality counts without printing customer data. Run it as the intended installation owner after setup/upgrades. It does not connect the app to SQL. See [README.md](../README.md) for the complete current hosting/storage guide. No live database was changed during this review.

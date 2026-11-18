@@ -1,3 +1,7 @@
+/*
+ * Control the preserved public account dialog through same-origin account APIs.
+ * Build account labels with textContent; admin sessions use a separate cookie namespace.
+ */
 (() => {
   "use strict";
   const dialog = document.getElementById("lg"),
@@ -16,6 +20,7 @@
   };
   const identifier = form.querySelector('[name="username"]'),
     password = form.querySelector('[name="password"]');
+  /* Send the same-origin account request and display a server-provided validation error on failure. */
   async function api(path, body) {
     const response = await fetch("/api/auth/" + path, {
       cache: "no-store",
@@ -31,6 +36,7 @@
     if (!response.ok) throw Error(data.error || "Please sign in again.");
     return data;
   }
+  /* Rebuild the selected public-role account view with safe text nodes and current busy/authentication state. */
   function paint() {
     roles.replaceChildren();
     Object.entries(names).forEach(([value, label]) => {

@@ -1,3 +1,6 @@
+/*
+ * Validate and normalize document cards before persistence, including local PDF ownership, dates, product links, publication requirements and server-owned timestamps.
+ */
 import fs from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -5,18 +8,23 @@ import { DOCUMENT_TYPES, type CertificationDocument } from "./content-types";
 import type { Product } from "../types";
 import { dataDir } from "./content-store";
 
+/* Require a plain object before reading document-card fields. */
 const record = (value: unknown): value is Record<string, any> =>
   !!value && typeof value === "object" && !Array.isArray(value);
+/* Validate a bounded text field before accepting it into a stored record. */
 const text = (value: unknown, max: number, required = false): value is string =>
   typeof value === "string" &&
   value.length <= max &&
   (!required || !!value.trim());
+/* Validate the bounded identifier used for local document records. */
 const identifier = (value: unknown): value is string =>
   text(value, 100, true) && /^[\w-]+$/.test(value);
+/* Reject duplicate identifiers before building a normalized document collection. */
 const unique = (rows: unknown[]): boolean => {
   const ids = rows.map((row) => record(row) && row.id);
   return ids.every(identifier) && new Set(ids).size === rows.length;
 };
+/* Accept a real optional calendar date within the supported document range. */
 function date(value: unknown): value is string {
   if (value === "") return true;
   if (
@@ -33,6 +41,7 @@ function date(value: unknown): value is string {
   );
 }
 
+/* Normalize all document cards, validate their local attachments and preserve server-owned timestamps. */
 export function prepareCertifications(
   input: unknown,
   previous: CertificationDocument[],

@@ -1,8 +1,12 @@
+/*
+ * Centralize response headers, nonce-based production CSP, same-origin write guards, public read-only CORS, bounded rate limits and sanitized error responses.
+ */
 import crypto from "node:crypto";
 import type { RequestHandler, ErrorRequestHandler } from "express";
 
 // Only these public sites may embed the catalogue or read public content cross-origin.
 // Admin/auth APIs always remain same-origin, even for an allowed public site.
+/* Validate the exact allowlist used only by public reads, embedding and media. */
 export function publicOrigins(): string[] {
   return [
     ...new Set(
@@ -30,6 +34,7 @@ export function publicOrigins(): string[] {
   ];
 }
 
+/* Reject foreign browser writes and enforce JSON on sensitive same-origin APIs. */
 export const sensitiveRequestGuard: RequestHandler = (req, res, next) => {
   res.setHeader("Cache-Control", "no-store");
   if (!["GET", "HEAD", "OPTIONS"].includes(req.method)) {
@@ -51,6 +56,7 @@ export const sensitiveRequestGuard: RequestHandler = (req, res, next) => {
   next();
 };
 
+/* Apply private-page frame restrictions and a per-response nonce-based production CSP. */
 export function securityHeaders(production: boolean): RequestHandler {
   const origins = publicOrigins();
   return (req, res, next) => {
@@ -96,6 +102,7 @@ export function securityHeaders(production: boolean): RequestHandler {
   };
 }
 
+/* Permit read-only cross-origin public resources for explicitly configured sites. */
 export const publicCors: RequestHandler = (req, res, next) => {
   const origin = req.get("origin");
   res.vary("Origin");
@@ -144,6 +151,7 @@ export function rateLimit(
   };
 }
 
+/* Return bounded client errors without disclosing stack traces or submitted secrets. */
 export const errorHandler: ErrorRequestHandler = (error, _req, res, next) => {
   if (res.headersSent) return next(error);
   if (error.type === "entity.too.large")

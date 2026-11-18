@@ -1,6 +1,10 @@
+/*
+ * Present CMS-managed customer reviews with optional portrait fallbacks and consistent Gallery card styling.
+ */
 import React, { useEffect, useState } from "react";
 import type { GalleryReview } from "../admin/content-types";
 
+/* Use a portrait when available and a readable initials fallback otherwise. */
 function ReviewImage({ review }: { review: GalleryReview }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [review.image]);
@@ -31,6 +35,7 @@ function ReviewImage({ review }: { review: GalleryReview }) {
     </a>
   );
 }
+/* Present CMS-managed customer reviews with optional portrait fallbacks and consistent Gallery card styling.. */
 export function GalleryReviews({ reviews }: { reviews: GalleryReview[] }) {
   const sorted = reviews
     .map((review, index) => ({ review, index }))

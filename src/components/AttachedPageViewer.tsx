@@ -1,3 +1,7 @@
+/*
+ * Embed the server-transformed public layout and coordinate refresh/navigation messages with the React host.
+ * The iframe reads the same CMS as the admin portal.
+ */
 import { contentUrl } from '../site-content';
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useRef, useEffect } from 'react';
@@ -8,6 +12,7 @@ interface AttachedPageViewerProps {
   className?: string;
 }
 
+/* Embed the server-transformed public layout and coordinate refresh/navigation messages with the React host. */
 export const AttachedPageViewer: React.FC<AttachedPageViewerProps> = ({
   onBackToReact,
   className = '',
@@ -26,6 +31,7 @@ export const AttachedPageViewer: React.FC<AttachedPageViewerProps> = ({
 
   const attachedUrl = contentUrl('/assets/aistudio/areva-paints_a2364c60.html');
 
+  /* Reload the embedded public layout after a user-requested refresh. */
   const handleRefresh = () => {
     setRefreshKey((prev) => prev + 1);
   };

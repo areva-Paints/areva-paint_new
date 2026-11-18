@@ -1,5 +1,10 @@
+/*
+ * Render an accessible preview without delaying admin editing while remote image dimensions are checked.
+ * Broken images retain a usable fallback.
+ */
 import React, { useEffect, useState } from "react";
 import { ImageOff } from "lucide-react";
+/* Render an accessible preview without delaying admin editing while remote image dimensions are checked. */
 export function ImagePreview({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false);
   useEffect(() => setFailed(false), [src]);
@@ -17,6 +22,7 @@ export function ImagePreview({ src, alt }: { src: string; alt: string }) {
     <img src={src} alt={alt} onError={() => setFailed(true)} />
   );
 }
+/* Check a supported image URL before accepting it, with a timeout for failed remote loads. */
 export function checkImage(src: string): Promise<void> {
   if (!/^\/(?!\/)[^\s<>"']*$/.test(src) && !/^https:\/\/[^\s<>"']+$/.test(src))
     return Promise.reject(
@@ -35,6 +41,7 @@ export function checkImage(src: string): Promise<void> {
         ),
       12000,
     );
+    /* Release handlers/timer before settling the image-check promise exactly once. */
     function finish(error?: Error) {
       window.clearTimeout(timer);
       image.onload = null;

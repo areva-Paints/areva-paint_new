@@ -1,3 +1,4 @@
+/* Apply reference-layout spacing, typography and public-section styles within the React studio. */
 /* Reference-led public React theme. The admin app is outside this root. */
 .areva-reference-site {
   --brand-deep: #361052;
@@ -180,6 +181,7 @@
 .areva-reference-site footer .border-stone-800 { border-color: #5d3e6d; }
 .areva-reference-site footer a:hover, .areva-reference-site footer button:hover { color: #ffcf52; }
 
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 767px) {
   .areva-reference-site header > div { gap: 12px; }
   .areva-reference-site header a[aria-label="Areva Paints Home"] .font-display { font-size: 21px; }
@@ -188,6 +190,7 @@
   .areva-reference-site :is(#products, #visualizer, #calculator, #gallery, #dealers) { scroll-margin-top: 90px; }
   .areva-reference-site #products > div > .grid.mb-12 > button { min-height: 150px; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (prefers-reduced-motion: reduce) {
   .areva-reference-site :is(button, article, img) { transition-duration: .01ms !important; }
 }

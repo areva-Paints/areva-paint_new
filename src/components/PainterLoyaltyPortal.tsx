@@ -1,3 +1,7 @@
+/*
+ * Preserve the optional studio loyalty demonstration.
+ * Can scans, wallet amounts and UPI withdrawals are simulated browser state; no money is transferred.
+ */
 import React, { useState } from 'react';
 import { 
   X, 
@@ -75,6 +79,7 @@ const SAMPLE_CAN_LIDS = [
   },
 ];
 
+/* Preserve the optional studio loyalty demonstration. */
 export const PainterLoyaltyPortal: React.FC<PainterLoyaltyPortalProps> = ({
   isOpen,
   onClose,
@@ -143,6 +148,7 @@ export const PainterLoyaltyPortal: React.FC<PainterLoyaltyPortalProps> = ({
   if (!isOpen) return null;
 
   // Simulate scanning a can lid QR
+  /* Simulate a can scan and local reward entry; no scanner API or account credit is involved. */
   const handleScanCanLid = (can: typeof SAMPLE_CAN_LIDS[0]) => {
     setIsScanning(true);
     setTimeout(() => {
@@ -177,6 +183,7 @@ export const PainterLoyaltyPortal: React.FC<PainterLoyaltyPortalProps> = ({
     }, 900);
   };
 
+  /* Simulate a withdrawal confirmation in local state; no payment provider is called. */
   const handleWithdrawUPI = (e: React.FormEvent) => {
     e.preventDefault();
     const maxRupees = Math.floor(pointsBalance / 2);

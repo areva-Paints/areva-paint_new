@@ -1,3 +1,7 @@
+/*
+ * Collect a quotation/support request and submit it to the server enquiry API.
+ * The backend validates and privately persists the record before returning a reference.
+ */
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, MessageSquare, Phone, Building2, Send } from 'lucide-react';
 import { EnquiryFormData } from '../types';
@@ -11,6 +15,7 @@ interface EnquiryModalProps {
   initialMessage?: string;
 }
 
+/* Collect a quotation/support request and submit it to the server enquiry API. */
 export const EnquiryModal: React.FC<EnquiryModalProps> = ({
   isOpen,
   onClose,
@@ -46,6 +51,7 @@ export const EnquiryModal: React.FC<EnquiryModalProps> = ({
     }));
   }, [initialTopic, initialProduct, initialShade, initialMessage]);
 
+  /* Validate the visible fields and wait for server persistence before showing success. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);

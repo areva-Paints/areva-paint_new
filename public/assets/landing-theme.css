@@ -1,3 +1,4 @@
+/* Apply the reference public navigation, home content and responsive layout to the preserved HTML prototype. */
 /* Areva corporate concept: violet, gold and a light paper canvas. */
 :root,
 :root:not([data-theme="light"]),
@@ -148,9 +149,11 @@ header .btn-line:hover { background: var(--brand-soft); }
   margin: 0 24px 26px;
   padding: 11px 20px;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1100px) {
   #services #sv { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) {
   #services #sv { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   #services #sv > .box::before { height: 170px; }
@@ -208,6 +211,7 @@ header .btn-line:hover { background: var(--brand-soft); }
   color: var(--brand-muted);
   font: 400 15px/1.75 Arial, Helvetica, sans-serif;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 820px) {
   #our-story .vm { grid-template-columns: minmax(0, 1fr); }
   #our-story .vm > div::before { height: 170px; }
@@ -231,11 +235,13 @@ footer { background: #240e36; color: #f0e8f5; }
 .pg-dialog h2::after { content: none; }
 #colorGameLauncher { background: var(--brand-gold); color: var(--brand-deep); box-shadow: 0 5px 18px #36105226; animation: none; }
 
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 768px) {
   header { background: #fff; }
   .hero .slider { box-shadow: 0 7px 20px #3610521a; }
   .hero .stat span { font-size: .85rem; line-height: 1.5; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (prefers-reduced-motion: reduce) {
   .tile, .card { transition: none; }
   .tile:hover, #grid .card:hover { transform: none; }
@@ -342,6 +348,7 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
 #dTop h3 { color: #fff; }
 #dlg .bd { width: auto; aspect-ratio: auto; border: 0; border-radius: 0; color: var(--brand-ink); box-shadow: none; text-align: left; display: grid; place-content: normal; padding: 24px; font: inherit; }
 #lg > .bd { width: auto; aspect-ratio: auto; border: 0; border-radius: 0; color: var(--brand-ink); box-shadow: none; text-align: left; display: grid; place-content: normal; padding: 24px; font: inherit; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:1100px) {
   .ref-header .nav { flex-wrap: wrap; height: auto !important; padding: 10px 0 0; row-gap: 5px; }
   .ref-header nav { order: 3; width: 100%; margin: 0; overflow-x: auto; }
@@ -350,6 +357,7 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
   html { scroll-padding-top: 160px; }
   .ref-hero-grid { gap: 28px; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:768px) {
   .ref-hero { padding: 36px 0; }
   .ref-hero-grid { grid-template-columns: 1fr; gap: 28px; }
@@ -371,6 +379,7 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
   .ref-header .btn { padding: 9px 14px; }
   .ref-page-banner { padding: 36px 0; margin-bottom: 32px; }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (prefers-reduced-motion:reduce) {
   .ref-solution { transition: none; }
   .ref-solution:hover { transform: none; }
@@ -402,11 +411,13 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
 .ref-flip-front { padding: 28px; background: linear-gradient(145deg,#63328c,#251731); }
 .ref-flip-back { transform: rotateY(180deg); background: #fff; }
 .ref-flip-photo { display: block; width: 100%; height: 100%; object-fit: contain; padding: 16px; }
+/* Adapt this section to the viewport range declared below. */
 @media (prefers-reduced-motion:reduce) {
   .ref-flip-inner { transition: none; }
 }
 .ref-product-photo { display: block; width: 100%; max-height: 320px; object-fit: contain; padding: 16px; background: #f4f1f6; border: 1px solid var(--brand-line); border-radius: 14px; }
 .ref-catalog-empty { padding: 40px; border: 1px solid var(--brand-line); border-radius: 18px; background: #fff; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:768px) {
   #products.ref-category-page .ref-page-banner { min-height: 290px; padding-block: 36px; }
   #products.ref-category-page .ref-page-banner h1 { font-size: clamp(40px,10vw,56px); }
@@ -418,6 +429,7 @@ h2 { font-size: clamp(30px, 3.5vw, 44px); }
   .ref-product-badge strong { font-size: 25px; }
 }
 
+/* Adapt this section to the viewport range declared below. */
 @media (max-width:480px) {
   .ref-solution-grid { grid-template-columns: 1fr; }
 }

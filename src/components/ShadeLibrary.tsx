@@ -1,3 +1,6 @@
+/*
+ * Search and filter the shared shade catalogue, then route shade selections into visualization or enquiry actions.
+ */
 import React, { useState } from "react";
 import type { ColorShade } from "../types";
 import type { ShadeCard } from "../admin/content-types";
@@ -18,6 +21,7 @@ interface FilterProps {
   legacy?: boolean;
 }
 
+/* Render the shared shade-library introduction. */
 export function ColourCollectionHeading({ total }: { total: number }) {
   return (
     <div className="colour-collection-heading">
@@ -34,6 +38,7 @@ export function ColourCollectionHeading({ total }: { total: number }) {
     </div>
   );
 }
+/* Expose shade-family, tone and search controls with a clear reset action. */
 export function ShadeFilters({
   shades,
   family,
@@ -103,6 +108,7 @@ export function ShadeFilters({
     </>
   );
 }
+/* Search and filter the shared shade catalogue, then route shade selections into visualization or enquiry actions.. */
 export function ShadeLibrary({
   shades,
   cards = [],

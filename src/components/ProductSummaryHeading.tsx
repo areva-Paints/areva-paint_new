@@ -1,6 +1,11 @@
+/*
+ * Share the product heading and configured warranty badge across public layouts.
+ * A missing warranty value leaves no empty badge space.
+ */
 import React from "react";
 import type { Product } from "../types";
 
+/* Render a warranty badge only when the product has configured warranty text. */
 export function ProductWarrantyBadge({ product }: { product: Product }) {
   const years = product.specs.warrantyYears;
   if (!(years > 0)) return null;
@@ -15,6 +20,7 @@ export function ProductWarrantyBadge({ product }: { product: Product }) {
     </div>
   );
 }
+/* Pair the product heading with its optional warranty badge without reserving empty space. */
 export function ProductSummaryHeading({
   product,
   level = "h3",

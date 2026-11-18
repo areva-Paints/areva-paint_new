@@ -1,3 +1,7 @@
+/*
+ * Define the CMS document shape, optional legacy fields and public card types.
+ * Private user credentials and audit events are stored alongside content but are not published.
+ */
 import type { ShadeFamily, ShadeTone } from "../data/shadeFamilies";
 import type { Product, ColorShade } from "../types";
 import type { GalleryProjectCategory } from "../data/galleryCategories";

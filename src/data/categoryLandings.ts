@@ -1,3 +1,6 @@
+/*
+ * Define category landing copy and hero assets shared by React and transformed public layouts.
+ */
 /** Category landing artwork, separate from home cards and admin-managed product photos. */
 export const CATEGORY_LANDINGS: Record<
   string,

@@ -1,8 +1,12 @@
+/*
+ * Normalize searchable warranty snapshots and dates so multiword searches work across customer, login phone, purchase, dealer and review fields.
+ */
 import {
   WARRANTY_STATUSES,
   type WarrantyRegistration,
 } from "../warranty/types";
 
+/* Normalize case, punctuation and whitespace for consistent warranty matching. */
 const normalize = (value: string) =>
   value
     .normalize("NFKC")
@@ -15,6 +19,7 @@ const readableDate = new Intl.DateTimeFormat("en-IN", {
   year: "numeric",
   timeZone: "Asia/Kolkata",
 });
+/* Expose searchable date variants without modifying the saved purchase date. */
 function dateText(value: string | null) {
   if (!value) return "";
   const parsed = new Date(value);
@@ -23,6 +28,7 @@ function dateText(value: string | null) {
 
 // Search customer-visible values, never JSON property names or private upload keys.
 // Each word may match a different field, as in "Pune approved".
+/* Match every search term across the normalized registration and review snapshot. */
 export function warrantySearch(search: string) {
   const terms = normalize(search).split(/\s+/).filter(Boolean);
   return (row: WarrantyRegistration): boolean => {

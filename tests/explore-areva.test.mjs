@@ -1,3 +1,6 @@
+/* Regression coverage for resource-hub navigation.
+ * Fixtures use disposable local stores/databases; hosted customer records are not changed.
+ */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";

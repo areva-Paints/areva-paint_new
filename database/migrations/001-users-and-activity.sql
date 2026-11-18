@@ -1,3 +1,7 @@
+/* Add private created accounts, their shared identifier namespace and saved audit history to the original proposal.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Review-only upgrade from the original 15-table Areva schema.
 -- Apply ONCE only if that earlier schema has already been applied.
 -- New databases must use schema.sql instead, which includes these additions.

@@ -1,3 +1,7 @@
+/*
+ * Manage individual shades and preview text/PDF imports before applying them to the CMS draft.
+ * Imports retain explicit family and tone metadata.
+ */
 import { ShadeFilters } from '../components/ShadeLibrary';
 import { ShadeMetadataFields } from './ShadeMetadataFields';
 import { filterShades, type ShadeFamily, type ShadeTone } from '../data/shadeFamilies';
@@ -17,6 +21,7 @@ import {
 import type { ColorShade } from "../types";
 import type { SiteContent } from "./content-types";
 import { parseColourRows } from "./colour-import";
+/* Create an empty manual shade draft with explicit metadata defaults. */
 const blank = (): ColorShade => ({
   name: "",
   code: "",
@@ -25,6 +30,7 @@ const blank = (): ColorShade => ({
   tones: [],
   goesWellWith: [],
 });
+/* Manage individual shades and preview text/PDF imports before applying them to the CMS draft. */
 export function ColourManager({
   content,
   onChange,
@@ -49,17 +55,20 @@ export function ColourManager({
     prefix = useId(),
     latest = useRef(content);
   latest.current = content;
+  /* Initialize an isolated editor draft from the selected record before showing its dialog. */
   function open(colour?: ColorShade) {
     setEditing(colour ? { ...colour, tones: [...(colour.tones || [])] } : { ...blank(), family: family === "All Shades" ? importFamily : family as ShadeFamily });
     setOriginal(colour?.code ?? null);
     setError("");
     dialog.current?.showModal();
   }
+  /* Clear the active shade editor and import preview. */
   function close() {
     dialog.current?.close();
     setEditing(null);
     setError("");
   }
+  /* Validate a shade and apply it to the staged CMS palette. */
   function apply(e: React.FormEvent) {
     e.preventDefault();
     if (!editing) return;
@@ -89,6 +98,7 @@ export function ColourManager({
     });
     close();
   }
+  /* Parse import text into editable rows before any palette changes. */
   function preview(value = text, selectedFamily = importFamily, selectedTones = importTones) {
     try {
       const result = parseColourRows(value, { family: selectedFamily, tones: selectedTones });
@@ -101,6 +111,7 @@ export function ColourManager({
       setError((e as Error).message);
     }
   }
+  /* Apply only accepted import rows and preserve duplicate/error feedback. */
   function importColours() {
     const codes = new Set(content.colours.map((c) => c.code.toUpperCase())),
       unique: ColorShade[] = [];
@@ -125,6 +136,7 @@ export function ColourManager({
     setCandidates([]);
     setText("");
   }
+  /* Upload the reference PDF and extract bounded text for the import preview. */
   async function uploadPdf(file?: File) {
     if (!file) return;
     if (

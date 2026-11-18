@@ -1,3 +1,7 @@
+/*
+ * Separate stored password-bearing accounts from safe account responses and enumerate supported website roles.
+ * Supabase Auth is not used by this account system.
+ */
 export const USER_ROLES = {
   admin: "Admin",
   customer: "Customer",

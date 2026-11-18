@@ -1,3 +1,6 @@
+/* Regression coverage for technical product fields and optional warranty display.
+ * Fixtures use disposable local stores/databases; hosted customer records are not changed.
+ */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

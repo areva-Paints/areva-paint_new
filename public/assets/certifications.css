@@ -1,3 +1,4 @@
+/* Display public document cards and product-linked PDF downloads in responsive grids. */
 .cd-section {
   padding: 42px 0 58px;
   background: #faf8fd;
@@ -157,11 +158,13 @@
   display: flex;
   flex-wrap: wrap;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1050px) {
   .cd-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 620px) {
   .cd-grid {
     grid-template-columns: minmax(0, 1fr);

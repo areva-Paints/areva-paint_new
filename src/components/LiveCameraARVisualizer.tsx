@@ -1,3 +1,7 @@
+/*
+ * Preview paint colours over a browser camera stream using canvas processing.
+ * This is camera-based colour visualization, not a WebXR spatial-tracking integration.
+ */
 import { useSiteContent } from '../admin/ContentContext';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
@@ -28,6 +32,7 @@ interface LiveCameraARVisualizerProps {
   onRequestQuoteWithShade: (shadeName: string, shadeCode: string, snapshotUrl?: string) => void;
 }
 
+/* Preview paint colours over a browser camera stream using canvas processing. */
 export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   isOpen,
   onClose,
@@ -74,6 +79,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   const sampledWallRgb = useRef<{ r: number; g: number; b: number } | null>(null);
 
   // Synchronize initial shade prop if provided
+  /* Synchronize the initial shade prop with the available local palette. */
   useEffect(() => {
     if (initialShadeHex) {
       const match = COLOR_SHADES.find(
@@ -84,6 +90,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   }, [initialShadeHex]);
 
   // Convert Hex to RGB
+  /* Convert a six-digit shade value into canvas colour channels. */
   const hexToRgb = useCallback((hex: string) => {
     const cleanHex = hex.replace('#', '');
     const num = parseInt(cleanHex, 16);
@@ -95,6 +102,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   }, []);
 
   // Stop camera tracks cleanly
+  /* Stop every active video track and animation frame before releasing camera state. */
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -107,6 +115,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   }, []);
 
   // Initialize Camera Stream
+  /* Request the selected camera and fall back to the local simulation when unavailable. */
   const startCamera = useCallback(async (mode: 'environment' | 'user') => {
     stopCamera();
     sampledWallRgb.current = null;
@@ -160,6 +169,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   }, [stopCamera]);
 
   // Handle open/close lifecycle
+  /* Acquire the requested camera only while open and stop tracks/animation on change or unmount. */
   useEffect(() => {
     if (isOpen) {
       startCamera(facingMode);
@@ -173,6 +183,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   }, [isOpen, facingMode, startCamera, stopCamera]);
 
   // Toggle Torch/Flashlight
+  /* Request the device torch capability only when the active camera supports it. */
   const toggleTorch = async () => {
     if (!streamRef.current || !hasTorch) return;
     const track = streamRef.current.getVideoTracks()[0];
@@ -188,6 +199,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   };
 
   // Toggle Camera Front / Back
+  /* Switch the requested camera and let stream cleanup release the old device. */
   const toggleFacingMode = () => {
     const nextMode = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nextMode);
@@ -195,6 +207,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   };
 
   // Tap-to-sample Wall Reference Color from Video Stream
+  /* Sample a target wall colour from the tapped camera position. */
   const handleCanvasTap = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -249,11 +262,13 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   };
 
   // Main Real-time AR Rendering Loop
+  /* Run the processed-video preview only while open and unfrozen; cancel its loop during cleanup. */
   useEffect(() => {
     if (!isOpen || frozenFrame) return;
 
     let isRunning = true;
 
+    /* Blend the current paint selection into camera frames while the stream is active. */
     const renderLoop = () => {
       if (!isRunning) return;
 
@@ -411,6 +426,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   ]);
 
   // Freeze / Capture Current AR Frame
+  /* Capture the processed preview into local image state. */
   const handleCaptureSnapshot = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -420,6 +436,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   };
 
   // Download Snapshot
+  /* Download the captured preview through a temporary browser URL. */
   const handleDownload = () => {
     if (!frozenFrame) return;
     const link = document.createElement('a');
@@ -429,6 +446,7 @@ export const LiveCameraARVisualizer: React.FC<LiveCameraARVisualizerProps> = ({
   };
 
   // Request Quote with Frozen or Active Shade
+  /* Open an enquiry carrying the current camera/shade selection. */
   const handleQuote = () => {
     onRequestQuoteWithShade(
       selectedShade.name,

@@ -1,3 +1,6 @@
+/* Regression coverage for CMS editing, uploads and revision conflicts.
+ * Fixtures use disposable local stores/databases; hosted customer records are not changed.
+ */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

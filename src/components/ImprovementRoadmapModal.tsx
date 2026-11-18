@@ -1,3 +1,7 @@
+/*
+ * Present project roadmap information in the optional studio.
+ * This is explanatory UI and does not enable the proposed integrations.
+ */
 import React from 'react';
 import { X, CheckCircle2, Smartphone, Sparkles, Paintbrush, Layers, Shield, FileText, Camera, Box, QrCode, MapPin } from 'lucide-react';
 
@@ -9,6 +13,7 @@ interface ImprovementRoadmapModalProps {
   onOpenLoyalty?: () => void;
 }
 
+/* Present project roadmap information in the optional studio. */
 export const ImprovementRoadmapModal: React.FC<ImprovementRoadmapModalProps> = ({
   isOpen,
   onClose,

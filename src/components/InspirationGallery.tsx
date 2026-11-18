@@ -1,3 +1,6 @@
+/*
+ * Host the Projects, Ads & Campaigns and Customer Reviews Gallery tabs, keeping the active tab visibly selected.
+ */
 import React, { useState } from 'react';
 import { Sparkles, Eye, ArrowUpRight } from 'lucide-react';
 import { COLOR_SHADES } from '../data/paintsData';
@@ -7,6 +10,7 @@ interface InspirationGalleryProps {
   onOpenVisualizer: () => void;
 }
 
+/* Host the Projects, Ads & Campaigns and Customer Reviews Gallery tabs, keeping the active tab visibly selected.. */
 export const InspirationGallery: React.FC<InspirationGalleryProps> = ({
   onSelectColor,
   onOpenVisualizer,

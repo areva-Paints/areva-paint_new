@@ -1,3 +1,7 @@
+/* Lock final Approved/Rejected review fields without rewriting purchase snapshots.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Apply ONCE after migration 007 to an existing Areva application database.
 -- Keeps final approval/rejection decisions read-only; no records are changed.
 -- PDF reports are generated privately by the backend, not stored as public assets.

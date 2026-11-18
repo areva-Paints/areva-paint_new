@@ -1,8 +1,13 @@
+/*
+ * Generate the one-time Supabase SQL from the canonical schema and category seed.
+ * This script writes a local file and never opens a database connection.
+ */
 // Build the one-time Supabase setup from the reviewed PostgreSQL source files.
 // This writes a local SQL file only. It never connects to or changes a database.
 const fs = require('node:fs');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
+/* Extract exactly one canonical SQL transaction body so the generated setup has one outer transaction. */
 function transactionBody(file) {
   const source = fs.readFileSync(path.join(root, file), 'utf8');
   const start = source.indexOf('\nBEGIN;\n');

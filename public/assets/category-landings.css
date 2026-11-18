@@ -1,3 +1,4 @@
+/* Style category-specific product landing heroes and catalogue navigation in the preserved public layout. */
 /* Full-width category landing banners. All labels and controls remain live HTML. */
 .category-range-nav {
   padding: 22px 4%;
@@ -49,6 +50,7 @@
   outline: 3px solid #bd8b25;
   outline-offset: 2px;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1000px) {
   .category-range-nav {
     padding-block: 15px;
@@ -254,6 +256,7 @@
   + .wrap {
   padding-top: 42px;
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 1000px) {
   .category-landing-hero {
     min-height: 560px;
@@ -269,6 +272,7 @@
     font-size: 12px;
   }
 }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 600px) {
   .category-landing-hero {
     min-height: 0;

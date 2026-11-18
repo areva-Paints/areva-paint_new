@@ -1,3 +1,7 @@
+/*
+ * Preserve the optional studio sample-pack demonstration, including shade/lighting previews and local confirmation.
+ * It does not persist orders, charge payments or arrange delivery.
+ */
 import React, { useState } from 'react';
 import { 
   X, 
@@ -29,6 +33,7 @@ interface SwatchSampleOrderModalProps {
   onOpenEnquiry?: () => void;
 }
 
+/* Preserve the optional studio sample-pack demonstration, including shade/lighting previews and local confirmation. */
 export const SwatchSampleOrderModal: React.FC<SwatchSampleOrderModalProps> = ({
   isOpen,
   onClose,
@@ -74,6 +79,7 @@ export const SwatchSampleOrderModal: React.FC<SwatchSampleOrderModalProps> = ({
 
   if (!isOpen) return null;
 
+  /* Keep the local demonstration pack between one and five selected shades. */
   const handleToggleShade = (shade: ColorShade) => {
     const isAlreadySelected = selectedShades.some((s) => s.code === shade.code);
     if (isAlreadySelected) {
@@ -91,6 +97,7 @@ export const SwatchSampleOrderModal: React.FC<SwatchSampleOrderModalProps> = ({
     }
   };
 
+  /* Apply a demonstration promo code in browser state only. */
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
     if (promoCode.trim().toUpperCase() === 'AREVAFREE' || promoCode.trim().toUpperCase() === 'FIRSTSAMPLE') {
@@ -100,6 +107,7 @@ export const SwatchSampleOrderModal: React.FC<SwatchSampleOrderModalProps> = ({
     }
   };
 
+  /* Show a local sample-order confirmation without creating a backend order. */
   const handlePlaceOrder = (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName || !phone || !streetAddress || !pincode) {
@@ -112,6 +120,7 @@ export const SwatchSampleOrderModal: React.FC<SwatchSampleOrderModalProps> = ({
   };
 
   // Lighting overlay styling
+  /* Choose the CSS lighting effect for the swatch preview. */
   const getLightingFilter = () => {
     switch (lightingCondition) {
       case 'morning':
@@ -124,6 +133,7 @@ export const SwatchSampleOrderModal: React.FC<SwatchSampleOrderModalProps> = ({
     }
   };
 
+  /* Choose the preview background without changing the actual shade value. */
   const getWallBgClass = () => {
     switch (wallBg) {
       case 'charcoal':

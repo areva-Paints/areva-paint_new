@@ -1,3 +1,7 @@
+/*
+ * Send same-origin warranty requests with JSON and no-store responses, surfacing server validation messages to the public flow.
+ */
+/* Send same-origin warranty JSON with no-store caching and expose server errors. */
 export async function warrantyApi<T = any>(
   url: string,
   body?: unknown,

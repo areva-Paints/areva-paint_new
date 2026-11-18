@@ -1,3 +1,4 @@
+/* Share the purple-to-pink/orange banner across public pages other than Home and Products, with consistent responsive typography and no leading blank gap. */
 /* Shared banner colours. Home and Products retain their own artwork. */
 :root {
   --areva-page-gradient: linear-gradient(112deg, #36005f 0%, #7f00ce 33%, #e8109b 68%, #ff7b19 100%);
@@ -85,6 +86,7 @@ main#top > section:has(> .ref-page-banner),
 }
 #about .ea-banner { margin-bottom: 0; }
 .wr-page > .wr-page-banner { margin-bottom: 0; }
+/* Adapt this section to the viewport range declared below. */
 @media (max-width: 700px) {
   main#top > section:not(#home):not(#products) > .ref-page-banner,
   #gallery.pg-section > .page-gradient-banner,

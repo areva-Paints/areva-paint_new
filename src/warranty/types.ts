@@ -1,3 +1,7 @@
+/*
+ * Define warranty submission, receipt, session and review contracts shared by the public form, admin screens and backend.
+ * Final statuses are Approved and Rejected.
+ */
 export const WARRANTY_STATUSES = {
   pending_review: "Pending review",
   needs_information: "Needs information",
@@ -13,6 +17,7 @@ export interface WarrantyReview {
   notes: string;
   approvalConfirmed: boolean;
 }
+/* Recognize approved/rejected records whose review decision is read-only. */
 export function isFinalWarrantyStatus(status: WarrantyStatus): boolean {
   return status === "approved" || status === "rejected";
 }

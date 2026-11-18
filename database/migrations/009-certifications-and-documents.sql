@@ -1,3 +1,7 @@
+/* Add curated document cards, ordered PDF attachments and product links with private database-role boundaries.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Run once after migrations 001–008 for an existing Areva installation.
 -- Adds document-card tables only; the running website still uses its JSON content store.
 BEGIN;

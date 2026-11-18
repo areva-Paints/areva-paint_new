@@ -1,3 +1,7 @@
+/*
+ * Render only published CMS document cards and product-linked PDF downloads.
+ * File URLs are public catalogue documents, never private warranty receipts.
+ */
 import React from "react";
 import {
   DOCUMENT_TYPES,
@@ -6,6 +10,7 @@ import {
 } from "../admin/content-types";
 
 type Content = Pick<SiteContent, "certifications" | "products">;
+/* Format a stored date for display while retaining an empty-value fallback. */
 const date = (value: string) =>
   new Date(value + "T12:00:00Z").toLocaleDateString("en-IN", {
     day: "numeric",
@@ -13,6 +18,7 @@ const date = (value: string) =>
     year: "numeric",
     timeZone: "Asia/Kolkata",
   });
+/* Render public PDF download links with their curated document labels. */
 function Attachments({ item }: { item: CertificationDocument }) {
   return (
     <ul className="cd-downloads">
@@ -32,6 +38,7 @@ function Attachments({ item }: { item: CertificationDocument }) {
     </ul>
   );
 }
+/* Select published cards and display them in CMS order. */
 export function CertificationsSection({
   content,
 }: {
@@ -121,6 +128,7 @@ export function CertificationsSection({
     </section>
   );
 }
+/* Select published documents linked to the current product. */
 export function ProductDocumentDownloads({
   content,
   productId,

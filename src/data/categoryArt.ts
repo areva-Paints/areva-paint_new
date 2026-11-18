@@ -1,3 +1,7 @@
+/*
+ * Map coating categories to committed artwork and accessible descriptions.
+ * Artwork is served locally; no image-generation service is called at runtime.
+ */
 /** Decorative range photography; individual product photos remain admin-managed. */
 export const CATEGORY_ART: Record<
   string,

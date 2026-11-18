@@ -1,3 +1,6 @@
+/*
+ * Present one coating category as an image-first solution card using the shared category artwork map.
+ */
 import type { CSSProperties } from "react";
 import { ArrowRight } from "lucide-react";
 import { CATEGORY_ART } from "../data/categoryArt";

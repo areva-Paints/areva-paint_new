@@ -1,7 +1,12 @@
+/*
+ * Build explicit source archives outside all public/static roots.
+ * Only listed source folders are included; private data, hidden files, symlinks and existing ZIPs are excluded.
+ */
 const fs = require('fs');
 const path = require('path');
 const JSZip = require('jszip');
 
+/* Create full and reduced source archives with deterministic Windows-compatible ZIP metadata. */
 async function buildWindowsZip() {
   const rootDir = process.cwd();
   const publicDir = path.join(rootDir, 'public');
@@ -23,8 +28,12 @@ async function buildWindowsZip() {
     '.env.example',
     '.gitignore',
     'metadata.json',
+    '.nvmrc',
+    'render.yaml',
+    'AREVA_TECHNICAL_DOCUMENTATION.md',
   ];
 
+  /* Copy only ordinary permitted source entries, skipping hidden files and symlinks at every directory level. */
   function addFolderRecursively(zipInstance, dirPath, zipFolderPrefix, excludeExt = []) {
     const items = fs.readdirSync(dirPath);
     for (const item of items) {
@@ -36,7 +45,7 @@ async function buildWindowsZip() {
         const nextZipPrefix = zipFolderPrefix ? `${zipFolderPrefix}/${item}` : item;
         addFolderRecursively(zipInstance, fullPath, nextZipPrefix, excludeExt);
       } else {
-        if (excludeExt.some(ext => item.endsWith(ext))) {
+        if (/\.zip$/i.test(item) || excludeExt.some(ext => item.endsWith(ext))) {
           continue;
         }
         const zipEntryPath = zipFolderPrefix ? `${zipFolderPrefix}/${item}` : item;
@@ -49,13 +58,14 @@ async function buildWindowsZip() {
     }
   }
 
+  /* Assemble the explicit source allowlist and write the archive with private filesystem permissions. */
   async function generateArchive(outputPath, isLightweight = false) {
     const zip = new JSZip();
 
     // Add root files
     for (const file of rootFiles) {
       const fullPath = path.join(rootDir, file);
-      if (fs.existsSync(fullPath)) {
+      if (fs.existsSync(fullPath) && fs.lstatSync(fullPath).isFile()) {
         const content = fs.readFileSync(fullPath);
         zip.file(file, content, {
           date: new Date('2026-01-01T00:00:00Z'),
@@ -65,16 +75,24 @@ async function buildWindowsZip() {
 
     // Add src
     const srcDir = path.join(rootDir, 'src');
-    if (fs.existsSync(srcDir)) {
+    if (fs.existsSync(srcDir) && fs.lstatSync(srcDir).isDirectory()) {
       addFolderRecursively(zip, srcDir, 'src', isLightweight ? ['.jpg', '.png'] : []);
+    }
+
+    /* Keep setup instructions, SQL and referenced npm scripts in exported source. */
+    for (const folder of ['scripts', 'tests', 'docs', 'database']) {
+      const directory = path.join(rootDir, folder);
+      if (fs.existsSync(directory) && fs.lstatSync(directory).isDirectory()) {
+        addFolderRecursively(zip, directory, folder);
+      }
     }
 
     // Server PDF generation needs the licensed fonts in source packages too.
     const serverAssets = path.join(rootDir, 'assets');
-    if (fs.existsSync(serverAssets)) addFolderRecursively(zip, serverAssets, 'assets');
+    if (fs.existsSync(serverAssets) && fs.lstatSync(serverAssets).isDirectory()) addFolderRecursively(zip, serverAssets, 'assets');
 
     // Add public (excluding any zip files)
-    if (fs.existsSync(publicDir)) {
+    if (fs.existsSync(publicDir) && fs.lstatSync(publicDir).isDirectory()) {
       addFolderRecursively(zip, publicDir, 'public', ['.zip']);
     }
 

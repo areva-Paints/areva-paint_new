@@ -1,3 +1,6 @@
+/*
+ * Blend selected shades into sample or uploaded room images using canvas masks and keep undo/export state in the browser.
+ */
 import { escapeMarkup } from "../data/safeMarkup";
 import { ColourCollectionHeading, ShadeLibrary } from "./ShadeLibrary";
 
@@ -27,6 +30,7 @@ interface ColorVisualizerProps {
   onOpenLiveAR?: () => void;
 }
 
+/* Blend selected shades into sample or uploaded room images using canvas masks and keep undo/export state in the browser.. */
 export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   selectedColorHex,
   selectedColorName,
@@ -100,6 +104,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
     let isSubscribed = true;
 
+    /* Load the selected room into the canvas and initialize its paint mask. */
     const setupCanvas = (img: HTMLImageElement) => {
       if (!isSubscribed) return;
       const maxW = 960;
@@ -137,6 +142,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       })
       .catch(() => fallbackImage(activePreset.imageUrl));
 
+    /* Recover an unavailable room image with the supported local scene. */
     function fallbackImage(src: string) {
       const img = new Image();
       img.crossOrigin = "anonymous";
@@ -162,6 +168,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   }, [selectedColorHex, selectedColorName]);
 
   // Handle Photo Upload
+  /* Decode a selected photo into local canvas state without uploading it. */
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -215,6 +222,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   };
 
   // Intelligent Luminance-Preserving Flood Fill Wall Paint
+  /* Blend the chosen shade into the selected connected image region. */
   const applyPaintAt = (x: number, y: number) => {
     const canvas = canvasRef.current;
     const origCanvas = originalCanvasRef.current;
@@ -394,6 +402,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   };
 
   const lastInteractionTimeRef = useRef<number>(0);
+  /* Translate pointer coordinates into bounded canvas painting coordinates. */
   const handleCanvasInteraction = (clientX: number, clientY: number) => {
     const now = Date.now();
     if (now - lastInteractionTimeRef.current < 200) return;
@@ -410,10 +419,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     applyPaintAt(x, y);
   };
 
+  /* Apply paint at the clicked room position. */
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     handleCanvasInteraction(e.clientX, e.clientY);
   };
 
+  /* Begin a canvas paint gesture using the current selection. */
   const handleCanvasPointerDown = (
     e: React.PointerEvent<HTMLCanvasElement>,
   ) => {
@@ -422,6 +433,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     }
   };
 
+  /* Restore the previous canvas snapshot from local undo history. */
   const handleUndo = () => {
     if (history.length === 0) return;
     const canvas = canvasRef.current;
@@ -435,6 +447,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     setStatusMessage("Reverted last paint stroke.");
   };
 
+  /* Restore the original room image and clear local paint history. */
   const handleReset = () => {
     const canvas = canvasRef.current;
     const origCanvas = originalCanvasRef.current;
@@ -456,6 +469,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     setStatusMessage("Reset to original photo.");
   };
 
+  /* Add or remove a shade from the local shortlist. */
   const toggleSaveColor = (code: string) => {
     const next = savedColors.includes(code)
       ? savedColors.filter((c) => c !== code)
@@ -466,6 +480,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     } catch {}
   };
 
+  /* Print the current room/shade summary from browser state. */
   const handlePrintSummary = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;

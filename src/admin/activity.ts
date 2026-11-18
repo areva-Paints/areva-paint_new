@@ -1,3 +1,7 @@
+/*
+ * Derive audit events from persisted before/after content, including creation, edits, deletion and ordering.
+ * Events record field names rather than copying private values.
+ */
 import crypto from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import type { SiteContent } from "./content-types";
@@ -8,6 +12,7 @@ import {
   type ActivitySection,
 } from "./activity-types";
 
+/* Create a stable server-timestamped audit entry for a saved action. */
 export function activityEvent(
   actor: string,
   action: ActivityAction,
@@ -27,6 +32,7 @@ export function activityEvent(
     label,
   };
 }
+/* Compare persisted entity fields while excluding server-owned metadata. */
 function fieldsChanged(
   before: Record<string, any>,
   after: Record<string, any>,
@@ -50,12 +56,14 @@ function fieldsChanged(
       return [field];
     });
 }
+/* Build a concise change set from previous and accepted CMS snapshots. */
 export function contentActivity(
   before: SiteContent,
   after: SiteContent,
   actor: string,
 ): ActivityEvent[] {
   const events: ActivityEvent[] = [];
+  /* Detect entity additions, removals, field edits and reordering within a collection. */
   const compare = (
     section: ActivitySection,
     oldRows: any[],
@@ -66,10 +74,12 @@ export function contentActivity(
   ) => {
     const previous = new Map(oldRows.map((row) => [row[key], row]));
     const current = new Map(newRows.map((row) => [row[key], row]));
+    /* Choose a readable entity label for history without copying the full record. */
     const label = (row: any, index: number) =>
       parent
         ? `${parent} — ${row.caption || `Photo ${index + 1}`}`
         : row.name || row.title || row.label || row.code || "Landing image";
+    /* Use the stable catalogue identifier for entity-level history lookups. */
     const entityId = (row: any) =>
       section === "galleryPhotos" ? `${parentId}/${row[key]}` : row[key];
     const displayLabel = label;

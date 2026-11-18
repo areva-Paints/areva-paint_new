@@ -1,3 +1,6 @@
+/*
+ * Define the supported project categories and map legacy or missing values to Other without losing existing albums.
+ */
 export const GALLERY_PROJECT_CATEGORIES = {
   interior: "Interior",
   exterior: "Exterior",
@@ -8,6 +11,7 @@ export const GALLERY_PROJECT_CATEGORIES = {
 } as const;
 export type GalleryProjectCategory = keyof typeof GALLERY_PROJECT_CATEGORIES;
 export type GalleryProjectFilter = "all" | GalleryProjectCategory;
+/* Keep a supported category or assign legacy projects to Other. */
 export function projectCategory(project: {
   category?: string;
 }): GalleryProjectCategory {

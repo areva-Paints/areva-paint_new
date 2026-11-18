@@ -1,3 +1,6 @@
+/*
+ * Render category links and keep the selected item visible in the horizontal mobile navigation.
+ */
 import { useEffect, useRef } from "react";
 import { CATEGORIES } from "../data/paintsData";
 
@@ -11,6 +14,7 @@ export function CategoryNavigation({
 }) {
   const tabsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    /* Scroll the selected category into view without moving the document vertically. */
     const revealSelected = () => {
       const tabs = tabsRef.current;
       const selected = tabs?.querySelector<HTMLElement>(

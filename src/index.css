@@ -1,3 +1,4 @@
+/* Load Tailwind and shared browser defaults used by the React application. */
 @import "tailwindcss";
 
 @theme {

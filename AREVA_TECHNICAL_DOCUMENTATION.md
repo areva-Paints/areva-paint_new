@@ -56,8 +56,8 @@ Versions below are declared ranges. The committed `package-lock.json` freezes re
 | dotenv | ^17.2.3 | Loads server environment configuration |
 | autoprefixer | ^10.4.21 | Declared CSS tooling dependency; Vite's configured CSS plugin is Tailwind |
 | @types/* packages | See package.json | Development type declarations for Node, React, Express, ZIP/archive packages |
-| @google/genai | ^2.4.0 | Installed dependency; no active application import/integration identified |
-| motion | ^12.23.24 | Installed dependency; no active application import identified; current visible effects use CSS/browser animation |
+| PDFKit / fontkit | See package.json | Server-side warranty decision PDFs and Unicode font coverage |
+| motion | ^12.23.24 | React studio animation; public layouts also use CSS/browser animation |
 | @electric-sql/pglite | See package.json | Development-only PostgreSQL engine for isolated schema and permission tests |
 
 ### Native browser and Node APIs
@@ -822,6 +822,7 @@ Run once against a new, empty PostgreSQL 16+ database after review. This SQL cre
 -- Base review: GitHub main 7d0656e (2026-11-11); shade metadata and Gallery reviews added 2026-11-13.
 BEGIN;
 
+/* Stable catalogue groups used by products and category navigation. */
 CREATE TABLE categories (
   id varchar(100) PRIMARY KEY,
   name varchar(100) NOT NULL CHECK (btrim(name) <> ''),
@@ -831,6 +832,7 @@ CREATE TABLE categories (
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0)
 );
 
+/* Product identity, calculation metadata and curated technical/warranty display values. */
 CREATE TABLE products (
   id varchar(100) PRIMARY KEY,
   category_id varchar(100) NOT NULL REFERENCES categories(id) ON DELETE RESTRICT,
@@ -865,6 +867,7 @@ CREATE TABLE products (
 );
 CREATE INDEX products_category_position_idx ON products(category_id, position);
 
+/* Ordered numeric packs used by quantity calculations, separate from display packing text. */
 CREATE TABLE product_pack_sizes (
   product_id varchar(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   position smallint NOT NULL CHECK (position BETWEEN 0 AND 19),
@@ -872,6 +875,7 @@ CREATE TABLE product_pack_sizes (
   PRIMARY KEY (product_id, position)
 );
 
+/* Ordered recommended surfaces for each product. */
 CREATE TABLE product_surfaces (
   product_id varchar(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   position smallint NOT NULL CHECK (position BETWEEN 0 AND 29),
@@ -879,10 +883,12 @@ CREATE TABLE product_surfaces (
   PRIMARY KEY (product_id, position)
 );
 
+/* Public dealer contact snapshots with format and digit-count validation. */
 CREATE TABLE dealers (
   id varchar(100) PRIMARY KEY,
   name varchar(500) NOT NULL CHECK (btrim(name) <> ''),
   phone varchar(25) NOT NULL CHECK (phone ~ '^\+?[0-9 ()-]{7,25}$'),
+  CONSTRAINT dealers_phone_digits_check CHECK (length(regexp_replace(phone, '[^0-9]', '', 'g')) BETWEEN 7 AND 15),
   address varchar(500) NOT NULL CHECK (btrim(address) <> ''),
   city varchar(500) NOT NULL CHECK (btrim(city) <> ''),
   state varchar(500) NOT NULL CHECK (btrim(state) <> ''),
@@ -894,6 +900,7 @@ CREATE TABLE dealers (
 CREATE INDEX dealers_city_idx ON dealers(lower(city));
 CREATE INDEX dealers_pin_idx ON dealers(pin_code);
 
+/* Ordered dealer labels shown beside public contact details. */
 CREATE TABLE dealer_badges (
   dealer_id varchar(100) NOT NULL REFERENCES dealers(id) ON DELETE CASCADE,
   position smallint NOT NULL CHECK (position BETWEEN 0 AND 9),
@@ -901,6 +908,7 @@ CREATE TABLE dealer_badges (
   PRIMARY KEY (dealer_id, position)
 );
 
+/* Ordered CMS campaign images and optional captions. */
 CREATE TABLE landing_images (
   id varchar(100) PRIMARY KEY,
   image_url text NOT NULL CHECK (btrim(image_url) <> ''),
@@ -910,6 +918,7 @@ CREATE TABLE landing_images (
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0)
 );
 
+/* Shade definitions with supported family/tone metadata and case-insensitive codes. */
 CREATE TABLE colours (
   code varchar(40) PRIMARY KEY CHECK (btrim(code) <> ''),
   name varchar(150) NOT NULL CHECK (btrim(name) <> ''),
@@ -927,6 +936,7 @@ CREATE UNIQUE INDEX colours_code_case_insensitive_idx ON colours(upper(btrim(cod
 CREATE INDEX colours_name_idx ON colours(lower(name));
 
 -- Existing goesWellWith values are HEX strings, not references to colour codes.
+/* Ordered complementary HEX values; these are not colour-code foreign keys. */
 CREATE TABLE colour_pairings (
   colour_code varchar(40) NOT NULL REFERENCES colours(code) ON DELETE CASCADE,
   position smallint NOT NULL CHECK (position BETWEEN 0 AND 19),
@@ -934,6 +944,7 @@ CREATE TABLE colour_pairings (
   PRIMARY KEY (colour_code, position)
 );
 
+/* Public PDF shade references with family/tone filters. */
 CREATE TABLE shade_cards (
   id varchar(100) PRIMARY KEY,
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
@@ -944,6 +955,7 @@ CREATE TABLE shade_cards (
   position integer NOT NULL DEFAULT 0 CHECK (position >= 0)
 );
 
+/* Categorized project cards with stable identity and server-owned timestamps. */
 CREATE TABLE gallery_projects (
   id varchar(100) PRIMARY KEY,
   category varchar(20) NOT NULL DEFAULT 'other' CHECK (category IN ('interior', 'exterior', 'textures', 'waterproofing', 'commercial', 'other')),
@@ -957,6 +969,7 @@ CREATE TABLE gallery_projects (
 CREATE INDEX gallery_projects_latest_idx ON gallery_projects(updated_at DESC, position DESC);
 CREATE INDEX gallery_projects_category_latest_idx ON gallery_projects(category, updated_at DESC, position DESC);
 
+/* Ordered album photos owned by a project. */
 CREATE TABLE gallery_photos (
   id varchar(100) NOT NULL,
   project_id varchar(100) NOT NULL REFERENCES gallery_projects(id) ON DELETE CASCADE,
@@ -967,6 +980,7 @@ CREATE TABLE gallery_photos (
   UNIQUE (project_id, position)
 );
 
+/* Digital/social campaign cards with optional images and HTTPS destinations. */
 CREATE TABLE gallery_ads (
   id varchar(100) PRIMARY KEY,
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
@@ -982,6 +996,7 @@ CREATE TABLE gallery_ads (
 );
 CREATE INDEX gallery_ads_latest_idx ON gallery_ads(channel, updated_at DESC, position DESC);
 
+/* Curated customer-review text and optional portraits. */
 CREATE TABLE gallery_reviews (
   id varchar(100) PRIMARY KEY CHECK (btrim(id) <> ''),
   name varchar(150) NOT NULL CHECK (btrim(name) <> ''),
@@ -995,6 +1010,7 @@ CREATE TABLE gallery_reviews (
 CREATE INDEX gallery_reviews_latest_idx ON gallery_reviews(updated_at DESC, position DESC);
 
 -- Public document cards are curated through the backend. Files remain in uploads.
+/* Document cards with publication state, issuer, reference and validity dates. */
 CREATE TABLE certifications (
   id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
@@ -1012,6 +1028,7 @@ CREATE TABLE certifications (
   CHECK (issued_on IS NULL OR valid_until IS NULL OR issued_on <= valid_until)
 );
 CREATE INDEX certifications_public_order_idx ON certifications(published, position);
+/* Up to five ordered local PDF attachments per document card. */
 CREATE TABLE certification_attachments (
   id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
   certification_id varchar(100) NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
@@ -1020,6 +1037,7 @@ CREATE TABLE certification_attachments (
   position integer NOT NULL CHECK (position BETWEEN 0 AND 4),
   UNIQUE (certification_id, position)
 );
+/* Many-to-many document/product links for product-page downloads. */
 CREATE TABLE certification_products (
   certification_id varchar(100) NOT NULL REFERENCES certifications(id) ON DELETE CASCADE,
   product_id varchar(100) NOT NULL REFERENCES products(id) ON DELETE CASCADE,
@@ -1029,6 +1047,7 @@ CREATE TABLE certification_products (
 CREATE INDEX certification_products_product_idx ON certification_products(product_id);
 
 -- One shared revision protects the existing full-content Save changes workflow.
+/* A single revision row for optimistic full-content saves. */
 CREATE TABLE site_state (
   id smallint PRIMARY KEY CHECK (id = 1),
   revision bigint NOT NULL DEFAULT 0 CHECK (revision >= 0),
@@ -1038,11 +1057,15 @@ CREATE TABLE site_state (
 INSERT INTO site_state(id, revision) VALUES (1, 0);
 
 -- The current enquiry API stores names. Keep these snapshots even after deletion.
+/* Private contact requests with historical product/shade/dealer snapshots. */
 CREATE TABLE enquiries (
   id varchar(100) PRIMARY KEY,
   topic text NOT NULL DEFAULT 'Request a quotation',
   full_name text NOT NULL CHECK (btrim(full_name) <> ''),
   phone text NOT NULL CHECK (btrim(phone) <> ''),
+  CONSTRAINT enquiries_phone_format_check CHECK (
+    phone ~ '^\+?[0-9 ()-]{7,25}$' AND length(regexp_replace(phone, '[^0-9]', '', 'g')) BETWEEN 7 AND 15
+  ),
   city text NOT NULL DEFAULT '',
   product_id varchar(100) REFERENCES products(id) ON DELETE SET NULL,
   product_name text NOT NULL DEFAULT '',
@@ -1059,6 +1082,7 @@ CREATE INDEX enquiries_created_idx ON enquiries(created_at DESC);
 CREATE INDEX enquiries_status_idx ON enquiries(status, created_at DESC);
 
 -- Created accounts only. The server-configured recovery admin is not a stored user.
+/* Private created accounts and password derivation metadata; the recovery admin stays in server configuration. */
 CREATE TABLE users (
   id varchar(100) PRIMARY KEY CHECK (btrim(id) <> '' AND id <> 'environment-admin'),
   username varchar(80) NOT NULL
@@ -1078,6 +1102,7 @@ CREATE INDEX users_role_active_idx ON users(role, active);
 
 -- One namespace prevents a username from colliding with another user's email.
 -- A user whose username equals their own email needs only one identifier row.
+/* A shared unique namespace for usernames/emails, maintained by the account trigger. */
 CREATE TABLE user_login_identifiers (
   identifier varchar(160) PRIMARY KEY
     CHECK (btrim(identifier) <> '' AND identifier = lower(btrim(identifier))),
@@ -1106,6 +1131,7 @@ CREATE TRIGGER users_sync_login_identifiers
   FOR EACH ROW EXECUTE FUNCTION sync_user_login_identifiers();
 
 -- Private saved events, not content. No FK to deleted entities or recovery admins.
+/* Append-only application audit snapshots without foreign keys to deleted content. */
 CREATE TABLE activity_events (
   id varchar(100) PRIMARY KEY CHECK (btrim(id) <> ''),
   event_sequence bigint GENERATED BY DEFAULT AS IDENTITY UNIQUE
@@ -1135,6 +1161,7 @@ CREATE INDEX activity_events_entry_idx ON activity_events(section, entity_id, ev
   WHERE action IN ('created', 'updated') AND entity_id <> '';
 
 -- Customer submissions and private receipt metadata; never exposed to browser database roles.
+/* Private purchase, login-phone, receipt and review snapshots with explicit demo-verification boundaries. */
 CREATE TABLE warranty_registrations (
   id uuid PRIMARY KEY,
   reference varchar(100) NOT NULL UNIQUE CHECK (btrim(reference) <> ''),
@@ -1201,6 +1228,16 @@ CREATE TABLE warranty_registrations (
     status <> 'approved' OR
     (mobile_verified AND verification_mode <> 'demo') OR
     (approval_confirmed AND reviewed_at IS NOT NULL AND btrim(reviewed_by) <> '')
+  ),
+  CONSTRAINT warranty_registrations_contact_phones_check CHECK (
+    (alternate_mobile = '' OR (alternate_mobile ~ '^\+?[0-9 ()-]{7,25}$' AND length(regexp_replace(alternate_mobile, '[^0-9]', '', 'g')) BETWEEN 7 AND 15)) AND
+    (dealer_phone = '' OR (dealer_phone ~ '^\+?[0-9 ()-]{7,25}$' AND length(regexp_replace(dealer_phone, '[^0-9]', '', 'g')) BETWEEN 7 AND 15)) AND
+    (applicator_phone = '' OR (applicator_phone ~ '^\+?[0-9 ()-]{7,25}$' AND length(regexp_replace(applicator_phone, '[^0-9]', '', 'g')) BETWEEN 7 AND 15))
+  ),
+  CONSTRAINT warranty_registrations_decision_details_check CHECK (
+    (status NOT IN ('rejected', 'needs_information') OR
+      (review_notes ~ '[^[:space:]]' AND reviewed_at IS NOT NULL AND reviewed_by ~ '[^[:space:]]')) AND
+    (status = 'approved' OR NOT approval_confirmed)
   )
 );
 CREATE INDEX warranty_registrations_created_idx ON warranty_registrations(created_at DESC);
@@ -1281,6 +1318,7 @@ END;
 $$;
 
 COMMIT;
+
 ```
 
 ## 14. Category seed SQL
@@ -1486,3 +1524,8 @@ About Areva (`#about`) uses a shared React/server-rendered six-card resource hub
 ## Shared page headers, official logo and warranty entry phone — 17 November 2026
 
 Public banners (except Home and Products) now share gradient, Georgia heading sizes and copy typography. Public/admin navigation and sign-in share the official Areva logo. Warranty purchase invoice number and purchase date appear together; `loginMobile` is a server-session snapshot shown in admin search/details and private PDFs. Existing JSON uses the saved mobile as fallback. Prepared SQL migration 011 backfills the new `login_mobile` column without changing final reviews. See [the header guide](docs/shared-brand-and-page-headers.md) and [warranty guide](docs/warranty-registration.md).
+
+
+## Maintenance review — 18 November 2026
+
+The current stack, JSON persistence, production dependency split and Render Web Service setup are documented in [README.md](README.md). See [the review findings](docs/code-review-2026-11-18.md) for the contact validation fix, prepared migration 012, read-only SQL checks and remaining limitations. Historical sections above do not imply an active PostgreSQL adapter or a live deployment.

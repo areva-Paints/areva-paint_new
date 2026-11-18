@@ -1,3 +1,7 @@
+/*
+ * Adapt the preserved HTML prototype to current CMS data and shared React-rendered fragments.
+ * Escape inserted values and retain exact script anchors used by the reference layout.
+ */
 import { getProductDisplayDetails, productWarrantyText } from '../data/productDetails';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -9,6 +13,7 @@ import { referenceLayout } from "./reference-layout";
 import fs from "node:fs";
 import path from "node:path";
 import { readContent } from "./content-store";
+/* Escape CMS text before it enters the preserved HTML template. */
 const esc = (v: string) =>
   v.replace(
     /[&<>"']/g,
@@ -17,6 +22,7 @@ const esc = (v: string) =>
         c
       ]!,
   );
+/* Replace prototype data with safe CMS snapshots and apply the shared reference layout. */
 export function legacyPage() {
   let html = fs.readFileSync(
     path.resolve("public/assets/aistudio/areva-paints_a2364c60.html"),
@@ -74,6 +80,7 @@ export function legacyPage() {
     ),
     badges: d.badges.map(esc),
   }));
+  /* Serialize inline data while preventing an embedded closing script tag. */
   const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
   html = html.replace(
     "const $ =",

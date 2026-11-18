@@ -1,3 +1,7 @@
+/*
+ * Display private audit events with filters and relative timestamps.
+ * Only saved server events appear; editing a draft does not create history.
+ */
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Clock3, RefreshCw } from "lucide-react";
 import {
@@ -10,6 +14,7 @@ import {
 } from "./activity-types";
 
 export const ActivityContext = createContext<ActivitySummary | null>(null);
+/* Describe elapsed time without replacing the exact timestamp used in the tooltip. */
 export function relativeTime(value: string, now = Date.now()) {
   const seconds = Math.max(0, Math.floor((now - Date.parse(value)) / 1000));
   if (!Number.isFinite(seconds)) return "Date unavailable";
@@ -23,6 +28,7 @@ export function relativeTime(value: string, now = Date.now()) {
   return `${amount} ${unit}${amount === 1 ? "" : "s"} ago`;
 }
 const ActivityClock = createContext(Date.now());
+/* Share a single minute timer so all visible audit timestamps refresh together. */
 export function ActivityClockProvider({
   children,
 }: {
@@ -37,6 +43,7 @@ export function ActivityClockProvider({
     <ActivityClock.Provider value={now}>{children}</ActivityClock.Provider>
   );
 }
+/* Expose both a relative label and an exact machine-readable event timestamp. */
 export function ActivityTime({ value }: { value: string }) {
   const now = useContext(ActivityClock);
   const exact = new Date(value).toLocaleString(undefined, {
@@ -49,6 +56,7 @@ export function ActivityTime({ value }: { value: string }) {
     </time>
   );
 }
+/* Show the latest saved event for an entity, falling back to its server timestamp. */
 export function AdminUpdated({
   section,
   id,
@@ -85,10 +93,12 @@ const ACTIONS = {
   signed_in: "Signed in",
   signed_out: "Signed out",
 };
+/* Fetch and present paginated private events without showing stale filter results. */
 export function ActivityHistory({ refreshKey }: { refreshKey: number }) {
   const [tab, setTab] = useState<ActivityTab>("all");
   const activeTab = ACTIVITY_TABS.find((item) => item.id === tab)!;
   const tabSections: readonly ActivitySection[] | null = activeTab.sections;
+  /* Reset dependent filters and pagination when switching history categories. */
   function selectTab(next: ActivityTab) {
     if (next === tab) return;
     setTab(next);

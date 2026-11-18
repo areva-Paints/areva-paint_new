@@ -1,3 +1,7 @@
+/* Add versioned review metadata, manual approval confirmation and search/filter indexes.
+ * Historical upgrade: apply once, in sequence, only when absent from the target installation.
+ * This file is not run by Express and does not import the live JSON store.
+ */
 -- Apply ONCE after migration 006 to an existing Areva application database.
 -- Adds manual admin review without changing OTP verification or existing status values.
 -- Does not connect the JSON-backed website to SQL or assign warranty dates.

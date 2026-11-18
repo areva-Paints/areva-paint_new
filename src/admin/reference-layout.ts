@@ -1,3 +1,7 @@
+/*
+ * Transform the preserved public HTML into the current branded layout, shared banners and navigation.
+ * Insert CMS text through escaping or React static markup, not raw user HTML.
+ */
 import { getProductDisplayDetails } from '../data/productDetails';
 import { BrandLogo } from '../components/BrandLogo';
 import { MoreMenuCards } from '../components/MoreMenuCards';
@@ -11,6 +15,7 @@ import { CategoryLandingHero } from "../components/CategoryLandingHero";
 import type { SiteContent } from "./content-types";
 import { CATEGORIES } from "../data/paintsData";
 
+/* Escape values interpolated into the shared public layout. */
 const escapeHtml = (value: string) =>
   value.replace(
     /[&<>"']/g,

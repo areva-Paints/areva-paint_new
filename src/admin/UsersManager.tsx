@@ -1,7 +1,12 @@
+/*
+ * Manage private website accounts through admin-only APIs.
+ * Passwords are submitted for hashing and are never returned in account listings.
+ */
 import React, { useEffect, useRef, useState } from "react";
 import { Plus, ShieldCheck, X } from "lucide-react";
 import { USER_ROLES, type AccountUser, type UserRole } from "./user-types";
 import { AdminUpdated } from "./ActivityHistory";
+/* Send an authenticated account-management request and expose server validation errors. */
 async function api(url: string, options: RequestInit = {}) {
   const response = await fetch(url, {
     ...options,
@@ -12,6 +17,7 @@ async function api(url: string, options: RequestInit = {}) {
   if (!response.ok) throw Error(data.error || "Users could not be loaded.");
   return data;
 }
+/* Manage private website accounts through admin-only APIs. */
 export function UsersManager({
   currentUser,
   onChange,
@@ -34,6 +40,7 @@ export function UsersManager({
     [password, setPassword] = useState(""),
     [formError, setFormError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
+  /* Refresh safe account listings without requesting password hashes. */
   async function load() {
     setLoading(true);
     try {
@@ -54,6 +61,7 @@ export function UsersManager({
       dialog.current?.querySelector<HTMLInputElement>("input")?.focus();
     } else dialog.current?.close();
   }, [mode]);
+  /* Initialize an isolated editor draft from the selected record before showing its dialog. */
   function open(user?: AccountUser) {
     setSelected(user || null);
     setMode(user ? "password" : "create");
@@ -64,11 +72,13 @@ export function UsersManager({
     setPassword("");
     setFormError("");
   }
+  /* Dismiss the current dialog and release its temporary selection state. */
   function close() {
     if (busy) return;
     setMode(null);
     setPassword("");
   }
+  /* Create or update an account through the protected backend. */
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (busy) return;
@@ -104,6 +114,7 @@ export function UsersManager({
       setBusy(false);
     }
   }
+  /* Enable or disable an account through the server authorization boundary. */
   async function toggle(user: AccountUser) {
     if (
       !confirm(

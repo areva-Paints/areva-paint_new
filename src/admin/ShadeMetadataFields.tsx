@@ -1,3 +1,6 @@
+/*
+ * Reuse the supported shade-family and tone controls in manual editing and import previews so both paths produce the same metadata.
+ */
 import React from "react";
 import {
   COLOUR_FAMILIES,
@@ -5,6 +8,7 @@ import {
   type ShadeFamily,
   type ShadeTone,
 } from "../data/shadeFamilies";
+/* Reuse the supported shade-family and tone controls in manual editing and import previews so both paths produce the same metadata.. */
 export function ShadeMetadataFields({
   family,
   tones = [],
