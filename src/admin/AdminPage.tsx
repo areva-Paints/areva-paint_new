@@ -164,7 +164,7 @@ export function AdminPage() {
     [password, setPassword] = useState("");
   const [username, setUsername] = useState("admin");
   const [content, setContent] = useState<SiteContent | null>(null),
-    [tab, setTab] = useState<Tab>("landingImages"),
+    [tab, setTab] = useState<Tab>("certifications"),
     [search, setSearch] = useState(""),
     [dirty, setDirty] = useState(false),
     [busy, setBusy] = useState(false),
@@ -283,6 +283,7 @@ export function AdminPage() {
         body: JSON.stringify({ username, password }),
       });
       setPassword("");
+      setTab("certifications");
       await load();
     } catch (e) {
       setError((e as Error).message);

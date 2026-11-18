@@ -6,42 +6,42 @@ const links = [
     description: "Painting, colour advice and protection for every surface.",
     href: "#services",
     view: "services",
-    image: "/assets/images/category-putty-primers.webp",
+    image: "/assets/images/more/services.webp",
   },
   {
     title: "About Areva",
     description: "Discover our story, services and partner resources.",
     href: "#about",
     view: "about",
-    image: "/assets/images/hero_architectural_living_1793203849445.jpg",
+    image: "/assets/images/more/about.webp",
   },
   {
     title: "Authorised dealers",
     description: "Find your local Areva dealer and the right product support.",
     href: "#portals",
     view: "portals",
-    image: "/assets/images/room_visualizer_exterior_1793203850484.jpg",
+    image: "/assets/images/more/dealers.webp",
   },
   {
     title: "Documents",
     description: "Browse certificates, reports and product data sheets.",
     href: "#certs",
     view: undefined,
-    image: "/assets/images/category-chemicals.webp",
+    image: "/assets/images/more/documents.webp",
   },
   {
     title: "Contact",
     description: "Ask for product guidance, a quotation or customer care.",
     href: "#contact",
     view: "contact",
-    image: "/assets/images/room_visualizer_living_1793203848949.jpg",
+    image: "/assets/images/more/contact.webp",
   },
   {
     title: "Admin portal",
     description: "Sign in to manage your Areva website and content.",
     href: "/admin",
     view: undefined,
-    image: "/assets/images/areva-brand-logo.png",
+    image: "/assets/images/more/admin.webp",
   },
 ] as const;
 
@@ -79,12 +79,7 @@ export function MoreMenuCards() {
             aria-labelledby={`ref-more-title-${index}`}
             aria-describedby={`ref-more-copy-${index}`}
           >
-            <span
-              className={
-                "ref-more-media" +
-                (link.href === "/admin" ? " ref-more-media-brand" : "")
-              }
-            >
+            <span className="ref-more-media">
               <img
                 src={link.image}
                 alt=""
