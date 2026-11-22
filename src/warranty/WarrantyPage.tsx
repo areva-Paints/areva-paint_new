@@ -2,6 +2,11 @@
  * Guide visitors through mobile entry, demo OTP, private customer history and a complete purchase form.
  * Submission stays on confirmation; leaving via Back to website clears entry so a later visit starts at the mobile screen.
  */
+import {
+  DOCUMENT_MAX_BYTES,
+  IMAGE_MIME_TYPES,
+  RECEIPT_MIME_TYPES,
+} from "../data/uploadLimits";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -249,10 +254,8 @@ export function WarrantyPage() {
     if (!file) return;
     setError("");
     if (
-      !["application/pdf", "image/jpeg", "image/png", "image/webp"].includes(
-        file.type,
-      ) ||
-      file.size > 5 * 1024 * 1024
+      !RECEIPT_MIME_TYPES.includes(file.type) ||
+      file.size > DOCUMENT_MAX_BYTES
     ) {
       setError("Choose a PDF, JPEG, PNG or WebP receipt up to 5 MB.");
       return;
@@ -289,8 +292,8 @@ export function WarrantyPage() {
     if (
       chosen.some(
         (file) =>
-          !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
-          file.size > 5 * 1024 * 1024,
+          !IMAGE_MIME_TYPES.includes(file.type) ||
+          file.size > DOCUMENT_MAX_BYTES,
       )
     ) {
       setError("Choose JPEG, PNG or WebP building photos up to 5 MB each.");

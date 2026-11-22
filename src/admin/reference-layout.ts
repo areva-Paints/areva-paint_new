@@ -15,6 +15,7 @@ import { CategorySceneCard } from "../components/CategorySceneCard";
 import { CategoryLandingHero } from "../components/CategoryLandingHero";
 import type { SiteContent } from "./content-types";
 import { CATEGORIES } from "../data/paintsData";
+import { templateSlots } from "./template-slots";
 
 /* Escape values interpolated into the shared public layout. */
 const escapeHtml = (value: string) =>
@@ -28,6 +29,8 @@ const escapeHtml = (value: string) =>
 
 /** Apply the supplied corporate concept around the existing functional page. */
 export function referenceLayout(html: string, content: SiteContent) {
+  const slots = templateSlots();
+  const inlineJson = (value: unknown) => slots.add(JSON.stringify(value).replace(/</g, "\\u003c"));
   html = html.replace(
     "</head>",
     '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/brand.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"><link rel="stylesheet" href="/assets/more-menu.css"><link rel="stylesheet" href="/assets/terms-conditions.css"></head>',
@@ -134,14 +137,14 @@ export function referenceLayout(html: string, content: SiteContent) {
     const fields = getProductDisplayDetails(p);
     return `<dl class="ref-product-specs">${fields.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` + renderToStaticMarkup(createElement(ProductDocumentDownloads, { content, productId: p.id }));
   });
-  const json = JSON.stringify(specs).replace(/</g, "\\u003c");
-  const warrantyHtml = JSON.stringify(content.products.map((product) => renderToStaticMarkup(createElement(ProductWarrantyBadge, { product })))).replace(/</g, "\\u003c");
-  const documentHtml = JSON.stringify(content.products.map((product) => renderToStaticMarkup(createElement(ProductDocumentDownloads, { content, productId: product.id })))).replace(/</g, "\\u003c");
+  const json = inlineJson(specs);
+  const warrantyHtml = inlineJson(content.products.map((product) => renderToStaticMarkup(createElement(ProductWarrantyBadge, { product }))));
+  const documentHtml = inlineJson(content.products.map((product) => renderToStaticMarkup(createElement(ProductDocumentDownloads, { content, productId: product.id }))));
   html = html.replace('<ul id="dSec"></ul></div>', '<ul id="dSec"></ul></div><div id="refProductDocuments"></div>');
   html = html.replace('$("#dSec").innerHTML = p[3].map(s=>"<li>"+s+"</li>").join("");', '$("#dSec").innerHTML = p[3].map(s=>"<li>"+s+"</li>").join(""); $("#refProductDocuments").innerHTML=REFERENCE_PRODUCT_DOC_HTML[i]||"";');
   html = html.replace(
     "const $ =",
-    () => `const REFERENCE_PRODUCT_DOC_HTML=${documentHtml};\nconst REFERENCE_PRODUCT_WARRANTY_HTML=${warrantyHtml};\nconst REFERENCE_PRODUCT_HEADER_HTML=${JSON.stringify(content.products.map(product=>renderToStaticMarkup(createElement(ProductSummaryHeading, { product, level: "h4" })))).replace(/</g,"\\u003c")};\nconst REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
+    () => `const REFERENCE_PRODUCT_DOC_HTML=${documentHtml};\nconst REFERENCE_PRODUCT_WARRANTY_HTML=${warrantyHtml};\nconst REFERENCE_PRODUCT_HEADER_HTML=${inlineJson(content.products.map(product=>renderToStaticMarkup(createElement(ProductSummaryHeading, { product, level: "h4" }))))};\nconst REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
   );
   html = html.replace(
     /<h2>Products for every surface<\/h2>[\s\S]*?<div class="tiles" id="tiles"><\/div>/,
@@ -162,7 +165,7 @@ export function referenceLayout(html: string, content: SiteContent) {
   $("#grid").innerHTML=list.map(([p,i])=>{const c=cats[p[1]];return '<article class="card ref-category-product"><div class="product-copy">'+(REFERENCE_PRODUCT_HEADER_HTML[i]||'')+'<p>'+p[2]+'</p>'+(REFERENCE_PRODUCT_SPEC_HTML[i]||'')+'<button class="btn btn-line" data-p="'+i+'">View specifications &amp; photo</button></div><div class="ref-badge-panel"><button type="button" class="ref-product-badge ref-flip-badge" data-product-flip data-product-name="'+p[0]+'" aria-label="Show product photo for '+p[0]+'" aria-pressed="false"'+(p[4]?'':' disabled')+'><span class="ref-flip-inner" aria-hidden="true"><span class="ref-flip-face ref-flip-front"><span class="ref-badge-brand">AREVA<small>PAINTS</small></span><strong>'+p[0].replace(/^Areva\\s+/i,'')+'</strong></span>'+(p[4]?'<span class="ref-flip-face ref-flip-back"><img class="ref-flip-photo" src="'+p[4]+'" alt="" loading="lazy" decoding="async"></span>':'')+'</span></button></div></article>'}).join("")||'<div class="ref-catalog-empty"><h3>New products are on the way</h3><p>Contact our team for guidance on this product category.</p><a class="btn btn-main" href="#contact">Enquire now</a></div>';
 }`,
   );
-  const categoryData = JSON.stringify(
+  const categoryData = inlineJson(
     CATEGORIES.map((category) => ({
       id: category.id,
       name: category.name,
@@ -171,7 +174,7 @@ export function referenceLayout(html: string, content: SiteContent) {
         createElement(CategoryLandingHero, { category }),
       ),
     })),
-  ).replace(/</g, "\\u003c");
+  );
   html = html.replace(
     /function pick\(i, scroll\)\{[^\n]*\}/,
     () => `window.arevaProductCategories=${categoryData};
@@ -209,5 +212,5 @@ function pick(i, scroll){if(window.arevaOpenCategory){window.arevaOpenCategory(i
     "</body>",
     '<script src="/assets/reference-layout.js" defer></script><script type="module" src="/assets/terms-conditions.js"></script></body>',
   );
-  return html;
+  return slots.restore(html);
 }

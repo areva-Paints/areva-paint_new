@@ -78,5 +78,13 @@ SELECT count(*) AS tables_with_rls FROM pg_class c
   JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'areva' AND c.relkind = 'r' AND c.relrowsecurity;
 `;
-fs.writeFileSync(path.join(root, 'database/supabase-setup.sql'), output);
-console.log('Prepared database/supabase-setup.sql locally. No database was changed.');
+const destination = path.join(root, 'database/supabase-setup.sql');
+if (process.argv.includes('--check')) {
+  if (!fs.existsSync(destination) || fs.readFileSync(destination, 'utf8') !== output) {
+    console.error('Generated Supabase SQL differs. Run node scripts/prepare_supabase_sql.cjs and commit the updated file.');
+    process.exitCode = 1;
+  } else console.log('Generated Supabase SQL matches the canonical schema and category seed.');
+} else {
+  fs.writeFileSync(destination, output);
+  console.log('Prepared database/supabase-setup.sql locally. No database was changed.');
+}

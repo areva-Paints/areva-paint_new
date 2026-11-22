@@ -2,6 +2,7 @@
  * Edit document-card drafts, product links and uploaded PDFs.
  * Saving a document uses the parent revision-aware publish action; uploads are authenticated separately.
  */
+import { DOCUMENT_MAX_BYTES } from "../data/uploadLimits";
 import React, { useEffect, useId, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -109,7 +110,7 @@ export function CertificationsManager({
     if (
       chosen.some(
         (file) =>
-          file.size > 5 * 1024 * 1024 ||
+          file.size > DOCUMENT_MAX_BYTES ||
           !(
             file.type === "application/pdf" ||
             (!file.type && /\.pdf$/i.test(file.name))

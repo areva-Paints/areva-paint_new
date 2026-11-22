@@ -21,6 +21,10 @@ import { requireAdmin } from "./src/admin/accounts";
 import { contentRouter, uploads } from "./src/admin/routes";
 import { readContent, dataDir } from "./src/admin/content-store";
 import { legacyPage } from "./src/admin/legacy-page";
+import {
+  assertPrivateDataDirectory,
+  privateDataDenyPatterns,
+} from "./src/server/private-data-directory";
 import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
@@ -124,108 +128,6 @@ app.get(
   },
 );
 
-export interface DealerDepot {
-  city: string;
-  name: string;
-  phone: string;
-  address: string;
-  state: string;
-}
-
-export const DEALER_LOCATIONS: DealerDepot[] = [
-  {
-    state: "Karnataka",
-    city: "Bengaluru Central",
-    name: "Sri Balaji Paint & Hardware Depot",
-    phone: "+91 98451 22334",
-    address: "Old Madras Road, Indiranagar",
-  },
-  {
-    state: "Karnataka",
-    city: "Bengaluru South",
-    name: "Chamundi Color World",
-    phone: "+91 98801 44556",
-    address: "Kanakapura Main Road, JP Nagar",
-  },
-  {
-    state: "Karnataka",
-    city: "Mysuru",
-    name: "Cauvery Building Coatings",
-    phone: "+91 94480 33221",
-    address: "Sayyaji Rao Road",
-  },
-  {
-    state: "Karnataka",
-    city: "Hubli - Dharwad",
-    name: "North Karnataka Paint Distributors",
-    phone: "+91 98440 77889",
-    address: "Station Road, Hubli",
-  },
-  {
-    state: "Maharashtra",
-    city: "Pune East",
-    name: "Shree Ganesh Paint Center",
-    phone: "+91 98220 11223",
-    address: "Kharadi Bypass Road, Hadapsar",
-  },
-  {
-    state: "Maharashtra",
-    city: "Mumbai Suburban",
-    name: "Maruti Waterproofing & Coatings",
-    phone: "+91 98200 44332",
-    address: "SV Road, Andheri West",
-  },
-  {
-    state: "Maharashtra",
-    city: "Nashik",
-    name: "Godavari Color Plaza",
-    phone: "+91 94222 55667",
-    address: "College Road, Nashik",
-  },
-  {
-    state: "Tamil Nadu",
-    city: "Chennai Central",
-    name: "Meenakshi Paints & Chemicals",
-    phone: "+91 98400 99887",
-    address: "Poonamallee High Road, Kilpauk",
-  },
-  {
-    state: "Tamil Nadu",
-    city: "Coimbatore",
-    name: "Kongu Surface Solutions",
-    phone: "+91 94430 11445",
-    address: "Avinashi Road, Peelamedu",
-  },
-  {
-    state: "Tamil Nadu",
-    city: "Madurai",
-    name: "Pandian Paint House",
-    phone: "+91 98421 66778",
-    address: "West Veli Street",
-  },
-  {
-    state: "Andhra Pradesh",
-    city: "Hyderabad / Secunderabad",
-    name: "Deccan Coating Systems",
-    phone: "+91 98480 22119",
-    address: "Kukatpally Main Road",
-  },
-  {
-    state: "Andhra Pradesh",
-    city: "Visakhapatnam",
-    name: "Coastal Wall Protection Hub",
-    phone: "+91 98491 55662",
-    address: "Daba Gardens",
-  },
-  {
-    state: "Andhra Pradesh",
-    city: "Vijayawada",
-    name: "Krishna Paints & Adhesives",
-    phone: "+91 98481 88990",
-    address: "MG Road, Governorpet",
-  },
-];
-
 // ==========================================
 // REST API ROUTES
 // ==========================================
@@ -233,6 +135,7 @@ export const DEALER_LOCATIONS: DealerDepot[] = [
 // 1. System Health Check
 /* GET /api/health: Report service readiness and catalogue counts without returning private records. */
 app.get("/api/health", (_req: Request, res: Response) => {
+  const content = readContent();
   res.json({
     status: "ok",
     service: "Areva Paints Architectural Platform API",
@@ -240,10 +143,10 @@ app.get("/api/health", (_req: Request, res: Response) => {
     timestamp: new Date().toISOString(),
     environment: isProd ? "production" : "development",
     catalogStats: {
-      productsCount: readContent().products.length,
+      productsCount: content.products.length,
       categoriesCount: CATEGORIES.length,
-      shadesCount: readContent().colours.length,
-      dealerDepotsCount: readContent().dealers.length,
+      shadesCount: content.colours.length,
+      dealerDepotsCount: content.dealers.length,
     },
   });
 });
@@ -318,7 +221,8 @@ app.get("/api/shades", (req: Request, res: Response) => {
 /* GET /api/dealers: Filter current CMS dealers without using the legacy fallback constant. */
 app.get("/api/dealers", (req: Request, res: Response) => {
   const { state } = req.query;
-  let depots = [...readContent().dealers];
+  const content = readContent();
+  let depots = [...content.dealers];
 
   if (state !== undefined && typeof state !== "string")
     return res.status(400).json({ error: "Choose a valid state." });
@@ -330,7 +234,7 @@ app.get("/api/dealers", (req: Request, res: Response) => {
 
   res.json({
     depots,
-    statesCovered: [...new Set(readContent().dealers.map((d) => d.state))],
+    statesCovered: [...new Set(content.dealers.map((d) => d.state))],
     total: depots.length,
   });
 });
@@ -610,7 +514,14 @@ app.get("/api/project/source-files", (_req: Request, res: Response) => {
     }
 
     /* Include maintained text/config sources; binary artwork/fonts stay in the full ZIP. */
-    for (const folder of ["src", "public", "scripts", "tests", "docs", "database"]) {
+    for (const folder of [
+      "src",
+      "public",
+      "scripts",
+      "tests",
+      "docs",
+      "database",
+    ]) {
       const directory = path.join(rootDir, folder);
       if (fs.existsSync(directory) && fs.lstatSync(directory).isDirectory()) {
         readTextDir(directory, folder);
@@ -660,21 +571,25 @@ app.use("/api", (_req, res) =>
 
 /* Reject exposed data-directory locations, mount development or production assets, then start the single Express process. */
 async function startServer() {
-  for (const exposed of ["public", "dist", "src"]) {
-    const relative = path.relative(path.resolve(__dirname, exposed), dataDir);
-    if (
-      !relative.startsWith(".." + path.sep) &&
-      relative !== ".." &&
-      !path.isAbsolute(relative)
-    )
-      throw Error("CONTENT_DATA_DIR must be outside public, dist and src.");
-  }
+  assertPrivateDataDirectory(dataDir, __dirname);
   if (!isProd) {
     /* Load build tooling only for local development; production serves dist. */
     const { createServer: createViteServer } = await import("vite");
     // In dev: mount Vite middlewares so HMR and SPA routing work together on port 3000
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        fs: {
+          // Preserve Vite's secret-file defaults and explicitly block private data.
+          deny: [
+            ".env",
+            ".env.*",
+            "*.{crt,pem}",
+            "**/.git/**",
+            ...privateDataDenyPatterns(dataDir),
+          ],
+        },
+      },
       appType: "spa",
     });
     app.use(vite.middlewares);

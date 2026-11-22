@@ -8,6 +8,7 @@ import { DOCUMENT_TYPES, type CertificationDocument } from "./content-types";
 import type { Product } from "../types";
 import { dataDir } from "./content-store";
 import { CATEGORIES } from "../data/paintsData";
+import { ValidationError } from "../server/validation-error";
 
 /* Require a plain object before reading document-card fields. */
 const record = (value: unknown): value is Record<string, any> =>
@@ -51,7 +52,9 @@ export function prepareCertifications(
   now: string,
 ): CertificationDocument[] {
   if (!Array.isArray(input) || input.length > 100 || !unique(input))
-    throw Error("Keep up to 100 document cards with unique identifiers.");
+    throw new ValidationError(
+      "Keep up to 100 document cards with unique identifiers.",
+    );
   const productIds = new Set(products.map((product) => product.id));
   const removedProducts = new Set(
     previousProducts
@@ -76,7 +79,9 @@ export function prepareCertifications(
           CATEGORIES.some((category) => category.id === id),
       )
     )
-      throw Error("Select valid product types without duplicates.");
+      throw new ValidationError(
+        "Select valid product types without duplicates.",
+      );
     if (
       !record(item) ||
       !text(item.title, 150, true) ||
@@ -90,7 +95,7 @@ export function prepareCertifications(
       (item.issuedOn && item.validUntil && item.issuedOn > item.validUntil) ||
       typeof item.published !== "boolean"
     )
-      throw Error(
+      throw new ValidationError(
         "Each document needs a heading, description, valid type and dates. Valid until cannot be before the issue date.",
       );
     if (
@@ -103,14 +108,16 @@ export function prepareCertifications(
           (productIds.has(id) || removedProducts.has(id)),
       )
     )
-      throw Error("Select valid linked products without duplicates.");
+      throw new ValidationError(
+        "Select valid linked products without duplicates.",
+      );
     if (
       !Array.isArray(item.attachments) ||
       item.attachments.length > 5 ||
       (item.published && !item.attachments.length) ||
       !unique(item.attachments)
     )
-      throw Error(
+      throw new ValidationError(
         "Published cards need 1–5 PDF attachments. Hidden cards can be saved without attachments.",
       );
     const attachments = item.attachments.map((attachment) => {
@@ -122,17 +129,17 @@ export function prepareCertifications(
           attachment.url,
         )
       )
-        throw Error(
+        throw new ValidationError(
           "Each attachment needs a label and a PDF uploaded through this admin portal.",
         );
       if (attachmentIds.has(attachment.id))
-        throw Error(
+        throw new ValidationError(
           "Attachment identifiers must be unique across document cards.",
         );
       attachmentIds.add(attachment.id);
       const file = path.join(dataDir, "uploads", path.basename(attachment.url));
       if (!fs.existsSync(file) || !fs.lstatSync(file).isFile())
-        throw Error(
+        throw new ValidationError(
           "A document attachment is missing. Upload the PDF again before saving.",
         );
       return {

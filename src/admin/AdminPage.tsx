@@ -2,6 +2,10 @@
  * Coordinate authenticated CMS editing, section navigation and revision-aware saves.
  * Fresh sessions start on Certifications and documents; inactivity is handled by the shared session hook.
  */
+import {
+  CATALOGUE_IMAGE_MAX_BYTES,
+  IMAGE_MIME_TYPES,
+} from "../data/uploadLimits";
 import { WarrantyManager } from "../warranty/WarrantyManager";
 import { BrandLogo } from "../components/BrandLogo";
 import { CertificationsManager } from "./CertificationsManager";
@@ -215,9 +219,17 @@ export function AdminPage() {
     ),
     [isNew, setIsNew] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [productTerms, setProductTerms] = useState<CertificationDocument[] | null>(null);
+  const [productTerms, setProductTerms] = useState<
+    CertificationDocument[] | null
+  >(null);
   /* Terms edits stay in the product dialog until its complete CMS revision is saved. */
-  useEffect(() => { setProductTerms(tab === "products" && editor ? structuredClone(content?.certifications ?? []) : null); }, [editor?.id, tab]);
+  useEffect(() => {
+    setProductTerms(
+      tab === "products" && editor
+        ? structuredClone(content?.certifications ?? [])
+        : null,
+    );
+  }, [editor?.id, tab]);
   /* Discard authenticated editing state when the session ends. */
   function clearAdminSession(message = "") {
     authEpoch.current++;
@@ -446,7 +458,10 @@ export function AdminPage() {
       "image" in editor ? { ...editor, image: editor.image.trim() } : editor;
     const next = {
       ...content,
-      certifications: tab === "products" && productTerms ? productTerms : content.certifications,
+      certifications:
+        tab === "products" && productTerms
+          ? productTerms
+          : content.certifications,
       [key]: isNew
         ? [...items, entry]
         : items.map((i) => (i.id === entry.id ? entry : i)),
@@ -486,8 +501,8 @@ export function AdminPage() {
   async function upload(file?: File) {
     if (!file) return;
     if (
-      file.size > 25 * 1024 * 1024 ||
-      !["image/jpeg", "image/png", "image/webp"].includes(file.type)
+      file.size > CATALOGUE_IMAGE_MAX_BYTES ||
+      !IMAGE_MIME_TYPES.includes(file.type)
     ) {
       setError("Choose a JPEG, PNG or WebP image up to 25 MB.");
       return;
@@ -890,7 +905,8 @@ export function AdminPage() {
                     setError("");
                   }}
                 >
-                  Ads &amp; Campaigns <span>{content.galleryAds?.length || 0}</span>
+                  Ads &amp; Campaigns{" "}
+                  <span>{content.galleryAds?.length || 0}</span>
                 </button>
                 <button
                   type="button"
@@ -905,7 +921,8 @@ export function AdminPage() {
                     setError("");
                   }}
                 >
-                  Customer Reviews <span>{content.galleryReviews?.length || 0}</span>
+                  Customer Reviews{" "}
+                  <span>{content.galleryReviews?.length || 0}</span>
                 </button>
               </div>
               <div
@@ -1396,7 +1413,18 @@ export function AdminPage() {
                         )
                       }
                     />
-                    <ProductWarrantyTermsFields key={editor.id + "-terms"} product={editor as Product} documents={productTerms ?? content.certifications} onChange={setProductTerms} onBusy={setUploading} />
+                    <ProductWarrantyTermsFields
+                      key={
+                        editor.id +
+                        "-" +
+                        (editor as Product).categoryId +
+                        "-terms"
+                      }
+                      product={editor as Product}
+                      documents={productTerms ?? content.certifications}
+                      onChange={setProductTerms}
+                      onBusy={setUploading}
+                    />
                     <div className="adm-coverage-preview">
                       <Droplets size={21} />
                       <div>

@@ -68,7 +68,7 @@ export function securityHeaders(production: boolean): RequestHandler {
     );
     if (production && req.secure)
       res.setHeader("Strict-Transport-Security", "max-age=31536000");
-    const admin = /^\/(admin(?:\/|$)|api\/(?:admin|auth|project)(?:\/|$))/.test(
+    const admin = /^\/(admin(?:\/|$)|api\/(?:admin|auth|project)(?:\/|$))/i.test(
       req.path,
     );
     if (admin) {

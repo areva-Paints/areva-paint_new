@@ -2,6 +2,7 @@
  * the shared document collection, so product-type terms also cover future products.
  * Uploading does not publish: the parent saves product and documents in one revision.
  */
+import { DOCUMENT_MAX_BYTES } from "../data/uploadLimits";
 import React, { useId, useState } from "react";
 import type { Product } from "../types";
 import type { CertificationDocument } from "./content-types";
@@ -61,7 +62,7 @@ export function ProductWarrantyTermsFields({
   async function upload(file?: File) {
     if (!file) return;
     if (
-      file.size > 5 * 1024 * 1024 ||
+      file.size > DOCUMENT_MAX_BYTES ||
       !(
         file.type === "application/pdf" ||
         (!file.type && /\.pdf$/i.test(file.name))

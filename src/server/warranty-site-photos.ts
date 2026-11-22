@@ -7,12 +7,18 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { dataDir } from "../admin/content-store";
-import { writePrivateJson } from "./storage";
+import { writePrivateJson, writePrivateUpload } from "./storage";
+import {
+  supportedFileBytes,
+  warrantyUploadBytes,
+  uploadBudgetBytes,
+} from "./upload-files";
+import { DOCUMENT_MAX_BYTES } from "../data/uploadLimits";
 import { rateLimit } from "./security";
 import type { ReceiptInfo } from "../warranty/types";
 
 export const MAX_BUILDING_PHOTOS = 5;
-const maxBytes = 5 * 1024 * 1024;
+const maxBytes = DOCUMENT_MAX_BYTES;
 const directory = () => path.join(dataDir, "warranty-site-photos");
 const metadata = () => path.join(dataDir, "warranty-site-uploads.json");
 const uuid = (value: unknown): value is string =>
@@ -35,22 +41,6 @@ export function sitePhotoPath(photo: ReceiptInfo): string {
   )[photo.mime];
   if (!uuid(photo.id) || !extension) throw Error("Invalid building photo.");
   return path.join(directory(), photo.id + "." + extension);
-}
-
-/* Receipt and building photos share the existing bounded private upload budget. */
-export function privateWarrantyStorageBytes(): number {
-  return ["warranty-receipts", "warranty-site-photos"].reduce((total, name) => {
-    const folder = path.join(dataDir, name);
-    return (
-      total +
-      (fs.existsSync(folder)
-        ? fs.readdirSync(folder).reduce((sum, file) => {
-            const stat = fs.lstatSync(path.join(folder, file));
-            return sum + (stat.isFile() ? stat.size : 0);
-          }, 0)
-        : 0)
-    );
-  }, 0);
 }
 
 /* Expire only unattached uploads, preserving references even after a partial cleanup failure. */
@@ -135,17 +125,7 @@ export function createBuildingPhotoRouter(
         });
       const bytes = Buffer.from(match[2], "base64"),
         mime = match[1];
-      const valid =
-        bytes.length >= 12 &&
-        bytes.length <= maxBytes &&
-        (mime === "image/png"
-          ? bytes
-              .subarray(0, 8)
-              .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-          : mime === "image/jpeg"
-            ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
-            : bytes.toString("ascii", 0, 4) === "RIFF" &&
-              bytes.toString("ascii", 8, 12) === "WEBP");
+      const valid = bytes.length <= maxBytes && supportedFileBytes(bytes, mime);
       if (!valid)
         return res
           .status(400)
@@ -160,12 +140,8 @@ export function createBuildingPhotoRouter(
         return res
           .status(429)
           .json({ error: "Keep up to five building photos per registration." });
-      const configured = Number(process.env.WARRANTY_STORAGE_MB || "128");
-      const limit =
-        Number.isFinite(configured) && configured > 0
-          ? configured * 1024 * 1024
-          : 128 * 1024 * 1024;
-      if (privateWarrantyStorageBytes() + bytes.length > limit)
+      const limit = uploadBudgetBytes(process.env.WARRANTY_STORAGE_MB, 128);
+      if (warrantyUploadBytes(dataDir) + bytes.length > limit)
         return res.status(507).json({
           error:
             "Private warranty storage is full. Please contact Areva Paints.",
@@ -182,22 +158,15 @@ export function createBuildingPhotoRouter(
                 .slice(0, 150) || "Building photo"
             : "Building photo",
       };
-      fs.mkdirSync(directory(), { recursive: true, mode: 0o700 });
       const file = sitePhotoPath(photo);
-      let created = false;
-      try {
-        fs.writeFileSync(file, bytes, { flag: "wx", mode: 0o600 });
-        created = true;
+      writePrivateUpload(file, bytes, () => {
         uploads[photo.id] = {
           photo,
           session,
           until: Date.now() + 24 * 3600000,
         };
         writePrivateJson(metadata(), uploads);
-      } catch (error) {
-        if (created && fs.existsSync(file)) fs.unlinkSync(file);
-        throw error;
-      }
+      });
       res.status(201).json(photo);
     },
   );

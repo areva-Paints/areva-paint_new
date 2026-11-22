@@ -7,7 +7,6 @@ import {
   validateSitePhotos,
   consumeSitePhotos,
   sitePhotoPath,
-  privateWarrantyStorageBytes,
 } from "./warranty-site-photos";
 import { createWarrantyPdf } from "./warranty-pdf";
 import { recordWarrantyHistoryAccess } from "./warranty-history-access";
@@ -20,7 +19,13 @@ import path from "node:path";
 import { dataDir, readContent } from "../admin/content-store";
 import { currentUser, requireAdmin } from "../admin/accounts";
 import { CATEGORIES } from "../data/paintsData";
-import { writePrivateJson } from "./storage";
+import { writePrivateJson, writePrivateUpload } from "./storage";
+import {
+  supportedFileBytes,
+  warrantyUploadBytes,
+  uploadBudgetBytes,
+} from "./upload-files";
+import { DOCUMENT_MAX_BYTES } from "../data/uploadLimits";
 import { rateLimit, sensitiveRequestGuard } from "./security";
 import {
   DEMO_OTP,
@@ -385,21 +390,7 @@ warrantyRouter.post(
     const bytes = Buffer.from(match[2], "base64"),
       mime = match[1];
     const valid =
-      bytes.length >= 12 &&
-      bytes.length <= 5 * 1024 * 1024 &&
-      (mime === "application/pdf"
-        ? bytes.toString("ascii", 0, 5) === "%PDF-" &&
-          bytes
-            .subarray(Math.max(0, bytes.length - 1024))
-            .includes(Buffer.from("%%EOF"))
-        : mime === "image/png"
-          ? bytes
-              .subarray(0, 8)
-              .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-          : mime === "image/jpeg"
-            ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
-            : bytes.toString("ascii", 0, 4) === "RIFF" &&
-              bytes.toString("ascii", 8, 12) === "WEBP");
+      bytes.length <= DOCUMENT_MAX_BYTES && supportedFileBytes(bytes, mime);
     if (!valid)
       return res
         .status(400)
@@ -416,12 +407,8 @@ warrantyRouter.post(
           "Keep up to three receipt uploads per session. Submit a registration or try again later.",
       });
     fs.mkdirSync(receiptDir(), { recursive: true, mode: 0o700 });
-    const total = privateWarrantyStorageBytes();
-    const configured = Number(process.env.WARRANTY_STORAGE_MB || "128");
-    const limit =
-      Number.isFinite(configured) && configured > 0
-        ? configured * 1024 * 1024
-        : 128 * 1024 * 1024;
+    const total = warrantyUploadBytes(dataDir);
+    const limit = uploadBudgetBytes(process.env.WARRANTY_STORAGE_MB, 128);
     if (total + bytes.length > limit)
       return res.status(507).json({
         error: "Receipt storage is full. Please contact Areva Paints.",
@@ -439,18 +426,14 @@ warrantyRouter.post(
       bytes: bytes.length,
     };
     const file = receiptPath(receipt);
-    try {
-      fs.writeFileSync(file, bytes, { flag: "wx", mode: 0o600 });
+    writePrivateUpload(file, bytes, () => {
       uploads[receipt.id] = {
         receipt,
         session: sessionKey(req),
         until: Date.now() + 24 * 3600000,
       };
       writePrivateJson(uploadsFile(), uploads);
-    } catch (error) {
-      if (fs.existsSync(file)) fs.unlinkSync(file);
-      throw error;
-    }
+    });
     res.status(201).json(receipt);
   },
 );

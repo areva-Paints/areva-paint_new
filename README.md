@@ -98,7 +98,7 @@ Use a Render **Web Service**, not a Static Site. The service runs Express and se
 
    Build tools are installed for compilation and then removed. The server imports Vite only in its development branch, so the live service can start with production dependencies alone.
 
-4. Add a **1 GB persistent disk** mounted at `/var/data/areva`. Set `CONTENT_DATA_DIR=/var/data/areva`. The runtime directory must be writable by the service and must not be inside `public`, `dist` or `src`.
+4. Add a **1 GB persistent disk** mounted at `/var/data/areva`. Set `CONTENT_DATA_DIR=/var/data/areva`. The runtime directory must be writable by the service and outside `public`, `dist` and `src`, including symlink targets. Its public `uploads/` subdirectory must be a real directory; media-file symlinks are not served. Development also denies Vite file access to the private data directory.
 5. Set `NODE_ENV=production`, `TRUST_PROXY_HOPS=1`, `ADMIN_TEST_LOGIN=false` and a private `ADMIN_PASSWORD` of at least 12 characters. Set the remaining variables using the table above. The blueprint prompts for the admin secret; it does not contain a password.
 6. Deploy, then check `/api/health`, `/`, `/admin` and `/warranty` on the Web Service's HTTPS URL. The first admin section should be Certifications and documents.
 7. Save a small test content change and a test warranty purchase in staging, restart that service, then verify that the saved data and receipts remain. Restore the test content afterward.
@@ -126,19 +126,21 @@ The Node service may also run on another Node-capable host/VPS with HTTPS, priva
 
 ## Data and backups
 
-| Path inside `CONTENT_DATA_DIR` | Contents and access                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `content.json`                 | CMS content, created account password hashes/salts and private audit history; public APIs select safe fields |
-| `enquiries.json`               | Private customer enquiries and dealer snapshots                                                              |
-| `warranties.json`              | Private purchase/receipt metadata, captured login phone and review history                                   |
+| Path inside `CONTENT_DATA_DIR` | Contents and access                                                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `content.json`                 | CMS content, created account password hashes/salts and private audit history; public APIs select safe fields         |
+| `enquiries.json`               | Private customer enquiries and dealer snapshots                                                                      |
+| `warranties.json`              | Private purchase/receipt metadata, captured login phone and review history                                           |
 | `warranty-history-access.json` | Aggregated successful customer-history lookups using registration IDs and hashed session identifiers; no raw cookies |
-| `warranty-uploads.json`        | Pending receipt metadata bound to warranty sessions                                                          |
-| `uploads/`                     | Public catalogue images and document/shade PDFs                                                              |
-| `warranty-receipts/`           | Private purchase receipts available only through authorized endpoints                                        |
+| `warranty-uploads.json`        | Pending receipt metadata bound to warranty sessions                                                                  |
+| `warranty-site-uploads.json`   | Pending private building-photo metadata bound to warranty sessions                                                   |
+| `uploads/`                     | Public catalogue images and document/shade PDFs                                                                      |
+| `warranty-receipts/`           | Private purchase receipts available only through authorized endpoints                                                |
+| `warranty-site-photos/`        | Private building/application images attached to registrations                                                        |
 
 Files are created when needed. A new empty directory starts from committed catalogue seeds; it does not recover previous CMS edits automatically. JSON writes use restricted temporary files, flush and atomic rename. That prevents partially written individual files, but does not replace backups or multi-process transactions.
 
-Back up the **whole directory**, including both upload folders, to access-controlled storage outside the service disk. Use a provider snapshot or pause writes during a file-level backup so JSON and file attachments form one consistent set. Keep backups private because they contain customer details and password derivation material.
+Back up the **whole directory**, including all upload folders, to access-controlled storage outside the service disk. Use a provider snapshot or pause writes during a file-level backup so JSON and file attachments form one consistent set. Keep backups private because they contain customer details and password derivation material.
 
 To restore, stop writes/service, restore the complete matching backup to the configured directory with permissions readable/writable only by the service user, restart, then check content, admin accounts and private receipt/PDF downloads. Restarting clears old sessions. Do not copy private data into Git, `public`, `src` or `dist`. A Git push/deploy updates code, not the persistent content backup.
 
@@ -157,7 +159,7 @@ Migration [012-contact-and-review-integrity.sql](database/migrations/012-contact
 
 All application tables use row-level security with no public browser policies and revoke direct Supabase API-role access. A future backend SQL adapter still needs a dedicated permission model, parameterized queries, transactions, JSON-to-SQL import, attachment migration and deployment cutover. Never expose an owner connection string or privileged key through the frontend. Setting up SQL tables alone does not connect the website.
 
-See [database layout](docs/database-layout.md), [Supabase setup](docs/supabase-setup.md) and [the current review](docs/code-review-2026-11-18.md). Regenerate the local combined setup after changing canonical schema/seed:
+See [database layout](docs/database-layout.md), [Supabase setup](docs/supabase-setup.md) and [the current review](docs/code-review-2026-11-22.md). Regenerate the local combined setup after changing canonical schema/seed:
 
 ```bash
 node scripts/prepare_supabase_sql.cjs
@@ -189,6 +191,7 @@ Block comments describe module responsibilities, functional handlers, storage/se
 
 ```bash
 npm ci
+node scripts/prepare_supabase_sql.cjs --check
 npm run lint
 npm test
 npm run build
@@ -202,7 +205,7 @@ Full source ZIPs include supporting scripts, documentation, SQL and Render setti
 
 Tests create temporary local data directories and isolated PGlite databases; they do not migrate the hosted database. They cover auth/idle expiry, input validation, private uploads/storage, content conflicts, warranty entry/search/review/PDF behavior and SQL permissions/migrations. Build tools and PGlite must be present to run these checks; do not run tests after pruning dev dependencies.
 
-On **18 November 2026**, the production dependency audit reports **zero advisories**. The complete build/test dependency tree reports the unpatched `picomatch` advisory [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf), inherited through `tinyglobby` and Vite. There is no published patched `picomatch` release in the reviewed registry at this time. Vite and its plugins are development dependencies and are pruned from the recommended production installation; Express dynamically imports Vite only in development. CI enforces the production audit and separately reports the build dependency advisory. Do not expose a development server publicly or claim the complete dependency tree is advisory-free. Recheck for a compatible patched release before the next release.
+On **22 November 2026**, both the production and complete locked dependency audits report **zero known advisories**. CI blocks advisories in both scopes. No dependency versions or lockfile entries were changed during this review. These are point-in-time registry results; see [the review](docs/code-review-2026-11-22.md) for fixes, verification and remaining runtime/integration limits.
 
 ## Troubleshooting
 
@@ -221,7 +224,6 @@ On **18 November 2026**, the production dependency audit reports **zero advisori
 | Production cannot find Vite                   | Use this revision's dynamic development import, build before pruning and start with `NODE_ENV=production`.                                         |
 
 Additional guides: [warranty workflow](docs/warranty-registration.md), [certifications/documents](docs/certifications-and-documents.md), [admin sessions](docs/admin-navigation-and-sessions.md), [Gallery categories](docs/gallery-project-categories.md), [shared branding](docs/shared-brand-and-page-headers.md) and [security protections](docs/security-review.md).
-
 
 ## Building photos and warranty terms
 

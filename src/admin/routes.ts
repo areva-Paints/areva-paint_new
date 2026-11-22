@@ -3,6 +3,17 @@
  * Validate complete CMS payloads and restrict published documents to verified local PDF uploads.
  */
 import { sensitiveRequestGuard, rateLimit } from "../server/security";
+import { ValidationError } from "../server/validation-error";
+import {
+  supportedFileBytes,
+  uploadedBytes,
+  uploadBudgetBytes,
+} from "../server/upload-files";
+import {
+  DOCUMENT_MAX_BYTES,
+  CATALOGUE_IMAGE_MAX_BYTES,
+} from "../data/uploadLimits";
+import { writePrivateUpload } from "../server/storage";
 import { prepareCertifications } from "./certification-store";
 import { validContactPhone } from "../data/contactDetails";
 import { GALLERY_PROJECT_CATEGORIES } from "../data/galleryCategories";
@@ -209,7 +220,7 @@ function validate(c: SiteContent) {
     !Array.isArray(c.landingImages) ||
     c.landingImages.length > 12
   )
-    throw Error(
+    throw new ValidationError(
       "Keep 1–200 products, up to 500 dealers and 12 landing images.",
     );
   if (
@@ -219,13 +230,17 @@ function validate(c: SiteContent) {
     !Array.isArray(c.shadeCards) ||
     c.shadeCards.length > 50
   )
-    throw Error("Keep 1–5,000 colours and up to 50 PDF shade cards.");
+    throw new ValidationError(
+      "Keep 1–5,000 colours and up to 50 PDF shade cards.",
+    );
   if (
     !Array.isArray(c.galleryProjects) ||
     c.galleryProjects.length > 100 ||
     !ids(c.galleryProjects)
   )
-    throw Error("Keep up to 100 projects, each with a unique identifier.");
+    throw new ValidationError(
+      "Keep up to 100 projects, each with a unique identifier.",
+    );
   /* Validate album metadata and every image before staging project changes. */
   for (const project of c.galleryProjects) {
     project.location ??= "";
@@ -241,13 +256,13 @@ function validate(c: SiteContent) {
       project.photos.length > 20 ||
       !ids(project.photos)
     )
-      throw Error(
+      throw new ValidationError(
         "Each project needs a name and 1–20 photos. Location and description are optional.",
       );
     for (const photo of project.photos) {
       photo.caption ??= "";
       if (!image(photo.image) || !text(photo.caption, 300))
-        throw Error(
+        throw new ValidationError(
           "Project photos need a valid image; captions are optional.",
         );
     }
@@ -257,7 +272,9 @@ function validate(c: SiteContent) {
     c.galleryAds.length > 100 ||
     !ids(c.galleryAds)
   )
-    throw Error("Keep up to 100 ads, each with a unique identifier.");
+    throw new ValidationError(
+      "Keep up to 100 ads, each with a unique identifier.",
+    );
   /* Validate campaign channels and require a safe image or HTTPS destination. */
   for (const ad of c.galleryAds) {
     ad.image ??= "";
@@ -273,7 +290,7 @@ function validate(c: SiteContent) {
       (ad.image && !image(ad.image)) ||
       (ad.link && !webLink(ad.link))
     )
-      throw Error(
+      throw new ValidationError(
         "Each ad needs a title, Digital or Social media channel, and an image or HTTPS video/post link. Description is optional.",
       );
   }
@@ -282,7 +299,9 @@ function validate(c: SiteContent) {
     c.galleryReviews.length > 100 ||
     !ids(c.galleryReviews)
   )
-    throw Error("Keep up to 100 reviews, each with a unique identifier.");
+    throw new ValidationError(
+      "Keep up to 100 reviews, each with a unique identifier.",
+    );
   /* Treat review/customer text as bounded content and require safe optional portraits. */
   for (const review of c.galleryReviews) {
     review.detail ??= "";
@@ -294,7 +313,7 @@ function validate(c: SiteContent) {
       !text(review.image, 2048) ||
       (review.image && !image(review.image))
     )
-      throw Error(
+      throw new ValidationError(
         "Each review needs a reviewer name and review text. Add a valid image and location/description if required.",
       );
   }
@@ -317,16 +336,18 @@ function validate(c: SiteContent) {
       colour.goesWellWith.length > 20 ||
       !colour.goesWellWith.every((v) => /^#[0-9A-Fa-f]{6}$/.test(v))
     )
-      throw Error(
+      throw new ValidationError(
         "Each colour needs a name, valid code, six-digit HEX value, supported colour family and valid tone tags.",
       );
     const code = colour.code.trim().toUpperCase();
     if (codes.has(code))
-      throw Error("Colour codes must be unique, regardless of letter case.");
+      throw new ValidationError(
+        "Colour codes must be unique, regardless of letter case.",
+      );
     codes.add(code);
   }
   if (!ids(c.shadeCards))
-    throw Error("PDF shade cards need unique identifiers.");
+    throw new ValidationError("PDF shade cards need unique identifiers.");
   /* Accept only local uploaded shade PDFs that still exist on the server. */
   for (const card of c.shadeCards)
     if (
@@ -339,13 +360,13 @@ function validate(c: SiteContent) {
       !/^\/uploads\/[a-f0-9-]+\.pdf$/.test(card.url) ||
       !fs.existsSync(path.join(dataDir, "uploads", path.basename(card.url)))
     )
-      throw Error(
+      throw new ValidationError(
         "Shade cards need a title, an uploaded PDF and valid family/tone tags.",
       );
   if (!ids(c.products) || !ids(c.dealers) || !ids(c.landingImages))
-    throw Error("Each entry needs a unique identifier.");
+    throw new ValidationError("Each entry needs a unique identifier.");
   if (!c.products.some((p) => p.coverageSqFtPerLiter > 0))
-    throw Error(
+    throw new ValidationError(
       "Keep at least one product with configured coverage for the calculator.",
     );
   /* Validate calculator numbers and technical display values as separate product concerns. */
@@ -364,7 +385,7 @@ function validate(c: SiteContent) {
       p.recommendedCoats < 1 ||
       p.recommendedCoats > 10
     )
-      throw Error(
+      throw new ValidationError(
         "Products need a name, description, valid image, category, nonnegative coverage and 1–10 coats.",
       );
     if (
@@ -385,13 +406,13 @@ function validate(c: SiteContent) {
       p.availableSizes.length > 20 ||
       p.availableSizes.some((v) => !Number.isFinite(v) || v <= 0 || v > 1000)
     )
-      throw Error("Invalid product specifications.");
+      throw new ValidationError("Invalid product specifications.");
     if (
       (p.coverageUnit !== undefined && !["L", "kg"].includes(p.coverageUnit)) ||
       (p.calculationBasis !== undefined &&
         !["wall", "floor"].includes(p.calculationBasis))
     )
-      throw Error("Invalid coverage unit or calculation basis.");
+      throw new ValidationError("Invalid coverage unit or calculation basis.");
     if (
       !record(p.specs) ||
       ![
@@ -408,7 +429,7 @@ function validate(c: SiteContent) {
       p.specs.warrantyYears < 0 ||
       p.specs.warrantyYears > 100
     )
-      throw Error("Invalid technical details.");
+      throw new ValidationError("Invalid technical details.");
     if (
       (p.specs.coverageText !== undefined &&
         !text(p.specs.coverageText, 300)) ||
@@ -423,7 +444,7 @@ function validate(c: SiteContent) {
             p.specs[key].every((value) => nonempty(value, 100))),
       )
     )
-      throw Error(
+      throw new ValidationError(
         "Invalid product coverage text, dilution, bases, packing or warranty label.",
       );
   }
@@ -439,7 +460,9 @@ function validate(c: SiteContent) {
       d.badges.length > 10 ||
       !d.badges.every((x) => text(x, 100))
     )
-      throw Error("Dealers need contact details and a six-digit PIN code.");
+      throw new ValidationError(
+        "Dealers need contact details and a six-digit PIN code.",
+      );
   /* Validate landing artwork while allowing optional campaign captions. */
   for (const l of c.landingImages) {
     l.label ??= "";
@@ -451,7 +474,7 @@ function validate(c: SiteContent) {
       !text(l.roomType, 150) ||
       !text(l.recommendedProduct, 200)
     )
-      throw Error(
+      throw new ValidationError(
         "Landing images need a valid image. Caption, subtitle and recommended product are optional.",
       );
   }
@@ -470,7 +493,7 @@ function validate(c: SiteContent) {
           path.join(dataDir, "uploads", path.basename(image.image)),
         ))
     )
-      throw Error(
+      throw new ValidationError(
         "An uploaded image is missing. Edit the affected entry and upload it again before saving.",
       );
   }
@@ -486,7 +509,7 @@ function validTones(tones: unknown): boolean {
   );
 }
 /* PUT /admin/content: Read or atomically save a complete private CMS revision after validation. */
-contentRouter.put("/admin/content", (req, res) => {
+contentRouter.put("/admin/content", (req, res, next) => {
   try {
     const current = readContent(),
       c = req.body as SiteContent;
@@ -658,8 +681,10 @@ contentRouter.put("/admin/content", (req, res) => {
     };
     saveContent(next, contentActivity(current, next, adminActor(req)));
     res.json(next);
-  } catch (e) {
-    res.status(400).json({ error: (e as Error).message });
+  } catch (error) {
+    if (error instanceof ValidationError)
+      return res.status(400).json({ error: error.message });
+    next(error);
   }
 });
 /* Associate an authenticated upload with a private activity event. */
@@ -702,17 +727,10 @@ function uploadedActivity(
 }
 /* Refuse new uploads that would exceed the shared disk budget without removing files. */
 function uploadCapacity(dir: string, bytes: number) {
-  const configured = Number(process.env.UPLOAD_STORAGE_MB || "512");
-  const limit =
-    Number.isFinite(configured) && configured > 0
-      ? configured * 1024 * 1024
-      : 512 * 1024 * 1024;
-  let used = 0;
-  for (const name of fs.readdirSync(dir)) {
-    const stat = fs.lstatSync(path.join(dir, name));
-    if (stat.isFile()) used += stat.size;
-  }
-  return used + bytes <= limit;
+  return (
+    uploadedBytes([dir]) + bytes <=
+    uploadBudgetBytes(process.env.UPLOAD_STORAGE_MB, 512)
+  );
 }
 /* POST /admin/pdf-upload: Validate a PDF signature, filename and budget before recording a public document upload. */
 contentRouter.post("/admin/pdf-upload", (req, res) => {
@@ -723,12 +741,8 @@ contentRouter.post("/admin/pdf-upload", (req, res) => {
     return res.status(400).json({ error: "Choose a PDF up to 5 MB." });
   const bytes = Buffer.from(match[1], "base64");
   if (
-    bytes.length < 12 ||
-    bytes.length > 5 * 1024 * 1024 ||
-    bytes.toString("ascii", 0, 5) !== "%PDF-" ||
-    !bytes
-      .subarray(Math.max(0, bytes.length - 1024))
-      .includes(Buffer.from("%%EOF"))
+    bytes.length > DOCUMENT_MAX_BYTES ||
+    !supportedFileBytes(bytes, "application/pdf")
   )
     return res
       .status(400)
@@ -740,12 +754,13 @@ contentRouter.post("/admin/pdf-upload", (req, res) => {
     return res.status(507).json({
       error: "Upload storage is full. Contact the website administrator.",
     });
-  fs.writeFileSync(path.join(dir, name), bytes, { flag: "wx", mode: 0o600 });
-  uploadedActivity(
-    req,
-    "/uploads/" + name,
-    bytes.length,
-    name.endsWith(".pdf"),
+  writePrivateUpload(path.join(dir, name), bytes, () =>
+    uploadedActivity(
+      req,
+      "/uploads/" + name,
+      bytes.length,
+      name.endsWith(".pdf"),
+    ),
   );
   res.status(201).json({ url: "/uploads/" + name });
 });
@@ -759,19 +774,11 @@ contentRouter.post("/admin/upload", (req, res) => {
   if (!match)
     return res.status(400).json({ error: "Choose a JPEG, PNG or WebP image." });
   const bytes = Buffer.from(match[2], "base64");
-  if (bytes.length > 25 * 1024 * 1024 || bytes.length < 12)
+  if (bytes.length > CATALOGUE_IMAGE_MAX_BYTES || bytes.length < 12)
     return res
       .status(400)
       .json({ error: "Image must be between 12 bytes and 25 MB." });
-  const valid =
-    match[1] === "png"
-      ? bytes
-          .subarray(0, 8)
-          .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-      : match[1] === "jpeg"
-        ? bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255
-        : bytes.toString("ascii", 0, 4) === "RIFF" &&
-          bytes.toString("ascii", 8, 12) === "WEBP";
+  const valid = supportedFileBytes(bytes, "image/" + match[1]);
   if (!valid)
     return res
       .status(400)
@@ -783,12 +790,13 @@ contentRouter.post("/admin/upload", (req, res) => {
     return res.status(507).json({
       error: "Upload storage is full. Contact the website administrator.",
     });
-  fs.writeFileSync(path.join(dir, name), bytes, { flag: "wx", mode: 0o600 });
-  uploadedActivity(
-    req,
-    "/uploads/" + name,
-    bytes.length,
-    name.endsWith(".pdf"),
+  writePrivateUpload(path.join(dir, name), bytes, () =>
+    uploadedActivity(
+      req,
+      "/uploads/" + name,
+      bytes.length,
+      name.endsWith(".pdf"),
+    ),
   );
   res.status(201).json({ url: "/uploads/" + name });
 });
@@ -814,7 +822,8 @@ contentRouter.use("/content/legacy-image", (req, res) => {
 });
 /* Serve only allowed public media filenames with download/security headers for PDFs. */
 export function uploads() {
-  return express.static(path.join(dataDir, "uploads"), {
+  const directory = path.join(dataDir, "uploads");
+  const serve = express.static(directory, {
     dotfiles: "deny",
     index: false,
     setHeaders(res, file) {
@@ -825,4 +834,27 @@ export function uploads() {
       res.setHeader("X-Content-Type-Options", "nosniff");
     },
   });
+  return ((req, res, next) => {
+    let name: string;
+    try {
+      name = decodeURIComponent(req.path);
+    } catch {
+      return res.sendStatus(400);
+    }
+    if (
+      !/^\/[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}\.(?:pdf|png|jpeg|webp)$/.test(
+        name,
+      )
+    )
+      return res.sendStatus(404);
+    try {
+      if (!fs.lstatSync(path.join(directory, name.slice(1))).isFile())
+        return res.sendStatus(404);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT")
+        return res.sendStatus(404);
+      return next(error);
+    }
+    return serve(req, res, next);
+  }) as express.RequestHandler;
 }

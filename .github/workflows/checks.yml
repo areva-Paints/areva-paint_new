@@ -15,15 +15,14 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci
+      - name: Verify generated SQL matches its source
+        run: node scripts/prepare_supabase_sql.cjs --check
       - run: npm run lint
       - run: npm test
       - run: npm run build
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=moderate
-      # No patched picomatch release exists yet; keep the full-tree finding visible.
-      # Production dependencies remain a blocking audit gate above.
-      - name: Report build and test dependency advisories
-        continue-on-error: true
+      - name: Audit build and test dependencies
         run: npm audit --audit-level=moderate
       - name: Verify the pruned production runtime
         run: |

@@ -10,6 +10,7 @@ import { renderProjectGallery } from "./project-gallery-page";
 import { CertificationsSection } from "../components/CertificationCards";
 import { ExploreAreva } from "../components/ExploreAreva";
 import { referenceLayout } from "./reference-layout";
+import { templateSlots } from "./template-slots";
 import fs from "node:fs";
 import path from "node:path";
 import { readContent } from "./content-store";
@@ -24,17 +25,18 @@ const esc = (v: string) =>
   );
 /* Replace prototype data with safe CMS snapshots and apply the shared reference layout. */
 export function legacyPage() {
+  const slots = templateSlots();
   let html = fs.readFileSync(
     path.resolve("public/assets/aistudio/areva-paints_a2364c60.html"),
     "utf8",
   );
   const c = readContent();
-  html = html.replace("<!-- EXPLORE_AREVA -->", () => renderToStaticMarkup(createElement(ExploreAreva)));
+  html = html.replace("<!-- EXPLORE_AREVA -->", () => slots.add(renderToStaticMarkup(createElement(ExploreAreva))));
   html = html.replace("</head>", '<link rel="stylesheet" href="/assets/explore-areva.css"></head>');
-  html = html.replace("<!-- CERTIFICATIONS_DOCUMENTS -->", () => renderToStaticMarkup(createElement(CertificationsSection, { content: c })));
+  html = html.replace("<!-- CERTIFICATIONS_DOCUMENTS -->", () => slots.section(renderToStaticMarkup(createElement(CertificationsSection, { content: c }))));
   html = html.replace("</head>", '<link rel="stylesheet" href="/assets/certifications.css"></head>');
   html = html.replace("<!-- PROJECT_GALLERY -->", () =>
-    renderProjectGallery(c.galleryProjects, c.galleryAds, c.galleryReviews),
+    slots.add(renderProjectGallery(c.galleryProjects, c.galleryAds, c.galleryReviews)),
   );
   const cats = [
     "interior",
@@ -81,7 +83,7 @@ export function legacyPage() {
     badges: d.badges.map(esc),
   }));
   /* Serialize inline data while preventing an embedded closing script tag. */
-  const json = (v: unknown) => JSON.stringify(v).replace(/</g, "\\u003c");
+  const json = (v: unknown) => slots.add(JSON.stringify(v).replace(/</g, "\\u003c"));
   html = html.replace(
     "const $ =",
     () => `P.splice(0,P.length,...${json(productData)});\nconst $ =`,
@@ -112,8 +114,8 @@ export function legacyPage() {
   html = html.replace('</head>', '<link rel="stylesheet" href="/assets/shade-library.css"></head>');
   html = html.replace('<input id="q" type="search" placeholder="Search colour by name or code" aria-label="Search colours"><div class="sw" id="sw"></div>', '');
   html = html.replace(/(<section id="visualizer"[\s\S]*?)(<\/section>)/, (_match, body: string, end) => {
-    const heading = renderToStaticMarkup(createElement(ColourCollectionHeading, { total: c.colours.length }));
-    const library = renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true }));
+    const heading = slots.add(renderToStaticMarkup(createElement(ColourCollectionHeading, { total: c.colours.length })));
+    const library = slots.add(renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true })));
     body = body.replace(/<h2>Try colours on a room<\/h2><p class="lead">[\s\S]*?<\/p>\s*<div class="two"><div>/,
       () => `${heading}<div class="two colour-studio-grid"><div class="colour-room-panel">`);
     body = body.replace(/<div>\s*<p><b id="cn">[\s\S]*?Tap ♡ beside a shade to save it to your palette\.<\/p>/,
@@ -153,7 +155,7 @@ export function legacyPage() {
       .join("");
     html = html.replace(
       /(<div class="track" id="track">)[\s\S]*?(<div class="ctrl" id="dots")/,
-      (_match, start, end) => `${start}${slides}</div>\n${end}`,
+      (_match, start, end) => `${start}${slots.add(slides)}</div>\n${end}`,
     );
   }
   // Replace the template's demo-only sign-in with the real account flow.
@@ -175,5 +177,5 @@ export function legacyPage() {
     '<script src="/assets/account-access.js" defer></script></body>',
   );
   html = html.replace("\nroles();\n", "\n");
-  return referenceLayout(html, c);
+  return slots.restore(referenceLayout(html, c));
 }
