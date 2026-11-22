@@ -26,6 +26,7 @@ The project does not currently enable TypeScript's `strict` option. `npm run lin
 - Public catalogue with category pages, technical specifications, bases/packing, optional product warranty badges, shades, visualizers, calculator and dealer search.
 - Admin editing for Certifications and documents, products, landing images, dealers, colours/shade PDFs, Gallery projects/campaigns/reviews, accounts and activity history.
 - Warranty purchase registration with a captured login phone, dealer/invoice/site details, private receipt upload, admin search/date filters, final review decisions and decision PDFs.
+- Customer **My registrations** after mobile/demo entry, with reference-protected history, current review status, existing-reference lookup and new/unfinished registration actions. See [customer history](docs/customer-warranty-history.md) for demo access limits and private SQL table migration 014.
 - Admin sign-out after five minutes without interaction, with an eight-hour absolute session cap. Server restarts clear in-memory sessions and require sign-in again.
 - Warranty entry currently uses **demo OTP `123456`**. It sends no SMS, WhatsApp or email and never marks the phone as verified. Meta WhatsApp Cloud API is a future integration, not an environment switch that is already implemented.
 - The optional React studio's loyalty wallet/UPI and swatch-order screens are demonstrations using local state. No payment, delivery, QR rewards or order backend is connected. Camera colour preview uses browser video/canvas, not spatial WebXR tracking.
@@ -130,6 +131,7 @@ The Node service may also run on another Node-capable host/VPS with HTTPS, priva
 | `content.json`                 | CMS content, created account password hashes/salts and private audit history; public APIs select safe fields |
 | `enquiries.json`               | Private customer enquiries and dealer snapshots                                                              |
 | `warranties.json`              | Private purchase/receipt metadata, captured login phone and review history                                   |
+| `warranty-history-access.json` | Aggregated successful customer-history lookups using registration IDs and hashed session identifiers; no raw cookies |
 | `warranty-uploads.json`        | Pending receipt metadata bound to warranty sessions                                                          |
 | `uploads/`                     | Public catalogue images and document/shade PDFs                                                              |
 | `warranty-receipts/`           | Private purchase receipts available only through authorized endpoints                                        |
@@ -142,7 +144,7 @@ To restore, stop writes/service, restore the complete matching backup to the con
 
 ## SQL files and upgrades
 
-The running service has no SQL driver/adapter and does not execute SQL files on startup. The prepared schema has **23 tables** for catalogue content, dealers, shades, galleries, documents, accounts, history, enquiries and warranties.
+The running service has no SQL driver/adapter and does not execute SQL files on startup. The prepared schema has **24 tables** for catalogue content, dealers, shades, galleries, documents, accounts, history, enquiries and warranties, including private customer-history access records.
 
 | Situation                     | SQL path                                                                                                                                 |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |

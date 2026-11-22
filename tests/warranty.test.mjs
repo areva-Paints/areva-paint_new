@@ -503,7 +503,9 @@ test("warranty SQL migration preserves private access and prevents demo approval
       if (schemaName === "areva")
         await db.exec("CREATE SCHEMA areva;SET search_path=areva,pg_catalog;");
       await db.exec(await readFile("database/schema.sql", "utf8"));
-      await db.exec("DROP TABLE warranty_registrations");
+      await db.exec(
+        "DROP TABLE warranty_history_access; DROP TABLE warranty_registrations",
+      );
       await db.exec(
         await readFile(
           "database/migrations/006-warranty-registrations.sql",

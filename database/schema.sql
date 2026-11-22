@@ -463,10 +463,26 @@ CREATE TABLE warranty_registrations (
 );
 CREATE INDEX warranty_registrations_created_idx ON warranty_registrations(created_at DESC);
 CREATE INDEX warranty_registrations_mobile_idx ON warranty_registrations(mobile);
+-- Customer history uses the immutable login-phone snapshot, never an alternate contact.
+CREATE INDEX warranty_registrations_login_created_idx ON warranty_registrations(login_mobile, created_at DESC);
 CREATE INDEX warranty_registrations_invoice_idx ON warranty_registrations(lower(invoice_number));
 CREATE INDEX warranty_registrations_product_idx ON warranty_registrations(category_id, product_id);
 CREATE INDEX warranty_registrations_purchase_idx ON warranty_registrations(purchase_date);
 CREATE INDEX warranty_registrations_status_created_idx ON warranty_registrations(status, created_at DESC);
+
+/* Aggregate successful customer history lookups without duplicating purchase data.
+ * Session hashes are private audit identifiers, never authorization credentials.
+ */
+CREATE TABLE warranty_history_access (
+  registration_id uuid NOT NULL REFERENCES warranty_registrations(id) ON DELETE CASCADE,
+  session_hash varchar(64) NOT NULL CHECK (session_hash ~ '^[a-f0-9]{64}$'),
+  first_accessed_at timestamptz NOT NULL DEFAULT now(),
+  last_accessed_at timestamptz NOT NULL DEFAULT now(),
+  lookup_count integer NOT NULL DEFAULT 1 CHECK (lookup_count BETWEEN 1 AND 1000000),
+  PRIMARY KEY (registration_id, session_hash),
+  CHECK (last_accessed_at >= first_accessed_at)
+);
+CREATE INDEX warranty_history_access_recent_idx ON warranty_history_access(last_accessed_at DESC);
 
 CREATE FUNCTION prevent_final_warranty_review_changes() RETURNS trigger
 LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS $$
@@ -510,7 +526,7 @@ BEGIN
     'dealers', 'dealer_badges', 'landing_images', 'colours', 'colour_pairings',
     'shade_cards', 'gallery_projects', 'gallery_photos', 'gallery_ads', 'gallery_reviews',
     'certifications', 'certification_attachments', 'certification_products',
-    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations'
+    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations', 'warranty_history_access'
   ] LOOP
     IF to_regclass(format('%I.%I', app_schema, target)) IS NULL THEN
       RAISE EXCEPTION 'Missing table %.%; apply earlier migrations before hardening.', app_schema, target;

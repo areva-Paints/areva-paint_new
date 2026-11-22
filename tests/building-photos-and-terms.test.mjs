@@ -507,7 +507,7 @@ test("private building photos persist with registration and product-type terms p
   }
 });
 
-/* Fresh schemas and one-time upgrades retain the 23-table permission boundary. */
+/* Fresh schemas and one-time upgrades retain the 24-table permission boundary. */
 for (const schema of ["public", "areva"])
   test(`building-photo and product-type SQL integrity in ${schema}`, async () => {
     const db = new PGlite();
@@ -593,7 +593,7 @@ for (const schema of ["public", "areva"])
             [schema],
           )
         ).rows[0].count,
-        23,
+        24,
       );
       for (const role of ["anon", "authenticated", "service_role"]) {
         await db.exec(`SET ROLE ${role}`);

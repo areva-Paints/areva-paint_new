@@ -502,11 +502,11 @@ These are observations for technical handover. This document does not implement 
 
 ## 12. PostgreSQL column dictionary and relationships
 
-Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The proposal now has **23 tables**, including Gallery reviews, Warranty Registration and Certifications/documents (15 November 2026). This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
+Reviewed **11 November 2026** against GitHub `main` commit **7d0656e**. The current proposal has **24 tables**, including private customer-history access records (22 November 2026), Gallery reviews, Warranty Registration and Certifications/documents. This review adds created user accounts, their shared login-identifier namespace, private activity events and the history start date. Existing product, gallery, colour and dealer tables remain compatible.
 
 Proposed database: **PostgreSQL 16 or newer**, available as Render Postgres. This is a design and schema, ready for review. It does not connect the website to SQL or move existing data. Admin content currently lives in `.local/content/content.json` (or `CONTENT_DATA_DIR`); enquiries now persist privately in `CONTENT_DATA_DIR/enquiries.json`.
 
-**Using Supabase instead:** follow [supabase-setup.md](supabase-setup.md) and its single [supabase-setup.sql](../database/supabase-setup.sql) file. That alternative creates the same 23 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
+**Using Supabase instead:** follow [supabase-setup.md](supabase-setup.md) and its single [supabase-setup.sql](../database/supabase-setup.sql) file. That alternative creates the same 24 tables and category seed in a private `areva` schema with restricted API-role access and RLS, without modifying Supabase Auth. Do not combine that setup with the ordinary public-schema scripts below. The project URL alone does not provide SQL access.
 
 Use [schema.sql](../database/schema.sql) to create the tables in a **new, empty** database, followed by [seed-categories.sql](../database/seed-categories.sql) for the existing eight product categories. SQL identifiers use snake_case; the current API keeps its camelCase names.
 
@@ -514,7 +514,7 @@ If you already ran the earlier **15-table** proposal, run [001-users-and-activit
 
 ### Database access guardrails (14 November 2026)
 
-Fresh `schema.sql` now enables row-level security on all 23 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
+Fresh `schema.sql` now enables row-level security on all 24 application tables and revokes access from `PUBLIC` and existing Supabase browser/API roles (`anon`, `authenticated`, `service_role`). No browser access policies are created. The login identifier trigger qualifies its writes using the triggering table’s schema and pins its search path. A dedicated backend SQL role and its least-privilege/RLS strategy must be designed with the future adapter; do not use a browser key or grant visitors access to users, enquiries or activity.
 
 For an existing installation that already has migrations 001–004, review and apply [005-private-access-guardrails.sql](../database/migrations/005-private-access-guardrails.sql) once. It revokes prior direct application-table access and preserves unrelated tables. If both `areva.users` and `public.users` exist, it stops for inspection. The migration changes permissions; rehearse it against a backup and assess any existing integrations. No SQL has been applied to the live project during this review.
 
@@ -1281,10 +1281,26 @@ CREATE TABLE warranty_registrations (
 );
 CREATE INDEX warranty_registrations_created_idx ON warranty_registrations(created_at DESC);
 CREATE INDEX warranty_registrations_mobile_idx ON warranty_registrations(mobile);
+-- Customer history uses the immutable login-phone snapshot, never an alternate contact.
+CREATE INDEX warranty_registrations_login_created_idx ON warranty_registrations(login_mobile, created_at DESC);
 CREATE INDEX warranty_registrations_invoice_idx ON warranty_registrations(lower(invoice_number));
 CREATE INDEX warranty_registrations_product_idx ON warranty_registrations(category_id, product_id);
 CREATE INDEX warranty_registrations_purchase_idx ON warranty_registrations(purchase_date);
 CREATE INDEX warranty_registrations_status_created_idx ON warranty_registrations(status, created_at DESC);
+
+/* Aggregate successful customer history lookups without duplicating purchase data.
+ * Session hashes are private audit identifiers, never authorization credentials.
+ */
+CREATE TABLE warranty_history_access (
+  registration_id uuid NOT NULL REFERENCES warranty_registrations(id) ON DELETE CASCADE,
+  session_hash varchar(64) NOT NULL CHECK (session_hash ~ '^[a-f0-9]{64}$'),
+  first_accessed_at timestamptz NOT NULL DEFAULT now(),
+  last_accessed_at timestamptz NOT NULL DEFAULT now(),
+  lookup_count integer NOT NULL DEFAULT 1 CHECK (lookup_count BETWEEN 1 AND 1000000),
+  PRIMARY KEY (registration_id, session_hash),
+  CHECK (last_accessed_at >= first_accessed_at)
+);
+CREATE INDEX warranty_history_access_recent_idx ON warranty_history_access(last_accessed_at DESC);
 
 CREATE FUNCTION prevent_final_warranty_review_changes() RETURNS trigger
 LANGUAGE plpgsql SET search_path = pg_catalog, pg_temp AS $$
@@ -1328,7 +1344,7 @@ BEGIN
     'dealers', 'dealer_badges', 'landing_images', 'colours', 'colour_pairings',
     'shade_cards', 'gallery_projects', 'gallery_photos', 'gallery_ads', 'gallery_reviews',
     'certifications', 'certification_attachments', 'certification_products',
-    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations'
+    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations', 'warranty_history_access'
   ] LOOP
     IF to_regclass(format('%I.%I', app_schema, target)) IS NULL THEN
       RAISE EXCEPTION 'Missing table %.%; apply earlier migrations before hardening.', app_schema, target;
@@ -1357,7 +1373,6 @@ END;
 $$;
 
 COMMIT;
-
 ```
 
 ## 14. Category seed SQL
@@ -1573,3 +1588,7 @@ The current stack, JSON persistence, production dependency split and Render Web 
 ## Building photos and warranty terms — 22 November 2026
 
 See [the feature guide](docs/building-photos-and-warranty-terms.md) for private building photos in warranty registration, product-type warranty document assignments, product-editor PDF upload, badge navigation and prepared SQL migration 013. Existing table count stays at 23, runtime storage stays private JSON and no live database is changed.
+
+## Customer warranty history — 22 November 2026
+
+Warranty entry opens My registrations after mobile/demo code entry. Only records whose full references are supplied and whose login phone matches the current session are returned; phone entry alone cannot enumerate records. New references are remembered in the browser, and prior references can be entered manually. History shows minimal product/date/status summaries, preserves unfinished drafts and offers new registration. Prepared migration 014 adds the login-phone/created-date index and the private warranty_history_access table, bringing the current schema to 24 tables. Successful lookups aggregate registration IDs, hashed session identifiers, first/last access timestamps and counts in private warranty-history-access.json. Raw tokens and purchase details are excluded. Audit retention is bounded to 90 days and 10,000 rows; warranty registrations are preserved. Runtime remains JSON and real WhatsApp verification is not enabled. See [the customer history guide](docs/customer-warranty-history.md).

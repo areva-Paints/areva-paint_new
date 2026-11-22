@@ -20,7 +20,7 @@ BEGIN
 END;
 $$;
 
-/* Expect 23 application tables, all with row-level security enabled. */
+/* Expect 24 application tables, all with row-level security enabled. */
 SELECT current_schema() AS application_schema,
   count(*) AS application_tables,
   count(*) FILTER (WHERE c.relrowsecurity) AS tables_with_rls
@@ -31,7 +31,7 @@ WHERE n.nspname = current_schema() AND c.relkind = 'r'
     'dealers', 'dealer_badges', 'landing_images', 'colours', 'colour_pairings',
     'shade_cards', 'gallery_projects', 'gallery_photos', 'gallery_ads', 'gallery_reviews',
     'certifications', 'certification_attachments', 'certification_products',
-    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations'
+    'site_state', 'enquiries', 'users', 'user_login_identifiers', 'activity_events', 'warranty_registrations', 'warranty_history_access'
   );
 
 /* Expect no direct table privileges for browser/API roles, even with BYPASSRLS.
@@ -41,7 +41,7 @@ SELECT r.rolname, c.relname AS table_name
 FROM pg_roles r CROSS JOIN pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 WHERE r.rolname IN ('anon', 'authenticated', 'service_role')
   AND n.nspname = current_schema() AND c.relkind = 'r'
-  AND c.relname IN ('users', 'user_login_identifiers', 'activity_events', 'enquiries', 'warranty_registrations')
+  AND c.relname IN ('users', 'user_login_identifiers', 'activity_events', 'enquiries', 'warranty_registrations', 'warranty_history_access')
   AND has_table_privilege(r.oid, c.oid, 'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER');
 
 /* Expect no unvalidated application constraints after a completed upgrade. */

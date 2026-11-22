@@ -10,6 +10,7 @@ import {
   privateWarrantyStorageBytes,
 } from "./warranty-site-photos";
 import { createWarrantyPdf } from "./warranty-pdf";
+import { recordWarrantyHistoryAccess } from "./warranty-history-access";
 import { warrantySearch } from "./warranty-search";
 import express from "express";
 import crypto from "node:crypto";
@@ -23,6 +24,8 @@ import { writePrivateJson } from "./storage";
 import { rateLimit, sensitiveRequestGuard } from "./security";
 import {
   DEMO_OTP,
+  WARRANTY_HISTORY_LIMIT,
+  normalizeWarrantyReference,
   WARRANTY_STATUSES,
   isFinalWarrantyStatus,
   type WarrantyStatus,
@@ -288,6 +291,69 @@ warrantyRouter.get("/session", requireWarranty, (req, res) =>
     mode: "demo",
     mobileVerified: false,
   }),
+);
+/* A demo code is not phone verification. Return only minimal summaries for full,
+ * unguessable references the customer already holds AND the session's login phone.
+ * The posted phone, admin review notes, receipts and private files are never used
+ * to broaden this lookup. An empty request never reveals whether a phone exists.
+ */
+warrantyRouter.post(
+  "/registrations/history",
+  requireWarranty,
+  rateLimit(60, 15 * 60000),
+  express.json({ limit: "12kb" }),
+  (req, res) => {
+    const input = req.body?.references;
+    if (!Array.isArray(input) || input.length > WARRANTY_HISTORY_LIMIT)
+      return res
+        .status(400)
+        .json({ error: "Provide up to 100 complete registration references." });
+    const normalized = input.map(normalizeWarrantyReference);
+    if (normalized.some((reference) => !reference))
+      return res.status(400).json({
+        error: "Enter complete registration references starting with ARV-WR-.",
+      });
+    const references = new Set(normalized);
+    const phone = current(req)?.mobile;
+    if (!phone)
+      return res.status(401).json({
+        error:
+          "Your registration session expired. Enter your mobile number again.",
+      });
+    const matched = references.size
+      ? readWarranties()
+          .filter(
+            (row) => row.loginMobile === phone && references.has(row.reference),
+          )
+          .sort(
+            (a, b) =>
+              b.createdAt.localeCompare(a.createdAt) ||
+              a.reference.localeCompare(b.reference),
+          )
+      : [];
+    recordWarrantyHistoryAccess(
+      matched.map((row) => row.id),
+      sessionKey(req),
+    );
+    const registrations = matched.map(
+      ({
+        reference,
+        productName,
+        categoryName,
+        purchaseDate,
+        createdAt,
+        status,
+      }) => ({
+        reference,
+        productName,
+        categoryName,
+        purchaseDate,
+        createdAt,
+        status,
+      }),
+    );
+    res.json({ registrations, total: registrations.length });
+  },
 );
 /* POST /logout: Invalidate the scoped session and expire its cookie. */
 warrantyRouter.post("/logout", (req, res) => {

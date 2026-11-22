@@ -371,6 +371,38 @@
 .wr-success .wr-inline-actions {
   justify-content: center;
 }
+/* Customer history remains readable on small screens and preserves long references. */
+.wr-entry-help { color: #766480; margin: 20px 0; }
+.wr-session-actions { display: flex; gap: 20px; flex-wrap: wrap; }
+.wr-history-heading, .wr-history-results-heading { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
+.wr-history-heading { margin: 28px 0 20px; }
+.wr-history-heading h2 { font: 700 clamp(28px, 4vw, 40px)/1.2 "DM Sans", Arial, sans-serif; color: #32104c; margin: 0 0 10px; }
+.wr-history-heading p { margin: 0 0 10px; }
+.wr-history-heading > div { min-width: 0; flex: 1 1 300px; }
+.wr-history-heading > button { flex-shrink: 0; }
+.wr-history-lookup h3, .wr-history-item h3, .wr-history-empty h3 { color: #32104c; font-size: 19px; line-height: 1.4; margin: 0 0 12px; }
+.wr-history-lookup p { color: #766480; margin: 0 0 20px; }
+.wr-history-lookup form { display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap; }
+.wr-history-lookup .wr-field { flex: 1 1 350px; }
+.wr-history-lookup input { font-size: 12px; }
+.wr-history-message { background: #e8f5ed; color: #276244; border: 1px solid #bedcca; padding: 14px 18px; border-radius: 10px; }
+.wr-history-refresh { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fff; color: #64368d; font: inherit; border: 1px solid #dfd5e7; border-radius: 9px; padding: 9px 15px; cursor: pointer; }
+.wr-history-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 22px; margin: 12px 0 22px; }
+.wr-history-item { margin: 0; overflow-wrap: anywhere; }
+.wr-history-item .wr-status { display: inline-block; margin-bottom: 18px; }
+.wr-history-category { color: #80618d; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin: 0 0 8px; }
+.wr-history-item dl { margin: 20px 0 0; display: grid; gap: 15px; }
+.wr-history-item dt { font-size: 11px; color: #80618d; }
+.wr-history-item dd { margin: 2px 0 0; }
+.wr-history-item .wr-reference { padding: 0; font-size: 12px; }
+.wr-history-empty { text-align: center; padding: 35px 25px; }
+.wr-history-empty > svg { color: #9564bc; margin-bottom: 18px; }
+.wr-history-empty p { color: #766480; max-width: 620px; margin: 0 auto 22px; }
+@media (max-width: 650px) {
+  .wr-history-heading > button, .wr-history-lookup form > button { width: 100%; }
+  .wr-history-lookup .wr-field { flex-basis: 100%; }
+  .wr-history-item, .wr-history-lookup { padding: 22px; }
+}
 .wr-reference {
   display: block;
   color: #552e81;

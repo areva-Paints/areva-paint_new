@@ -1,5 +1,5 @@
 /*
- * Guide visitors through mobile entry, demo OTP and a complete purchase form.
+ * Guide visitors through mobile entry, demo OTP, private customer history and a complete purchase form.
  * Submission stays on confirmation; leaving via Back to website clears entry so a later visit starts at the mobile screen.
  */
 import React, { useEffect, useRef, useState } from "react";
@@ -14,6 +14,8 @@ import {
 import { contentOrigin, contentUrl } from "../site-content";
 import { BrandLogo } from "../components/BrandLogo";
 import { warrantyApi } from "./api";
+import { WarrantyHistory } from "./WarrantyHistory";
+import { rememberWarrantyReference } from "./customer-history";
 import { type WarrantyInput, type ReceiptInfo } from "./types";
 import type { Product } from "../types";
 import type { Dealer } from "../admin/content-types";
@@ -61,7 +63,11 @@ const empty = (): WarrantyInput => ({
 /* Guide visitors through mobile entry, demo OTP and a complete purchase form. */
 export function WarrantyPage() {
   const [options, setOptions] = useState<Options | null>(null),
-    [step, setStep] = useState<"phone" | "otp" | "form" | "success">("phone");
+    [step, setStep] = useState<
+      "phone" | "otp" | "history" | "form" | "success"
+    >("phone");
+  const [hasDraft, setHasDraft] = useState(false),
+    [referenceRemembered, setReferenceRemembered] = useState(true);
   const [phone, setPhone] = useState(""),
     [code, setCode] = useState(""),
     [challenge, setChallenge] = useState(""),
@@ -92,6 +98,8 @@ export function WarrantyPage() {
     setReceipt(null);
     setSitePhotos([]);
     setReference("");
+    setHasDraft(false);
+    setReferenceRemembered(true);
     setError("");
     setBusy(false);
   }
@@ -198,7 +206,7 @@ export function WarrantyPage() {
         code,
       });
       setPhone(data.mobile);
-      setStep("form");
+      setStep("history");
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -211,18 +219,30 @@ export function WarrantyPage() {
     setError("");
     try {
       await warrantyApi("/api/warranty/logout", {});
-      setForm(empty());
-      setReceipt(null);
-      setSitePhotos([]);
-      setPhone("");
-      setCode("");
-      setChallenge("");
-      setStep("phone");
+      resetEntry();
     } catch (error) {
       setError((error as Error).message);
     } finally {
       setBusy(false);
     }
+  }
+  /* Keep an unfinished draft when visiting history; a completed purchase starts a fresh form. */
+  function startRegistration() {
+    if (!hasDraft) {
+      setForm(empty());
+      setCategory("");
+      setReceipt(null);
+      setSitePhotos([]);
+      setReference("");
+      setReferenceRemembered(true);
+    }
+    setHasDraft(true);
+    setError("");
+    setStep("form");
+  }
+  function showHistory() {
+    setError("");
+    setStep("history");
   }
   /* Attach an allowed receipt to the current private session before submission. */
   async function upload(file?: File) {
@@ -335,6 +355,8 @@ export function WarrantyPage() {
     try {
       const saved = await warrantyApi("/api/warranty/registrations", form);
       setReference(saved.reference);
+      setReferenceRemembered(rememberWarrantyReference(saved.reference));
+      setHasDraft(false);
       setStep("success");
       setReceipt(null);
       setSitePhotos([]);
@@ -453,6 +475,10 @@ export function WarrantyPage() {
                     <ArrowRight size={17} />
                   </button>
                 </form>
+                <p className="wr-entry-help">
+                  Check existing registrations or start a new one after entering
+                  the code.
+                </p>
                 <p className="wr-demo">
                   {options?.otpMode === "disabled"
                     ? "Mobile OTP delivery is not configured yet. Please try again later."
@@ -486,7 +512,7 @@ export function WarrantyPage() {
                     />
                   </label>
                   <button className="wr-primary" disabled={busy}>
-                    Continue to registration
+                    Continue to my registrations
                     <ArrowRight size={17} />
                   </button>
                 </form>
@@ -508,19 +534,39 @@ export function WarrantyPage() {
                 </div>
               </div>
             )}
+            {step === "history" && (
+              <WarrantyHistory
+                phone={phone}
+                hasDraft={hasDraft}
+                externalBusy={busy}
+                onNew={startRegistration}
+                onChangeMobile={() => void changeMobile()}
+                onSessionExpired={() => {
+                  resetEntry();
+                  setError(
+                    "Your registration session expired. Enter your mobile number again.",
+                  );
+                }}
+              />
+            )}
             {step === "form" && (
               <>
                 <div className="wr-session">
                   <span>
                     Registering for <strong>{phone}</strong> · Demo session
                   </span>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void changeMobile()}
-                  >
-                    Change mobile number
-                  </button>
+                  <div className="wr-session-actions">
+                    <button type="button" disabled={busy} onClick={showHistory}>
+                      My registrations
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void changeMobile()}
+                    >
+                      Change mobile number
+                    </button>
+                  </div>
                 </div>
                 <p className="wr-demo">
                   Demo access only: your mobile number is not verified.
@@ -864,10 +910,31 @@ export function WarrantyPage() {
                 <strong className="wr-reference">{reference}</strong>
                 <p>Pending review · Demo mobile verification</p>
                 <p>
+                  {referenceRemembered
+                    ? "Your reference is remembered in this browser under My registrations."
+                    : "Browser storage is unavailable. Keep your reference to find this registration on your next visit."}
+                </p>
+                <p>
                   Your details and receipt have been saved privately. Areva will
                   need to verify the purchase and warranty eligibility.
                 </p>
                 <div className="wr-inline-actions">
+                  <button
+                    type="button"
+                    className="wr-primary"
+                    disabled={busy}
+                    onClick={showHistory}
+                  >
+                    My registrations
+                  </button>
+                  <button
+                    type="button"
+                    className="wr-primary"
+                    disabled={busy}
+                    onClick={startRegistration}
+                  >
+                    New registration
+                  </button>
                   <a className="wr-primary" href="/" onClick={backToWebsite}>
                     Back to website
                   </a>

@@ -9,8 +9,8 @@ The HTTPS project URL is a Data API address, not a PostgreSQL login or permissio
 
 1. Open [this project's SQL Editor](https://supabase.com/dashboard/project/osljojzwulmjoqbnubia/sql/new) while signed in with database-management access.
 2. Start a new query and paste the complete contents of [supabase-setup.sql](../database/supabase-setup.sql). Run it using the project database-owner role, normally `postgres`.
-3. Run **once**. The script creates a new `areva` schema, all 23 reviewed tables and the eight categories in one transaction. It deliberately stops if `areva` already exists; inspect any existing data rather than dropping it or rerunning setup. It does not alter existing `public`, `auth` or `storage` tables.
-4. The final queries should report **23 tables**, **8 categories**, and **23 tables with row-level security enabled**. In Table Editor, select the **areva** schema to see the tables.
+3. Run **once**. The script creates a new `areva` schema, all 24 reviewed tables and the eight categories in one transaction. It deliberately stops if `areva` already exists; inspect any existing data rather than dropping it or rerunning setup. It does not alter existing `public`, `auth` or `storage` tables.
+4. The final queries should report **24 tables**, **8 categories**, and **24 tables with row-level security enabled**. In Table Editor, select the **areva** schema to see the tables.
 
 This file already includes the full schema and category seed. Do not also run `schema.sql`, `seed-categories.sql` or the old 15-table upgrade in this setup flow. If an earlier proposal has already been applied in `public` or another schema, stop and plan its migration instead of creating a competing copy.
 
@@ -46,7 +46,7 @@ The generator only prepares the local SQL file from the reviewed sources; it nev
 
 ## Warranty Registration upgrade
 
-An existing 19-table Areva installation needs [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once, after migrations 001–005, followed by [007-warranty-review-and-filters.sql](../database/migrations/007-warranty-review-and-filters.sql). The new fresh setup has 23 tables; never rerun it on an existing installation. See [warranty-registration.md](warranty-registration.md) for private receipt storage, JSON persistence and the future SQL adapter.
+An existing 19-table Areva installation needs [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once, after migrations 001–005, followed by [007-warranty-review-and-filters.sql](../database/migrations/007-warranty-review-and-filters.sql). The new fresh setup has 24 tables; never rerun it on an existing installation. See [warranty-registration.md](warranty-registration.md) for private receipt storage, JSON persistence and the future SQL adapter.
 
 For an existing 20-table installation with migration 006 already applied, use only migration 007 for review metadata/manual approvals. The fresh setup includes these fields already; do not rerun it. No application database adapter or live migration is implied.
 
@@ -54,11 +54,11 @@ For final decisions and PDFs, an existing installation after migration 007 also 
 
 ## Certifications and documents upgrade
 
-An existing 20-table installation after migrations 001–008 uses [009-certifications-and-documents.sql](../database/migrations/009-certifications-and-documents.sql) once. It adds `certifications`, `certification_attachments` and `certification_products`, updates activity sections and restricts direct API-role access. Fresh setup now has 23 tables and includes this upgrade. It does not import content, change the running JSON store or connect the application to SQL. See [the documents guide](certifications-and-documents.md).
+An existing 20-table installation after migrations 001–008 uses [009-certifications-and-documents.sql](../database/migrations/009-certifications-and-documents.sql) once. It adds `certifications`, `certification_attachments` and `certification_products`, updates activity sections and restricts direct API-role access. Fresh setup now has 24 tables and includes this upgrade. It does not import content, change the running JSON store or connect the application to SQL. See [the documents guide](certifications-and-documents.md).
 
 ## Gallery category upgrade
 
-After migration 009, existing installations use [010-gallery-project-categories.sql](../database/migrations/010-gallery-project-categories.sql) once. It adds the category field/index and defaults existing projects to Other while retaining access restrictions and other data. Fresh setup includes it; there are still 23 tables. No live migration or runtime SQL connection is implied.
+After migration 009, existing installations use [010-gallery-project-categories.sql](../database/migrations/010-gallery-project-categories.sql) once. It adds the category field/index and defaults existing projects to Other while retaining access restrictions and other data. Fresh setup includes it; the current fresh schema has 24 tables. No live migration or runtime SQL connection is implied.
 
 ## Warranty login phone snapshot
 
@@ -67,7 +67,7 @@ Existing installations after migration 010 use [011-warranty-login-mobile.sql](.
 
 ## Contact and review integrity — 18 November 2026
 
-For an existing installation after migration 011, apply [012-contact-and-review-integrity.sql](../database/migrations/012-contact-and-review-integrity.sql) once. It rejects punctuation-only/invalid contact numbers, requires nonblank reasons and reviewer metadata for rejected/needs-information reviews, and limits approval confirmation to Approved records. Preflight stops and reports counts if older records conflict; it never silently rewrites data or bypasses the final-review lock. Fresh schema/setup already includes these checks and still has 23 tables.
+For an existing installation after migration 011, apply [012-contact-and-review-integrity.sql](../database/migrations/012-contact-and-review-integrity.sql) once. It rejects punctuation-only/invalid contact numbers, requires nonblank reasons and reviewer metadata for rejected/needs-information reviews, and limits approval confirmation to Approved records. Preflight stops and reports counts if older records conflict; it never silently rewrites data or bypasses the final-review lock. Fresh schema/setup already includes these checks; the current fresh schema has 24 tables.
 
 The optional [review-checks.sql](../database/review-checks.sql) runs in a read-only transaction and reports table/RLS counts, private role grants, unvalidated constraints and data-quality counts without printing customer data. Run it as the intended installation owner after setup/upgrades. It does not connect the app to SQL. See [README.md](../README.md) for the complete current hosting/storage guide. No live database was changed during this review.
 
@@ -75,3 +75,7 @@ The optional [review-checks.sql](../database/review-checks.sql) runs in a read-o
 ## Building photos and product-type terms — 22 November 2026
 
 After migration 012, existing installations use [013-building-photos-and-product-terms.sql](../database/migrations/013-building-photos-and-product-terms.sql) once. It adds product-type document assignments and validated private building-photo metadata; table count remains 23. Fresh schema/setup includes these changes. The application still saves private JSON and no live database migration is performed. See [the feature guide](building-photos-and-warranty-terms.md).
+
+## Customer warranty history — 22 November 2026
+
+After migration 013, use [014-customer-warranty-history.sql](../database/migrations/014-customer-warranty-history.sql) once on existing SQL installations. It adds the private `warranty_history_access` table (24th table) and an index on login phone/submission date, preserving warranty records. The new table has RLS, revoked browser/API grants, validated session hashes and a cascading registration foreign key. Fresh setup already contains both. Customer history still uses private JSON and requires the complete registration reference while OTP is in demo mode. See [the customer history guide](customer-warranty-history.md). No live SQL migration is performed here.

@@ -22,6 +22,30 @@ export function isFinalWarrantyStatus(status: WarrantyStatus): boolean {
   return status === "approved" || status === "rejected";
 }
 export const DEMO_OTP = "123456";
+export const WARRANTY_HISTORY_LIMIT = 100;
+/* Complete references contain a random UUID; a short date, phone or ID is never a lookup proof. */
+export function normalizeWarrantyReference(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const reference = value.trim().toUpperCase();
+  return /^ARV-WR-[0-9]{8}-[A-F0-9]{8}(?:-[A-F0-9]{4}){3}-[A-F0-9]{12}$/.test(
+    reference,
+  )
+    ? reference
+    : null;
+}
+/* Customer history intentionally excludes addresses, invoices, attachments and private review notes. */
+export interface WarrantyHistoryItem {
+  reference: string;
+  productName: string;
+  categoryName: string;
+  purchaseDate: string;
+  createdAt: string;
+  status: WarrantyStatus;
+}
+export interface WarrantyHistoryResponse {
+  registrations: WarrantyHistoryItem[];
+  total: number;
+}
 export interface ReceiptInfo {
   id: string;
   name: string;

@@ -213,11 +213,11 @@ for (const schema of ["public", "areva"]) {
       );
       assert.equal(
         report.find((row) => row.application_schema)?.application_tables,
-        23,
+        24,
       );
       assert.equal(
         report.find((row) => row.application_schema)?.tables_with_rls,
-        23,
+        24,
       );
       assert.equal(report.filter((row) => row.check_name).length, 7);
       assert.ok(
@@ -294,7 +294,7 @@ for (const schema of ["public", "areva"]) {
             [schema],
           )
         ).rows[0].count,
-        23,
+        24,
       );
       for (const role of ["anon", "authenticated", "service_role"]) {
         await db.exec(`SET ROLE ${role}`);
