@@ -798,3 +798,15 @@
   justify-content: space-between;
   gap: 12px;
 }
+
+/* Private building-photo selection and authorized admin previews. */
+.wr-building-photos { margin: 24px 0; }
+.wr-building-photos h3 { font-size: 19px; margin: 0 0 10px; }
+.wr-building-photos p { color: #766983; line-height: 1.65; margin: 0 0 18px; }
+.wr-photo-upload { display: inline-flex; align-items: center; gap: 10px; padding: 13px 18px; border: 1px dashed #b69ace; border-radius: 12px; background: #f7f2fc; cursor: pointer; position: relative; }
+.wr-photo-upload input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.wr-photo-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(170px,1fr)); gap: 16px; margin: 18px 0; }
+.wr-photo-grid figure { min-width: 0; margin: 0; border: 1px solid #e1d5ec; border-radius: 14px; overflow: hidden; background: white; }
+.wr-photo-grid img { display: block; width: 100%; height: 150px; object-fit: cover; }
+.wr-photo-grid figcaption { padding: 10px; overflow-wrap: anywhere; color: #6c5d78; font-size: 13px; }
+.wr-photo-grid figure > button, .wr-photo-grid figure > a:last-child { display: inline-flex; align-items: center; gap: 6px; margin: 0 10px 12px; color: #65378c; font: inherit; font-size: 13px; border: 0; background: none; cursor: pointer; }

@@ -219,3 +219,8 @@ On **18 November 2026**, the production dependency audit reports **zero advisori
 | Production cannot find Vite                   | Use this revision's dynamic development import, build before pruning and start with `NODE_ENV=production`.                                         |
 
 Additional guides: [warranty workflow](docs/warranty-registration.md), [certifications/documents](docs/certifications-and-documents.md), [admin sessions](docs/admin-navigation-and-sessions.md), [Gallery categories](docs/gallery-project-categories.md), [shared branding](docs/shared-brand-and-page-headers.md) and [security protections](docs/security-review.md).
+
+
+## Building photos and warranty terms
+
+Warranty registrations accept up to five optional private building photos (JPEG/PNG/WebP, 5 MB each). Admin registration details show previews and downloads. In Products, admins can upload public warranty-terms PDFs for a product or whole product type; the warranty badge opens the filtered Terms and conditions page. More now includes Certifications and documents and an illustrated Terms and conditions card. See [the guide](docs/building-photos-and-warranty-terms.md) for controls, storage, private endpoints and prepared migration 013. The runtime remains JSON-backed and OTP remains demo-only.

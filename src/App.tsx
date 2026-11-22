@@ -2,10 +2,12 @@
  * Choose the public, admin or warranty experience from the URL and coordinate the optional React studio, shared content and enquiry dialogs.
  */
 import { ProjectGallery } from './components/ProjectGallery';
+import { TermsAndConditions } from './components/TermsAndConditions';
 import { Certifications } from './components/Certifications';
 import { ExploreAreva } from './components/ExploreAreva';
 import { contentUrl } from './site-content';
 import './reference-theme.css';
+import '../public/assets/terms-conditions.css';
 import React, { useState, useEffect } from 'react';
 import { Product } from './types';
 import { COLOR_SHADES } from './data/paintsData';
@@ -155,6 +157,7 @@ export default function App() {
             <ProjectGallery />
             <DealersAndServices />
             <Certifications />
+            <TermsAndConditions />
             <ExploreAreva resolveLink={(path) => contentUrl(path.startsWith('#') ? '/attached-page' + path : path)} />
           </div>
 
@@ -256,6 +259,7 @@ export default function App() {
             {/* Dealers & On-Site Technical Services */}
             <DealersAndServices />
             <Certifications />
+            <TermsAndConditions />
             <ExploreAreva resolveLink={(path) => contentUrl(path.startsWith('#') ? '/attached-page' + path : path)} />
 
             {/* Grand Vibrant Multi-Gradient Call-to-Action Banner */}

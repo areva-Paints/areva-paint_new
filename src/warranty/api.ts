@@ -5,7 +5,7 @@
 export async function warrantyApi<T = any>(
   url: string,
   body?: unknown,
-  method: "POST" | "PATCH" = "POST",
+  method: "POST" | "PATCH" | "DELETE" = "POST",
 ): Promise<T> {
   const response = await fetch(url, {
     cache: "no-store",

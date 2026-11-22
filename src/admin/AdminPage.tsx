@@ -10,6 +10,8 @@ import {
   useAdminIdleSession,
 } from "./useAdminIdleSession";
 import type { AdminSessionTiming } from "./session-policy";
+import { ProductWarrantyTermsFields } from "./ProductWarrantyTermsFields";
+import type { CertificationDocument } from "./content-types";
 import { ProductTechnicalFields } from "./ProductTechnicalFields";
 import { GalleryReviewsManager } from "./GalleryReviewsManager";
 import { UsersManager } from "./UsersManager";
@@ -213,6 +215,9 @@ export function AdminPage() {
     ),
     [isNew, setIsNew] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const [productTerms, setProductTerms] = useState<CertificationDocument[] | null>(null);
+  /* Terms edits stay in the product dialog until its complete CMS revision is saved. */
+  useEffect(() => { setProductTerms(tab === "products" && editor ? structuredClone(content?.certifications ?? []) : null); }, [editor?.id, tab]);
   /* Discard authenticated editing state when the session ends. */
   function clearAdminSession(message = "") {
     authEpoch.current++;
@@ -441,6 +446,7 @@ export function AdminPage() {
       "image" in editor ? { ...editor, image: editor.image.trim() } : editor;
     const next = {
       ...content,
+      certifications: tab === "products" && productTerms ? productTerms : content.certifications,
       [key]: isNew
         ? [...items, entry]
         : items.map((i) => (i.id === entry.id ? entry : i)),
@@ -1390,6 +1396,7 @@ export function AdminPage() {
                         )
                       }
                     />
+                    <ProductWarrantyTermsFields key={editor.id + "-terms"} product={editor as Product} documents={productTerms ?? content.certifications} onChange={setProductTerms} onBusy={setUploading} />
                     <div className="adm-coverage-preview">
                       <Droplets size={21} />
                       <div>

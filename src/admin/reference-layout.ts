@@ -4,8 +4,9 @@
  */
 import { getProductDisplayDetails } from '../data/productDetails';
 import { BrandLogo } from '../components/BrandLogo';
+import { TermsAndConditions } from '../components/TermsAndConditions';
 import { MoreMenuCards } from '../components/MoreMenuCards';
-import { ProductSummaryHeading } from '../components/ProductSummaryHeading';
+import { ProductSummaryHeading, ProductWarrantyBadge } from '../components/ProductSummaryHeading';
 import { ProductDocumentDownloads } from '../components/CertificationCards';
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -29,7 +30,7 @@ const escapeHtml = (value: string) =>
 export function referenceLayout(html: string, content: SiteContent) {
   html = html.replace(
     "</head>",
-    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/brand.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"><link rel="stylesheet" href="/assets/more-menu.css"></head>',
+    '<link rel="stylesheet" href="/assets/dreams-hero.css"><link rel="stylesheet" href="/assets/category-scenes.css"><link rel="stylesheet" href="/assets/category-landings.css"><link rel="stylesheet" href="/assets/brand.css"><link rel="stylesheet" href="/assets/page-gradient.css"><link rel="stylesheet" href="/assets/product-details.css"><link rel="stylesheet" href="/assets/more-menu.css"><link rel="stylesheet" href="/assets/terms-conditions.css"></head>',
   );
   const logo = renderToStaticMarkup(createElement(BrandLogo));
   html = html.replace(
@@ -111,8 +112,8 @@ export function referenceLayout(html: string, content: SiteContent) {
     ],
     [
       "certs",
-      "Documents",
-      "Product documents",
+      "Certifications and documents",
+      "Certifications and documents",
       "Browse product information, technical documents and certification details.",
     ],
     [
@@ -134,12 +135,13 @@ export function referenceLayout(html: string, content: SiteContent) {
     return `<dl class="ref-product-specs">${fields.map(([label, value]) => `<div><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl>` + renderToStaticMarkup(createElement(ProductDocumentDownloads, { content, productId: p.id }));
   });
   const json = JSON.stringify(specs).replace(/</g, "\\u003c");
+  const warrantyHtml = JSON.stringify(content.products.map((product) => renderToStaticMarkup(createElement(ProductWarrantyBadge, { product })))).replace(/</g, "\\u003c");
   const documentHtml = JSON.stringify(content.products.map((product) => renderToStaticMarkup(createElement(ProductDocumentDownloads, { content, productId: product.id })))).replace(/</g, "\\u003c");
   html = html.replace('<ul id="dSec"></ul></div>', '<ul id="dSec"></ul></div><div id="refProductDocuments"></div>');
   html = html.replace('$("#dSec").innerHTML = p[3].map(s=>"<li>"+s+"</li>").join("");', '$("#dSec").innerHTML = p[3].map(s=>"<li>"+s+"</li>").join(""); $("#refProductDocuments").innerHTML=REFERENCE_PRODUCT_DOC_HTML[i]||"";');
   html = html.replace(
     "const $ =",
-    () => `const REFERENCE_PRODUCT_DOC_HTML=${documentHtml};\nconst REFERENCE_PRODUCT_HEADER_HTML=${JSON.stringify(content.products.map(product=>renderToStaticMarkup(createElement(ProductSummaryHeading, { product, level: "h4" })))).replace(/</g,"\\u003c")};\nconst REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
+    () => `const REFERENCE_PRODUCT_DOC_HTML=${documentHtml};\nconst REFERENCE_PRODUCT_WARRANTY_HTML=${warrantyHtml};\nconst REFERENCE_PRODUCT_HEADER_HTML=${JSON.stringify(content.products.map(product=>renderToStaticMarkup(createElement(ProductSummaryHeading, { product, level: "h4" })))).replace(/</g,"\\u003c")};\nconst REFERENCE_PRODUCT_SPEC_HTML=${json};\nconst $ =`,
   );
   html = html.replace(
     /<h2>Products for every surface<\/h2>[\s\S]*?<div class="tiles" id="tiles"><\/div>/,
@@ -183,11 +185,12 @@ function pick(i, scroll){if(window.arevaOpenCategory){window.arevaOpenCategory(i
   );
   html = html.replace(
     '<span class="tag" id="dCat">',
-    '<img id="refProductPhoto" class="ref-product-photo" alt="" hidden><span class="tag" id="dCat">',
+    '<div id="refDialogWarranty" class="ref-dialog-warranty"></div><img id="refProductPhoto" class="ref-product-photo" alt="" hidden><span class="tag" id="dCat">',
   );
   html = html.replace(
     "cur=i; const p=P[i], c=cats[p[1]];",
     () => `cur=i; const p=P[i], c=cats[p[1]];
+  document.getElementById("refDialogWarranty").innerHTML=REFERENCE_PRODUCT_WARRANTY_HTML[i]||"";
   const photo=document.getElementById("refProductPhoto"),decode=v=>{const field=document.createElement("textarea");field.innerHTML=v;return field.value;};
   photo.hidden=!p[4];if(p[4]){photo.src=decode(p[4]);photo.alt=decode(p[0]);}`,
   );
@@ -200,9 +203,11 @@ function pick(i, scroll){if(window.arevaOpenCategory){window.arevaOpenCategory(i
     'if (viz) viz.scrollIntoView({ behavior: "smooth" });',
     'if (viz) window.arevaNavigate("visualizer", { behavior: "smooth" });',
   );
+  /* Add content after prototype script rewrites so document text cannot match a code anchor. */
+  html = html.replace("</main>", () => renderToStaticMarkup(createElement(TermsAndConditions, { content })) + "</main>");
   html = html.replace(
     "</body>",
-    '<script src="/assets/reference-layout.js" defer></script></body>',
+    '<script src="/assets/reference-layout.js" defer></script><script type="module" src="/assets/terms-conditions.js"></script></body>',
   );
   return html;
 }

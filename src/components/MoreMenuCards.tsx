@@ -1,5 +1,5 @@
 /*
- * Share the six illustrated More navigation cards between React and server-rendered public layouts.
+ * Share illustrated More navigation cards between React and server-rendered public layouts.
  */
 import { ArrowRight, X } from "lucide-react";
 
@@ -26,11 +26,18 @@ const links = [
     image: "/assets/images/more/dealers.webp",
   },
   {
-    title: "Documents",
+    title: "Certifications and documents",
     description: "Browse certificates, reports and product data sheets.",
     href: "#certs",
     view: undefined,
     image: "/assets/images/more/documents.webp",
+  },
+  {
+    title: "Terms and conditions",
+    description: "Read the warranty terms for your product or product type.",
+    href: "#terms",
+    view: "terms",
+    image: "/assets/images/more/terms.webp",
   },
   {
     title: "Contact",

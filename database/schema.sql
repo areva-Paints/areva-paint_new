@@ -197,6 +197,10 @@ CREATE TABLE certifications (
   id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
   title varchar(150) NOT NULL CHECK (btrim(title) <> ''),
   description varchar(2000) NOT NULL CHECK (btrim(description) <> ''),
+  category_ids varchar(100)[] NOT NULL DEFAULT '{}' CHECK (
+    cardinality(category_ids) <= 8 AND array_position(category_ids, NULL) IS NULL AND
+    category_ids <@ ARRAY['interior','exterior','waterproofing','tile-adhesives','sealants','putty-primers','textures','chemicals']::varchar(100)[]
+  ),
   document_type varchar(20) NOT NULL CHECK (document_type IN ('certification', 'test_report', 'tds', 'sds', 'warranty', 'other')),
   label varchar(80) NOT NULL DEFAULT '',
   issuer varchar(200) NOT NULL DEFAULT '',
@@ -210,6 +214,7 @@ CREATE TABLE certifications (
   CHECK (issued_on IS NULL OR valid_until IS NULL OR issued_on <= valid_until)
 );
 CREATE INDEX certifications_public_order_idx ON certifications(published, position);
+CREATE INDEX certifications_categories_idx ON certifications USING gin(category_ids);
 /* Up to five ordered local PDF attachments per document card. */
 CREATE TABLE certification_attachments (
   id varchar(100) PRIMARY KEY CHECK (id ~ '^[A-Za-z0-9_-]+$'),
@@ -343,6 +348,38 @@ CREATE INDEX activity_events_entry_idx ON activity_events(section, entity_id, ev
   WHERE action IN ('created', 'updated') AND entity_id <> '';
 
 -- Customer submissions and private receipt metadata; never exposed to browser database roles.
+/* Match the private JSON photo snapshot; reject paths, unknown fields and invalid metadata. */
+CREATE FUNCTION valid_warranty_site_photos(value jsonb) RETURNS boolean
+LANGUAGE sql IMMUTABLE SET search_path = pg_catalog AS $$
+  SELECT CASE WHEN value IS NULL OR jsonb_typeof(value) <> 'array' THEN false ELSE
+    jsonb_array_length(value) <= 5 AND
+    (SELECT count(DISTINCT photo->>'id') FROM jsonb_array_elements(value) AS photo) = jsonb_array_length(value) AND
+    NOT EXISTS (
+      SELECT 1 FROM jsonb_array_elements(value) AS photo
+      WHERE CASE WHEN jsonb_typeof(photo) <> 'object' THEN true ELSE NOT COALESCE(
+        jsonb_typeof(photo) = 'object' AND
+        photo - ARRAY['id','name','mime','bytes']::text[] = '{}'::jsonb AND
+        jsonb_typeof(photo->'id') = 'string' AND photo->>'id' ~ '^[a-f0-9]{8}-([a-f0-9]{4}-){3}[a-f0-9]{12}$' AND
+        jsonb_typeof(photo->'name') = 'string' AND length(photo->>'name') BETWEEN 1 AND 150 AND btrim(photo->>'name') <> '' AND photo->>'name' !~ '[[:cntrl:]]' AND
+        jsonb_typeof(photo->'mime') = 'string' AND photo->>'mime' IN ('image/jpeg','image/png','image/webp') AND
+        CASE WHEN jsonb_typeof(photo->'bytes') = 'number' THEN
+          (photo->>'bytes')::numeric BETWEEN 12 AND 5242880 AND trunc((photo->>'bytes')::numeric) = (photo->>'bytes')::numeric
+        ELSE false END,
+        false
+      ) END
+    )
+  END;
+$$;
+REVOKE ALL ON FUNCTION valid_warranty_site_photos(jsonb) FROM PUBLIC;
+DO $$
+DECLARE role_name text;
+BEGIN
+  FOR role_name IN SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated','service_role') LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %I.valid_warranty_site_photos(jsonb) FROM %I', current_schema(), role_name);
+  END LOOP;
+END;
+$$;
+
 /* Private purchase, login-phone, receipt and review snapshots with explicit demo-verification boundaries. */
 CREATE TABLE warranty_registrations (
   id uuid PRIMARY KEY,
@@ -396,6 +433,8 @@ CREATE TABLE warranty_registrations (
   receipt_bytes integer NOT NULL CHECK (receipt_bytes BETWEEN 12 AND 5242880),
   -- Private storage key only, not a public URL. Actual files need private persistent storage.
   receipt_file_key varchar(100) NOT NULL UNIQUE CHECK (receipt_file_key ~ '^[a-f0-9-]{36}\.(pdf|png|jpeg|webp)$'),
+  site_photos jsonb NOT NULL DEFAULT '[]'::jsonb,
+  CONSTRAINT warranty_registrations_site_photos_check CHECK (valid_warranty_site_photos(site_photos)),
   created_at timestamptz NOT NULL DEFAULT now(),
   UNIQUE (mobile, submission_id),
   CHECK (verification_mode <> 'demo' OR NOT mobile_verified),

@@ -785,6 +785,43 @@ export function WarrantyManager() {
                   selected.consent ? "Confirmed" : "Not given",
                 )}
               </dl>
+              {!!selected.sitePhotos?.length && (
+                <section
+                  className="wr-building-photos"
+                  aria-label="Registered building photos"
+                >
+                  <h3>Building photos</h3>
+                  <p>Private attachments submitted with this registration.</p>
+                  <div className="wr-photo-grid">
+                    {selected.sitePhotos.map((photo) => {
+                      const url =
+                        "/api/admin/warranties/" +
+                        selected.id +
+                        "/site-photos/" +
+                        photo.id;
+                      return (
+                        <figure key={photo.id}>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <img
+                              src={url}
+                              alt={"Building photo: " + photo.name}
+                              loading="lazy"
+                            />
+                          </a>
+                          <figcaption>
+                            {photo.name} · {Math.ceil(photo.bytes / 1024)} KB
+                          </figcaption>
+                          <a href={url + "?download=1"}>Download photo</a>
+                        </figure>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
               {selected.reviewHistory?.length > 0 && (
                 <>
                   <h3>Review history</h3>

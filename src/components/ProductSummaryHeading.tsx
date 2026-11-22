@@ -4,20 +4,40 @@
  */
 import React from "react";
 import type { Product } from "../types";
+import { warrantyTermsHref } from "../data/warrantyTerms";
 
 /* Render a warranty badge only when the product has configured warranty text. */
-export function ProductWarrantyBadge({ product }: { product: Product }) {
+export function ProductWarrantyBadge({
+  product,
+  onNavigate,
+}: {
+  product: Product;
+  onNavigate?: () => void;
+}) {
   const years = product.specs.warrantyYears;
   if (!(years > 0)) return null;
   return (
-    <div className="product-warranty-badge" aria-label="Product warranty">
+    <a
+      className="product-warranty-badge"
+      href={warrantyTermsHref(product.id)}
+      onClick={(event) => {
+        if (
+          !event.metaKey &&
+          !event.ctrlKey &&
+          !event.shiftKey &&
+          !event.altKey
+        )
+          onNavigate?.();
+      }}
+      aria-label={`Read performance warranty terms and conditions for ${product.name}`}
+    >
       <strong>
         {years} {years === 1 ? "Year" : "Years"}
       </strong>
       <span>
         {product.specs.warrantyLabel?.trim() || "Performance warranty*"}
       </span>
-    </div>
+    </a>
   );
 }
 /* Pair the product heading with its optional warranty badge without reserving empty space. */

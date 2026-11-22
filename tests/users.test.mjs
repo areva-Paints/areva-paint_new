@@ -92,6 +92,9 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
   }
+  // Unique fixtures distinguish private runtime data from the exported test source.
+  const memberEmail = "client-" + crypto.randomUUID() + "@example.test";
+  const staffUsername = "staff-" + crypto.randomUUID().slice(0, 12);
   const memberPassword = crypto.randomBytes(24).toString("hex");
   const adminPassword = crypto.randomBytes(24).toString("hex");
   async function signIn(username, password, admin = false, role) {
@@ -131,16 +134,12 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
     await login();
     const initial = await (await request("/api/content")).json();
     const admin = await create(
-      "staff-admin",
+      staffUsername,
       "admin",
       "admin@example.test",
       adminPassword,
     );
-    const customer = await create(
-      "client-one",
-      "customer",
-      "client@example.test",
-    );
+    const customer = await create("client-one", "customer", memberEmail);
     const architect = await create("designer-one", "architect");
     const builder = await create("builder-one", "builder");
     let users = await (await request("/api/admin/users")).json();
@@ -183,7 +182,7 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
       (
         await request("/api/admin/users", "POST", {
           username: "other-user",
-          email: "CLIENT@EXAMPLE.TEST",
+          email: memberEmail.toUpperCase(),
           name: "Duplicate",
           role: "customer",
           password: memberPassword,
@@ -194,7 +193,7 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
     assert.equal(
       (
         await request("/api/admin/users", "POST", {
-          username: "client@example.test",
+          username: memberEmail,
           name: "Duplicate",
           role: "customer",
           password: memberPassword,
@@ -218,7 +217,7 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
       assert.ok([400, 409].includes(response.status));
     }
     const member = await signIn(
-      "CLIENT@EXAMPLE.TEST",
+      memberEmail.toUpperCase(),
       memberPassword,
       false,
       "customer",
@@ -274,7 +273,7 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
       401,
     );
     assert.equal(
-      (await signIn("staff-admin", adminPassword, false, "customer")).response
+      (await signIn(staffUsername, adminPassword, false, "customer")).response
         .status,
       401,
     );
@@ -336,7 +335,7 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
     let history = await (
       await request("/api/admin/history?section=website")
     ).json();
-    assert.equal(history.events[0].actor, "staff-admin");
+    assert.equal(history.events[0].actor, staffUsername);
     const resetPassword = crypto.randomBytes(24).toString("hex");
     assert.equal(
       (
@@ -487,8 +486,8 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
         ...(path === "/api/project/source-files"
           ? []
           : ["passwordHash", "passwordSalt"]),
-        "client@example.test",
-        "staff-admin",
+        memberEmail,
+        staffUsername,
         memberPassword,
         adminPassword,
         ...disk.users.map((user) => user.passwordHash),
@@ -519,7 +518,7 @@ test("only admins manage persistent hashed accounts; roles, revocation and publi
     // A second admin survives restart and remains usable when the original env login is disabled.
     await stop();
     await start(false);
-    const restored = await signIn("staff-admin", adminPassword, true);
+    const restored = await signIn(staffUsername, adminPassword, true);
     assert.equal(restored.response.status, 200);
     assert.equal(
       (

@@ -54,6 +54,7 @@ const empty = (): WarrantyInput => ({
   applicatorPhone: "",
   notes: "",
   receiptId: "",
+  sitePhotoIds: [],
   consent: false,
   submissionId: crypto.randomUUID(),
 });
@@ -73,6 +74,8 @@ export function WarrantyPage() {
     [category, setCategory] = useState(""),
     [receipt, setReceipt] = useState<ReceiptInfo | null>(null),
     [reference, setReference] = useState("");
+  const [sitePhotos, setSitePhotos] = useState<ReceiptInfo[]>([]);
+  const photoUploadRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null),
     headingRef = useRef<HTMLHeadingElement>(null);
   const remote = contentOrigin() !== location.origin;
@@ -87,6 +90,7 @@ export function WarrantyPage() {
     setForm(empty());
     setCategory("");
     setReceipt(null);
+    setSitePhotos([]);
     setReference("");
     setError("");
     setBusy(false);
@@ -209,6 +213,7 @@ export function WarrantyPage() {
       await warrantyApi("/api/warranty/logout", {});
       setForm(empty());
       setReceipt(null);
+      setSitePhotos([]);
       setPhone("");
       setCode("");
       setChallenge("");
@@ -253,6 +258,71 @@ export function WarrantyPage() {
       if (uploadRef.current) uploadRef.current.value = "";
     }
   }
+  /* Upload building images into the same private, session-scoped registration. */
+  async function uploadBuildingPhotos(files: FileList | null) {
+    if (!files?.length) return;
+    const chosen = Array.from(files);
+    if (sitePhotos.length + chosen.length > 5) {
+      setError("Attach up to five building photos.");
+      return;
+    }
+    if (
+      chosen.some(
+        (file) =>
+          !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+          file.size > 5 * 1024 * 1024,
+      )
+    ) {
+      setError("Choose JPEG, PNG or WebP building photos up to 5 MB each.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    let next = [...sitePhotos];
+    try {
+      for (const file of chosen) {
+        const data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result));
+          reader.onerror = () =>
+            reject(Error("The building photo could not be read."));
+          reader.readAsDataURL(file);
+        });
+        const photo = await warrantyApi<ReceiptInfo>(
+          "/api/warranty/site-photos",
+          { name: file.name, data },
+        );
+        next = [...next, photo];
+        setSitePhotos(next);
+        setForm((current) => ({
+          ...current,
+          sitePhotoIds: next.map((item) => item.id),
+        }));
+      }
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(false);
+      if (photoUploadRef.current) photoUploadRef.current.value = "";
+    }
+  }
+  async function removeBuildingPhoto(photo: ReceiptInfo) {
+    setBusy(true);
+    setError("");
+    try {
+      await warrantyApi("/api/warranty/site-photos/" + photo.id, {}, "DELETE");
+      const next = sitePhotos.filter((item) => item.id !== photo.id);
+      setSitePhotos(next);
+      setForm((current) => ({
+        ...current,
+        sitePhotoIds: next.map((item) => item.id),
+      }));
+    } catch (failure) {
+      setError((failure as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   /* Save the complete purchase once and remain on the confirmation screen. */
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -267,6 +337,7 @@ export function WarrantyPage() {
       setReference(saved.reference);
       setStep("success");
       setReceipt(null);
+      setSitePhotos([]);
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -694,6 +765,58 @@ export function WarrantyPage() {
                         "tel",
                         25,
                       )}
+                    </div>
+                    <div className="wr-building-photos">
+                      <h3>Building photos (optional)</h3>
+                      <p>
+                        Add up to five photos of the building or application
+                        area. JPEG, PNG or WebP, up to 5 MB each. Photos are
+                        private and available to Areva admins reviewing this
+                        registration.
+                      </p>
+                      <label className="wr-photo-upload">
+                        <Upload size={19} /> Add building photos
+                        <input
+                          ref={photoUploadRef}
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          aria-label="Upload building photos"
+                          disabled={busy || sitePhotos.length >= 5}
+                          onChange={(event) =>
+                            void uploadBuildingPhotos(event.target.files)
+                          }
+                        />
+                      </label>
+                      <div className="wr-photo-grid">
+                        {sitePhotos.map((photo) => (
+                          <figure key={photo.id}>
+                            <a
+                              href={"/api/warranty/site-photos/" + photo.id}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <img
+                                src={"/api/warranty/site-photos/" + photo.id}
+                                alt={"Building photo: " + photo.name}
+                                loading="lazy"
+                              />
+                            </a>
+                            <figcaption>
+                              {photo.name} · {Math.ceil(photo.bytes / 1024)} KB
+                            </figcaption>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              aria-label={"Remove building photo " + photo.name}
+                              onClick={() => void removeBuildingPhoto(photo)}
+                            >
+                              <X size={16} /> Remove
+                            </button>
+                          </figure>
+                        ))}
+                      </div>
+                      <small>{sitePhotos.length} of 5 photos attached</small>
                     </div>
                     <label className="wr-field wr-notes">
                       Additional details

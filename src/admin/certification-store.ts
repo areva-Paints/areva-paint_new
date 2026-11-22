@@ -7,6 +7,7 @@ import { isDeepStrictEqual } from "node:util";
 import { DOCUMENT_TYPES, type CertificationDocument } from "./content-types";
 import type { Product } from "../types";
 import { dataDir } from "./content-store";
+import { CATEGORIES } from "../data/paintsData";
 
 /* Require a plain object before reading document-card fields. */
 const record = (value: unknown): value is Record<string, any> =>
@@ -59,6 +60,23 @@ export function prepareCertifications(
   );
   const attachmentIds = new Set<string>();
   return input.map((item) => {
+    const old = previous.find((row) => row.id === item?.id);
+    /* Older editors retain product-type assignments when they omit this field. */
+    const categoryIds =
+      item?.categoryIds === undefined
+        ? (old?.categoryIds ?? [])
+        : item.categoryIds;
+    if (
+      !Array.isArray(categoryIds) ||
+      categoryIds.length > CATEGORIES.length ||
+      new Set(categoryIds).size !== categoryIds.length ||
+      !categoryIds.every(
+        (id) =>
+          typeof id === "string" &&
+          CATEGORIES.some((category) => category.id === id),
+      )
+    )
+      throw Error("Select valid product types without duplicates.");
     if (
       !record(item) ||
       !text(item.title, 150, true) ||
@@ -135,10 +153,15 @@ export function prepareCertifications(
       validUntil: item.validUntil,
       published: item.published,
       productIds: item.productIds.filter((id) => productIds.has(id)),
+      categoryIds,
       attachments,
     };
-    const old = previous.find((row) => row.id === item.id);
-    const oldFields = old && (({ createdAt, updatedAt, ...rest }) => rest)(old);
+    const oldFields =
+      old &&
+      (({ createdAt, updatedAt, ...rest }) => ({
+        ...rest,
+        categoryIds: rest.categoryIds ?? [],
+      }))(old);
     return {
       ...fields,
       createdAt: old?.createdAt || now,

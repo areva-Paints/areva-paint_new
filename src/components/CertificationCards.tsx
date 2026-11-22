@@ -3,6 +3,8 @@
  * File URLs are public catalogue documents, never private warranty receipts.
  */
 import React from "react";
+import { CATEGORIES } from "../data/paintsData";
+import { documentAppliesToProduct } from "../data/warrantyTerms";
 import {
   DOCUMENT_TYPES,
   type CertificationDocument,
@@ -62,6 +64,9 @@ export function CertificationsSection({
               const products = (content?.products ?? []).filter((product) =>
                 item.productIds.includes(product.id),
               );
+              const categories = CATEGORIES.filter((category) =>
+                item.categoryIds?.includes(category.id),
+              );
               return (
                 <article key={item.id} className="cd-card">
                   <span className="cd-label">
@@ -108,10 +113,13 @@ export function CertificationsSection({
                       )}
                     </dl>
                   )}
-                  {products.length > 0 && (
+                  {(products.length > 0 || categories.length > 0) && (
                     <p className="cd-products">
                       <strong>Applies to</strong>{" "}
-                      {products.map((product) => product.name).join(", ")}
+                      {[
+                        ...categories.map((category) => category.name),
+                        ...products.map((product) => product.name),
+                      ].join(", ")}
                     </p>
                   )}
                   <Attachments item={item} />
@@ -137,7 +145,12 @@ export function ProductDocumentDownloads({
   productId: string;
 }) {
   const items = (content?.certifications ?? []).filter(
-    (item) => item.published && item.productIds.includes(productId),
+    (item) =>
+      item.published &&
+      !!content?.products.some(
+        (product) =>
+          product.id === productId && documentAppliesToProduct(item, product),
+      ),
   );
   if (!items.length) return null;
   return (

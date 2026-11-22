@@ -64,6 +64,7 @@ export function warrantySearch(search: string) {
       row.applicatorPhone,
       row.notes,
       row.receipt.name,
+      ...(row.sitePhotos ?? []).map((photo) => photo.name),
       WARRANTY_STATUSES[row.status],
       row.reviewNotes,
       row.reviewedBy,

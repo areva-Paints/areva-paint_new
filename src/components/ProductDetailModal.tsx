@@ -99,7 +99,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   <span className="text-stone-400 block text-[10px] uppercase font-semibold">Washability</span>
                   <span className="font-bold text-stone-900">{product.washability}</span>
                 </div>
-                {product.specs.warrantyYears > 0 && <ProductWarrantyBadge product={product}/>}
+                {product.specs.warrantyYears > 0 && <ProductWarrantyBadge product={product} onNavigate={onClose}/>}
               </div>
 
               {/* Available Sizes */}

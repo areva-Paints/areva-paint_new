@@ -61,6 +61,7 @@
     "about",
     "our-story",
     "certs",
+    "terms",
     "portals",
     "contact",
   ]);
@@ -212,6 +213,7 @@
   /* Change the visible public section and synchronize history, active links and category state. */
   function navigate(id, options = {}, updateHistory = true) {
     if (id === "products") id = "products/interior";
+    const termsPath = id === "terms" || id.startsWith("terms/");
     const allProductsPath = id === "products/all";
     const categoryPath = id.startsWith("products/") && !allProductsPath;
     const matchedCategory = categoryPath
@@ -221,7 +223,7 @@
     const hubPath = id === "solutions" || unknownCategory;
     const target =
       document.getElementById(
-        hubPath
+        termsPath ? "terms" : hubPath
           ? "solutions"
           : categoryPath || allProductsPath
             ? "products"
@@ -244,6 +246,7 @@
       const camera = document.getElementById("live");
       if (camera && !camera.hidden) document.getElementById("stopcam")?.click();
     }
+    if (termsPath) document.querySelectorAll("dialog[open]").forEach((dialog) => dialog.close());
     current = view;
     resetProductPhotos();
     scheduleProductFlip();
@@ -266,7 +269,7 @@
       .querySelectorAll(".ref-more[open]")
       .forEach((menu) => menu.removeAttribute("open"));
     const route =
-      view === "products"
+      termsPath ? id : view === "products"
         ? currentCategory !== null
           ? "products/" + categories[currentCategory].id
           : "products/all"
@@ -274,6 +277,7 @@
     if (unknownCategory) history.replaceState(null, "", "#solutions");
     else if (updateHistory && location.hash !== "#" + route)
       history.pushState(null, "", "#" + route);
+    if (termsPath) window.dispatchEvent(new Event("areva-terms-navigate"));
     requestAnimationFrame(() => {
       window.dispatchEvent(new Event("resize"));
       const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -321,7 +325,7 @@
     const link = event.target.closest('a[href^="#"]');
     if (!link || link.target === "_blank" || !link.hash) return;
     const id = decodeHash(link.hash);
-    if (!document.getElementById(id) && !id.startsWith("products/")) return;
+    if (!document.getElementById(id) && !id.startsWith("products/") && !id.startsWith("terms/")) return;
     event.preventDefault();
     navigate(id, { behavior: "smooth" });
   });

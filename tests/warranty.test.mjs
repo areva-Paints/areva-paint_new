@@ -203,8 +203,9 @@ test("demo warranty registration persists private details and receipts with admi
     );
     const options = await (await req("/api/warranty/options")).json(),
       product = options.products[0];
+    const privateName = "PRIVATE_WARRANTY_CUSTOMER_" + crypto.randomUUID();
     const form = {
-      customerName: "PRIVATE_WARRANTY_CUSTOMER <script>bad()</script>",
+      customerName: privateName + " <script>bad()</script>",
       email: "private@example.test",
       alternateMobile: "9000000001",
       productId: product.id,
@@ -388,7 +389,7 @@ test("demo warranty registration persists private details and receipts with admi
           await (
             await req(url, undefined, url.includes("/project/") ? admin : "")
           ).text()
-        ).includes("PRIVATE_WARRANTY_CUSTOMER"),
+        ).includes(privateName),
         false,
         url,
       );

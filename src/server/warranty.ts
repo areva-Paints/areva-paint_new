@@ -2,6 +2,13 @@
  * Manage warranty demo entry, scoped sessions, private receipts, idempotent registration and admin review/search/PDF routes.
  * Demo OTP never marks a phone as verified; final review decisions are immutable.
  */
+import {
+  createBuildingPhotoRouter,
+  validateSitePhotos,
+  consumeSitePhotos,
+  sitePhotoPath,
+  privateWarrantyStorageBytes,
+} from "./warranty-site-photos";
 import { createWarrantyPdf } from "./warranty-pdf";
 import { warrantySearch } from "./warranty-search";
 import express from "express";
@@ -59,6 +66,7 @@ export function readWarranties(): Row[] {
   return rows.map((row) => ({
     ...row,
     loginMobile: row.loginMobile ?? row.mobile,
+    sitePhotos: row.sitePhotos ?? [],
     version: row.version ?? 1,
     reviewNotes: row.reviewNotes ?? "",
     reviewedBy: row.reviewedBy ?? "",
@@ -288,6 +296,10 @@ warrantyRouter.post("/logout", (req, res) => {
     .clearCookie(cookieName, { path: "/api/warranty" })
     .json({ success: true });
 });
+warrantyRouter.use(
+  "/site-photos",
+  createBuildingPhotoRouter(requireWarranty, sessionKey),
+);
 /* POST /receipt: Validate receipt bytes and ownership before saving them privately. */
 warrantyRouter.post(
   "/receipt",
@@ -338,12 +350,7 @@ warrantyRouter.post(
           "Keep up to three receipt uploads per session. Submit a registration or try again later.",
       });
     fs.mkdirSync(receiptDir(), { recursive: true, mode: 0o700 });
-    const total = fs
-      .readdirSync(receiptDir())
-      .reduce(
-        (sum, name) => sum + fs.lstatSync(path.join(receiptDir(), name)).size,
-        0,
-      );
+    const total = privateWarrantyStorageBytes();
     const configured = Number(process.env.WARRANTY_STORAGE_MB || "128");
     const limit =
       Number.isFinite(configured) && configured > 0
@@ -503,6 +510,7 @@ warrantyRouter.post(
         return res.status(507).json({
           error: "Registration storage is full. Please contact Areva Paints.",
         });
+      const sitePhotos = validateSitePhotos(body.sitePhotoIds, sessionKey(req));
       const id = crypto.randomUUID(),
         reference =
           "ARV-WR-" + indiaToday().replace(/-/g, "") + "-" + id.toUpperCase();
@@ -527,10 +535,16 @@ warrantyRouter.post(
         approvalConfirmed: false,
         reviewHistory: [],
         receipt: upload.receipt,
+        sitePhotos,
         createdAt: new Date().toISOString(),
         submissionId: body.submissionId,
       };
       writePrivateJson(storeFile(), [row, ...rows]);
+      try {
+        consumeSitePhotos(sitePhotos);
+      } catch {
+        /* Durable registrations retain ownership; pruning checks references. */
+      }
       // A submitted receipt must never be removed by temporary-upload cleanup.
       delete uploads[row.receipt.id];
       try {
@@ -794,4 +808,18 @@ warrantyAdminRouter.get("/:id/receipt", (req, res) => {
         "image/webp": "webp",
       }[row.receipt.mime],
   );
+});
+
+/* Building photos are private attachments owned by the selected registration. */
+warrantyAdminRouter.get("/:id/site-photos/:photoId", (req, res) => {
+  const row = uuid(req.params.id)
+    ? readWarranties().find((item) => item.id === req.params.id)
+    : null;
+  const photo = row?.sitePhotos?.find((item) => item.id === req.params.photoId);
+  if (!photo || !fs.existsSync(sitePhotoPath(photo)))
+    return res.status(404).json({ error: "Building photo not found." });
+  res.setHeader("Cache-Control", "no-store");
+  if (req.query.download === "1")
+    return res.download(sitePhotoPath(photo), photo.name);
+  res.type(photo.mime).sendFile(sitePhotoPath(photo));
 });

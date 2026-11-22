@@ -88,7 +88,10 @@ export function readContent(): SiteContent {
   return {
     // Allowlist public fields; future private store metadata must never be spread here.
     revision: content.revision,
-    certifications: content.certifications ?? [],
+    certifications: (content.certifications ?? []).map((item) => ({
+      ...item,
+      categoryIds: item.categoryIds ?? [],
+    })),
     products: content.products,
     dealers: content.dealers,
     landingImages: content.landingImages,

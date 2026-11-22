@@ -54,12 +54,13 @@ export interface WarrantyInput {
   applicatorPhone: string;
   notes: string;
   receiptId: string;
+  sitePhotoIds?: string[];
   consent: boolean;
   submissionId: string;
 }
 export interface WarrantyRegistration extends Omit<
   WarrantyInput,
-  "receiptId" | "submissionId"
+  "receiptId" | "submissionId" | "sitePhotoIds"
 > {
   id: string;
   reference: string;
@@ -80,5 +81,6 @@ export interface WarrantyRegistration extends Omit<
   approvalConfirmed: boolean;
   reviewHistory: WarrantyReview[];
   receipt: ReceiptInfo;
+  sitePhotos?: ReceiptInfo[];
   createdAt: string;
 }

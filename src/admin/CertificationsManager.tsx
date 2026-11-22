@@ -19,6 +19,7 @@ import {
   type CertificationDocument,
   type SiteContent,
 } from "./content-types";
+import { CATEGORIES } from "../data/paintsData";
 import { AdminUpdated } from "./ActivityHistory";
 
 /* Keep label, required state and validation layout consistent across editor fields. */
@@ -301,9 +302,11 @@ export function CertificationsManager({
               <p>{item.description}</p>
               <small>
                 {item.attachments.length} PDF attachment(s) ·{" "}
-                {item.productIds.length
-                  ? `${item.productIds.length} linked product(s)`
-                  : "Company-wide"}
+                {(item.categoryIds ?? []).length
+                  ? `${item.categoryIds!.length} product type(s)`
+                  : item.productIds.length
+                    ? `${item.productIds.length} linked product(s)`
+                    : "Company-wide"}
               </small>
               <AdminUpdated
                 section="certifications"
@@ -507,6 +510,36 @@ export function CertificationsManager({
                   />
                   Show on website
                 </label>
+                <fieldset className="adm-cert-products">
+                  <legend>Product types (optional)</legend>
+                  <small>
+                    Assign a document to every current and future product in a
+                    type.
+                  </small>
+                  <div>
+                    {CATEGORIES.map((category) => (
+                      <label key={category.id}>
+                        <input
+                          type="checkbox"
+                          checked={(draft.categoryIds ?? []).includes(
+                            category.id,
+                          )}
+                          onChange={(event) =>
+                            patch(
+                              "categoryIds",
+                              event.target.checked
+                                ? [...(draft.categoryIds ?? []), category.id]
+                                : (draft.categoryIds ?? []).filter(
+                                    (id) => id !== category.id,
+                                  ),
+                            )
+                          }
+                        />
+                        {category.name}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
                 <fieldset className="adm-cert-products">
                   <legend>Linked products (optional)</legend>
                   <small>Leave unselected for a company-wide document.</small>

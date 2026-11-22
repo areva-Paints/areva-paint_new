@@ -49,6 +49,14 @@ const record = () => ({
     mime: "application/pdf",
     bytes: 1250,
   },
+  sitePhotos: [
+    {
+      id: "33333333-3333-4333-8333-333333333333",
+      name: "Private building exterior.png",
+      mime: "image/png",
+      bytes: 2048,
+    },
+  ],
   verificationMode: "demo",
   mobileVerified: false,
   status: "approved",
@@ -100,6 +108,8 @@ test("decision PDF contains all saved fields and long review notes across brande
   assert.ok(pages < 15, "Pagination must not add unbounded empty pages");
   for (const value of [
     row.reference,
+    "Private building exterior.png",
+    "Building photos",
     row.customerName,
     row.mobile,
     row.loginMobile,

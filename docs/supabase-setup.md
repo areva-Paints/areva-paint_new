@@ -70,3 +70,8 @@ Existing installations after migration 010 use [011-warranty-login-mobile.sql](.
 For an existing installation after migration 011, apply [012-contact-and-review-integrity.sql](../database/migrations/012-contact-and-review-integrity.sql) once. It rejects punctuation-only/invalid contact numbers, requires nonblank reasons and reviewer metadata for rejected/needs-information reviews, and limits approval confirmation to Approved records. Preflight stops and reports counts if older records conflict; it never silently rewrites data or bypasses the final-review lock. Fresh schema/setup already includes these checks and still has 23 tables.
 
 The optional [review-checks.sql](../database/review-checks.sql) runs in a read-only transaction and reports table/RLS counts, private role grants, unvalidated constraints and data-quality counts without printing customer data. Run it as the intended installation owner after setup/upgrades. It does not connect the app to SQL. See [README.md](../README.md) for the complete current hosting/storage guide. No live database was changed during this review.
+
+
+## Building photos and product-type terms — 22 November 2026
+
+After migration 012, existing installations use [013-building-photos-and-product-terms.sql](../database/migrations/013-building-photos-and-product-terms.sql) once. It adds product-type document assignments and validated private building-photo metadata; table count remains 23. Fresh schema/setup includes these changes. The application still saves private JSON and no live database migration is performed. See [the feature guide](building-photos-and-warranty-terms.md).

@@ -225,6 +225,20 @@ export async function createWarrantyPdf(
       ["Painter / applicator phone", row.applicatorPhone],
       ["Additional details", row.notes],
     ].forEach(([label, value]) => field(label, value));
+    if (row.sitePhotos?.length) {
+      heading("Building photos");
+      field("Photo attachments", row.sitePhotos.length);
+      row.sitePhotos.forEach((photo, index) =>
+        field(
+          "Building photo " + (index + 1),
+          photo.name + " · " + photo.mime + " · " + photo.bytes + " bytes",
+        ),
+      );
+      field(
+        "Photo access",
+        "Private attachments available to signed-in admins with this registration.",
+      );
+    }
     heading("Registration and verification");
     field("Submitted on", date(row.createdAt));
     field("Registration ID", row.id);

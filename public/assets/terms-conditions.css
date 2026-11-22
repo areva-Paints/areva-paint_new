@@ -1,0 +1,186 @@
+/* Product-scoped published terms share the public gradient, card palette and typography. */
+.tc-section {
+  background: #fbf9fd;
+  color: #32134f;
+  scroll-margin-top: 130px;
+}
+.tc-wrap {
+  max-width: 1240px;
+  width: calc(100% - 48px);
+  margin: auto;
+}
+.tc-content {
+  padding-top: 48px;
+  padding-bottom: 64px;
+}
+.tc-intro {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.tc-intro h2 {
+  font-size: clamp(24px, 3vw, 36px);
+  margin: 0 0 12px;
+}
+.tc-intro p,
+.tc-card p,
+.tc-note {
+  color: #6b6475;
+  line-height: 1.7;
+}
+.tc-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.tc-filters label {
+  display: grid;
+  gap: 9px;
+  flex: 1 1 240px;
+  font-weight: 600;
+}
+.tc-filters select {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid #ded1eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: white;
+  color: #32134f;
+  font: inherit;
+}
+.tc-filters button {
+  min-height: 48px;
+  border: 1px solid #ded1eb;
+  border-radius: 12px;
+  padding: 12px 20px;
+  background: white;
+  color: #4f2672;
+  cursor: pointer;
+  font: inherit;
+}
+.tc-summary {
+  color: #756981;
+  margin: 22px 0;
+}
+.tc-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+.tc-card {
+  padding: 28px;
+  border: 1px solid #e8dfef;
+  border-top: 3px solid #e7af32;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 12px 40px #3b135a06;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.tc-card h3 {
+  margin: 12px 0;
+  font-size: 23px;
+}
+.tc-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #734e93;
+}
+.tc-card .tc-applies,
+.tc-reference {
+  font-size: 14px;
+}
+.tc-downloads {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.tc-downloads a {
+  display: block;
+  padding: 13px 16px;
+  border: 1px solid #dfd0eb;
+  border-radius: 12px;
+  color: #42145f;
+  font-weight: 600;
+  text-decoration: none;
+  background: #faf7fd;
+}
+.tc-downloads small {
+  float: right;
+  color: #877194;
+}
+.tc-empty {
+  padding: 40px 24px;
+  border: 1px dashed #d6c5e2;
+  border-radius: 20px;
+  text-align: center;
+}
+.tc-note {
+  margin-top: 28px;
+  font-size: 14px;
+}
+.tc-note a,
+.tc-empty a {
+  color: #643690;
+  text-decoration: underline;
+}
+.tc-section [hidden] {
+  display: none !important;
+}
+.product-warranty-badge {
+  text-decoration: none;
+}
+.product-warranty-badge:hover {
+  border-color: #ffe19a;
+  box-shadow: 0 0 0 3px #e7af3226;
+}
+.product-warranty-badge:focus-visible {
+  outline: 3px solid #ffcd55;
+  outline-offset: 5px;
+}
+@media (max-width: 650px) {
+  .tc-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tc-wrap {
+    width: calc(100% - 32px);
+  }
+  .tc-card {
+    padding: 22px;
+  }
+  .tc-filters button {
+    width: 100%;
+  }
+}
+
+/* Apply the same banner when this shared section is mounted in the React studio. */
+.tc-section > .ref-page-banner {
+  background: var(--areva-page-gradient);
+  color: white;
+  padding: var(--areva-page-padding);
+}
+.tc-section > .ref-page-banner h1 {
+  color: white;
+  font: var(--areva-page-title);
+  letter-spacing: -0.035em;
+  margin: 18px 0 22px;
+  overflow-wrap: anywhere;
+}
+.tc-section > .ref-page-banner p {
+  color: white;
+  font: var(--areva-page-copy);
+  margin: 0;
+}
+.tc-section > .ref-page-banner .ref-eyebrow {
+  color: white;
+  font: var(--areva-page-kicker);
+  letter-spacing: 0.2em;
+}
+
+.tc-filters label, .tc-filters select { min-width: 0; box-sizing: border-box; }
+/* Warranty links inside specification dialogs share the card badge and close on navigation. */
+.ref-dialog-warranty { display: flex; justify-content: flex-end; }
+.ref-dialog-warranty:empty { display: none; }

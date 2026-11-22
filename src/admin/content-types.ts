@@ -87,6 +87,7 @@ export interface CertificationDocument {
   issuedOn: string;
   validUntil: string;
   productIds: string[];
+  categoryIds?: string[];
   attachments: CertificationAttachment[];
   published: boolean;
   createdAt: string;
