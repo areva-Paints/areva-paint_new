@@ -1,5 +1,5 @@
 /*
- * Blend selected shades into sample or uploaded room images using canvas masks and keep undo/export state in the browser.
+ * Host the shared wall-selection painter with room/upload, shade-library and local export controls.
  */
 import { escapeMarkup } from "../data/safeMarkup";
 import { ColourCollectionHeading, ShadeLibrary } from "./ShadeLibrary";
@@ -10,13 +10,18 @@ import {
   RotateCcw,
   Undo2,
   Upload,
-  Sliders,
   Printer,
   Palette,
   MessageSquare,
   Camera,
 } from "lucide-react";
-import { ColorShade, RoomPreset } from "../types";
+import { RoomPreset } from "../types";
+import {
+  decodePhoto,
+  loadPhotoPainter,
+  type PhotoPainter,
+} from "../visualizer/photo-painter";
+import "../../public/assets/photo-paint-studio.css";
 import {
   COLOR_SHADES as DEFAULT_SHADES,
   ROOM_PRESETS,
@@ -30,7 +35,7 @@ interface ColorVisualizerProps {
   onOpenLiveAR?: () => void;
 }
 
-/* Blend selected shades into sample or uploaded room images using canvas masks and keep undo/export state in the browser.. */
+/* Select wall areas before painting; photos, exclusions and undo remain local. */
 export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   selectedColorHex,
   selectedColorName,
@@ -43,12 +48,20 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const originalCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const toolsRef = useRef<HTMLDivElement | null>(null);
+  const painterRef = useRef<PhotoPainter | null>(null);
+  const imageGeneration = useRef(0);
+  const chosenShade = useRef({
+    hex: selectedColorHex,
+    name: selectedColorName,
+  });
+  chosenShade.current = { hex: selectedColorHex, name: selectedColorName };
+  const [painterReady, setPainterReady] = useState(false);
+  const [canUndo, setCanUndo] = useState(false);
 
   const [activePreset, setActivePreset] = useState<RoomPreset>(ROOM_PRESETS[0]);
   const [isCustomPhoto, setIsCustomPhoto] = useState(false);
   const [sliderPosition, setSliderPosition] = useState<number>(100); // 100 = full painted, 0 = full original
-  const [tolerance, setTolerance] = useState<number>(24);
-  const [history, setHistory] = useState<ImageData[]>([]);
   const [savedColors, setSavedColors] = useState<string[]>(() => {
     try {
       const saved: unknown = JSON.parse(
@@ -69,15 +82,11 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
   const [appliedColors, setAppliedColors] = useState<
     Array<{ name: string; hex: string }>
-  >([{ name: selectedColorName, hex: selectedColorHex }]);
+  >([]);
 
-  const [lastTappedCoords, setLastTappedCoords] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
   const [isHoldingOriginal, setIsHoldingOriginal] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>(
-    "Tap any wall to apply current shade.",
+    "Loading photo tools…",
   );
 
   // Current active shade object
@@ -91,383 +100,148 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     goesWellWith: ["#f4efe6", "#26305a", "#b9bfcc"],
   };
 
-  // Load preset room or custom photo into canvas
+  /* The same bounded editor controls geometry, exclusions and paint in both studios. */
   useEffect(() => {
-    if (isCustomPhoto) return;
-    const canvas = canvasRef.current;
-    const origCanvas = originalCanvasRef.current;
-    if (!canvas || !origCanvas) return;
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const origCtx = origCanvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx || !origCtx) return;
-
-    let isSubscribed = true;
-
-    /* Load the selected room into the canvas and initialize its paint mask. */
-    const setupCanvas = (img: HTMLImageElement) => {
-      if (!isSubscribed) return;
-      const maxW = 960;
-      const scale = Math.min(1, maxW / img.width);
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      origCanvas.width = canvas.width;
-      origCanvas.height = canvas.height;
-
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      origCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      setHistory([]);
-      setStatusMessage(
-        `Loaded ${activePreset.name}. Pick a shade from the palette, then tap any wall to paint.`,
-      );
-    };
-
-    // Safe fetch blob first to ensure clean non-tainted canvas, fallback to Image
-    fetch(activePreset.imageUrl)
-      .then((res) => {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.blob();
-      })
-      .then((blob) => {
-        if (!isSubscribed) return;
-        const blobUrl = URL.createObjectURL(blob);
-        const img = new Image();
-        img.onload = () => {
-          URL.revokeObjectURL(blobUrl);
-          setupCanvas(img);
-        };
-        img.onerror = () => fallbackImage(activePreset.imageUrl);
-        img.src = blobUrl;
-      })
-      .catch(() => fallbackImage(activePreset.imageUrl));
-
-    /* Recover an unavailable room image with the supported local scene. */
-    function fallbackImage(src: string) {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => setupCanvas(img);
-      img.onerror = () => {
-        setStatusMessage(
-          `Could not load ${activePreset.name}. Try uploading your own room photo.`,
-        );
-      };
-      img.src = src;
-    }
-
-    return () => {
-      isSubscribed = false;
-    };
-  }, [activePreset, isCustomPhoto]);
-
-  // When selectedColorHex changes: Inform user to tap any wall surface with newly selected shade
-  useEffect(() => {
-    setStatusMessage(
-      `Selected ${selectedColorName} (${selectedColorHex}). Tap any wall area to paint.`,
-    );
-  }, [selectedColorHex, selectedColorName]);
-
-  // Handle Photo Upload
-  /* Decode a selected photo into local canvas state without uploading it. */
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onerror = () =>
-      setStatusMessage(
-        "Could not read this photo. Please choose a JPG, PNG, or WebP image.",
-      );
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onerror = () =>
-        setStatusMessage(
-          "Could not open this photo. Please try another image.",
-        );
-      img.onload = () => {
-        const canvas = canvasRef.current;
-        const origCanvas = originalCanvasRef.current;
-        if (!canvas || !origCanvas) return;
-        const ctx = canvas.getContext("2d", { willReadFrequently: true });
-        const origCtx = origCanvas.getContext("2d", {
-          willReadFrequently: true,
+    let active = true;
+    void loadPhotoPainter()
+      .then((studio) => {
+        if (!active || !canvasRef.current || !toolsRef.current) return;
+        painterRef.current = studio.createEditor({
+          canvas: canvasRef.current,
+          controls: toolsRef.current,
+          shade: () => chosenShade.current,
+          onStatus: setStatusMessage,
+          onChange: ({ canUndo, colors }) => {
+            setCanUndo(canUndo);
+            setAppliedColors(colors);
+          },
+          onBeforeSelect: () => {
+            setSliderPosition(100);
+            setIsHoldingOriginal(false);
+          },
         });
-        if (!ctx || !origCtx) return;
-
-        const maxDim = 960;
-        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        origCanvas.width = canvas.width;
-        origCanvas.height = canvas.height;
-
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        origCtx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-        // Custom photo loaded cleanly without unwanted center auto-paint!
-        setIsCustomPhoto(true);
-        setLastTappedCoords(null);
-        setHistory([]);
-        setAppliedColors([]);
-        setStatusMessage(
-          "Your photo is loaded! Tap on any wall surface to paint it in " +
-            selectedColorName +
-            ".",
-        );
-      };
-      img.src = event.target?.result as string;
+        setPainterReady(true);
+      })
+      .catch((error) => {
+        if (active) setStatusMessage(error.message);
+      });
+    return () => {
+      active = false;
+      imageGeneration.current++;
+      painterRef.current?.destroy();
+      painterRef.current = null;
     };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
+  }, []);
 
-  // Intelligent Luminance-Preserving Flood Fill Wall Paint
-  /* Blend the chosen shade into the selected connected image region. */
-  const applyPaintAt = (x: number, y: number) => {
-    const canvas = canvasRef.current;
-    const origCanvas = originalCanvasRef.current;
-    if (!canvas || !origCanvas) return;
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    const origCtx = origCanvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx || !origCtx) return;
-
-    const width = canvas.width;
-    const height = canvas.height;
-    const currentImageData = ctx.getImageData(0, 0, width, height);
-    const origImageData = origCtx.getImageData(0, 0, width, height);
-
-    setHistory((prev) => [...prev.slice(-7), currentImageData]);
-
-    const d = origImageData.data;
-    const o = currentImageData.data;
-
-    const clampX = Math.max(2, Math.min(width - 3, Math.floor(x)));
-    const clampY = Math.max(2, Math.min(height - 3, Math.floor(y)));
-
-    // Sample a 5x5 neighborhood to compute robust reference seed values (eliminates sensor noise/JPEG artifacts)
-    let sumR = 0,
-      sumG = 0,
-      sumB = 0,
-      validSamples = 0;
-    for (let dy = -2; dy <= 2; dy++) {
-      for (let dx = -2; dx <= 2; dx++) {
-        const sIdx = ((clampY + dy) * width + (clampX + dx)) * 4;
-        sumR += d[sIdx];
-        sumG += d[sIdx + 1];
-        sumB += d[sIdx + 2];
-        validSamples++;
-      }
-    }
-    const seedR = sumR / validSamples;
-    const seedG = sumG / validSamples;
-    const seedB = sumB / validSamples;
-    const seedSum = seedR + seedG + seedB + 0.001;
-    const seedNormR = seedR / seedSum;
-    const seedNormG = seedG / seedSum;
-
-    const seedLum = Math.max(
-      0.08,
-      (0.299 * seedR + 0.587 * seedG + 0.114 * seedB) / 255,
+  /* Keep displayed image geometry identical to the selection overlay on every device. */
+  function showPhoto(image: HTMLImageElement) {
+    const canvas = canvasRef.current,
+      original = originalCanvasRef.current;
+    if (!canvas || !original || !painterRef.current) return;
+    const scale = Math.min(
+      1,
+      960 / Math.max(image.naturalWidth, image.naturalHeight),
     );
-
-    const cleanHex = selectedColorHex.replace("#", "");
-    const targetInt = parseInt(cleanHex, 16);
-    const targetR = (targetInt >> 16) & 255;
-    const targetG = (targetInt >> 8) & 255;
-    const targetB = targetInt & 255;
-
-    const effectiveTol = Math.max(16, tolerance || 28);
-    const tolSq = effectiveTol * effectiveTol * 3.6;
-    const chromaTol = 0.12 + effectiveTol / 140;
-    const stepTolSq = 44 * 44 * 3;
-
-    const visited = new Uint8Array(width * height);
-    const queue = new Int32Array(width * height);
-    let qStart = 0,
-      qEnd = 0;
-
-    const seedPos = clampY * width + clampX;
-    queue[qEnd++] = seedPos;
-    visited[seedPos] = 1;
-
-    let paintedPixels = 0;
-
-    while (qStart < qEnd) {
-      const p = queue[qStart++];
-      const px = p % width;
-      const py = Math.floor(p / width);
-      const idx = p * 4;
-
-      const pr = d[idx],
-        pg = d[idx + 1],
-        pb = d[idx + 2];
-      const pixelLum = (0.299 * pr + 0.587 * pg + 0.114 * pb) / 255;
-      const lumRatio = pixelLum / seedLum;
-      const factor = Math.min(1.45, Math.max(0.3, 0.4 + 0.6 * lumRatio));
-
-      o[idx] = Math.min(255, Math.round(targetR * factor));
-      o[idx + 1] = Math.min(255, Math.round(targetG * factor));
-      o[idx + 2] = Math.min(255, Math.round(targetB * factor));
-      paintedPixels++;
-
-      const neighbors = [
-        px > 0 ? p - 1 : -1,
-        px < width - 1 ? p + 1 : -1,
-        py > 0 ? p - width : -1,
-        py < height - 1 ? p + width : -1,
-      ];
-
-      for (let n = 0; n < 4; n++) {
-        const np = neighbors[n];
-        if (np === -1 || visited[np]) continue;
-
-        // Mark every examined pixel before testing it. Otherwise rejected edge pixels
-        // are reconsidered by many neighboring pixels, making the flood fill extremely slow.
-        visited[np] = 1;
-        const ni = np * 4;
-        const nr = d[ni],
-          ng = d[ni + 1],
-          nb = d[ni + 2];
-
-        // Edge step tolerance: do not cross strong wall/object boundaries.
-        const sdr = nr - pr,
-          sdg = ng - pg,
-          sdb = nb - pb;
-        if (sdr * sdr + sdg * sdg + sdb * sdb > stepTolSq) continue;
-
-        // Chromaticity & color distance
-        const dr = nr - seedR,
-          dg = ng - seedG,
-          db = nb - seedB;
-        const distSq = dr * dr + dg * dg + db * db;
-
-        const nSum = nr + ng + nb + 0.001;
-        const nNormR = nr / nSum;
-        const nNormG = ng / nSum;
-        const cDist =
-          Math.abs(nNormR - seedNormR) + Math.abs(nNormG - seedNormG);
-
-        if (distSq <= tolSq || (cDist <= chromaTol && distSq <= tolSq * 3.8)) {
-          queue[qEnd++] = np;
-        }
-      }
-    }
-
-    if (paintedPixels < 20) {
-      // Retry in small neighborhood
-      const offsets = [
-        [-3, -3],
-        [3, -3],
-        [-3, 3],
-        [3, 3],
-        [0, -4],
-        [0, 4],
-        [-4, 0],
-        [4, 0],
-      ];
-      let recovered = false;
-      for (const [ox, oy] of offsets) {
-        const nx = clampX + ox;
-        const ny = clampY + oy;
-        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-          // Check if retry point is valid
-          setLastTappedCoords({ x: nx, y: ny });
-          recovered = true;
-          break;
-        }
-      }
-      if (!recovered) {
-        setStatusMessage(
-          "Point was too small or on an edge. Try tapping directly on an open wall surface.",
-        );
-        return;
-      }
-    }
-
-    ctx.putImageData(currentImageData, 0, 0);
-    setStatusMessage(
-      `Painted wall with ${selectedColorName}. Tap another area or try another shade.`,
+    canvas.width = original.width = Math.max(
+      1,
+      Math.round(image.naturalWidth * scale),
     );
-
-    setAppliedColors((prev) => {
-      const exists = prev.some(
-        (c) => c.hex.toLowerCase() === selectedColorHex.toLowerCase(),
-      );
-      if (!exists) {
-        return [...prev, { name: selectedColorName, hex: selectedColorHex }];
-      }
-      return prev;
+    canvas.height = original.height = Math.max(
+      1,
+      Math.round(image.naturalHeight * scale),
+    );
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    const originalContext = original.getContext("2d", {
+      willReadFrequently: true,
     });
-  };
+    if (!context || !originalContext) return;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    originalContext.drawImage(image, 0, 0, canvas.width, canvas.height);
+    painterRef.current.setImage(
+      context.getImageData(0, 0, canvas.width, canvas.height),
+    );
+  }
 
-  const lastInteractionTimeRef = useRef<number>(0);
-  /* Translate pointer coordinates into bounded canvas painting coordinates. */
-  const handleCanvasInteraction = (clientX: number, clientY: number) => {
-    const now = Date.now();
-    if (now - lastInteractionTimeRef.current < 200) return;
-    lastInteractionTimeRef.current = now;
+  /* Abandon stale room loads so they cannot overwrite a newer upload or selection. */
+  useEffect(() => {
+    if (isCustomPhoto || !painterReady) return;
+    const generation = ++imageGeneration.current;
+    const controller = new AbortController();
+    painterRef.current?.setEnabled(false);
+    setStatusMessage(`Loading ${activePreset.name}…`);
+    void fetch(activePreset.imageUrl, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw Error("Room photo could not load.");
+        return response.blob();
+      })
+      .then(decodePhoto)
+      .then((image) => {
+        if (generation === imageGeneration.current) showPhoto(image);
+      })
+      .catch((error) => {
+        if (
+          !controller.signal.aborted &&
+          generation === imageGeneration.current
+        )
+          setStatusMessage(
+            error.message ||
+              "Could not load this room. Please upload a photo or choose another room.",
+          );
+      });
+    return () => {
+      controller.abort();
+      if (generation === imageGeneration.current) imageGeneration.current++;
+    };
+  }, [activePreset, isCustomPhoto, painterReady]);
 
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  useEffect(() => {
+    painterRef.current?.shadeChanged();
+  }, [selectedColorHex, selectedColorName]);
+  useEffect(() => {
+    painterRef.current?.setComparison(
+      sliderPosition < 100 || isHoldingOriginal,
+    );
+  }, [sliderPosition, isHoldingOriginal]);
 
-    const rect = canvas.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((clientY - rect.top) / rect.height) * canvas.height;
-
-    setLastTappedCoords({ x, y });
-    applyPaintAt(x, y);
-  };
-
-  /* Apply paint at the clicked room position. */
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    handleCanvasInteraction(e.clientX, e.clientY);
-  };
-
-  /* Begin a canvas paint gesture using the current selection. */
-  const handleCanvasPointerDown = (
-    e: React.PointerEvent<HTMLCanvasElement>,
+  /* Decode a bounded supported photo locally; uploads never leave the browser. */
+  const handlePhotoUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    if (e.pointerType === "touch" || e.pointerType === "pen") {
-      handleCanvasInteraction(e.clientX, e.clientY);
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    if (
+      !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
+      file.size > 20 * 1024 * 1024
+    ) {
+      setStatusMessage("Choose a JPEG, PNG or WebP photo up to 20 MB.");
+      return;
+    }
+    if (!painterRef.current) {
+      setStatusMessage("Photo tools are still loading. Please try again.");
+      return;
+    }
+    const generation = ++imageGeneration.current;
+    painterRef.current.setEnabled(false);
+    setStatusMessage("Loading your photo…");
+    try {
+      const image = await decodePhoto(file);
+      if (generation !== imageGeneration.current) return;
+      showPhoto(image);
+      setIsCustomPhoto(true);
+    } catch (error) {
+      if (generation === imageGeneration.current) {
+        painterRef.current?.setEnabled(true);
+        setStatusMessage(
+          (error as Error).message ||
+            "Could not open this photo. Try another JPEG, PNG or WebP.",
+        );
+      }
     }
   };
 
-  /* Restore the previous canvas snapshot from local undo history. */
-  const handleUndo = () => {
-    if (history.length === 0) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const prevImageData = history[history.length - 1];
-    ctx.putImageData(prevImageData, 0, 0);
-    setHistory((prev) => prev.slice(0, -1));
-    setStatusMessage("Reverted last paint stroke.");
-  };
-
-  /* Restore the original room image and clear local paint history. */
-  const handleReset = () => {
-    const canvas = canvasRef.current;
-    const origCanvas = originalCanvasRef.current;
-    if (!canvas || !origCanvas) return;
-    const ctx = canvas.getContext("2d");
-    const origCtx = origCanvas.getContext("2d");
-    if (!ctx || !origCtx) return;
-
-    const origData = origCtx.getImageData(
-      0,
-      0,
-      origCanvas.width,
-      origCanvas.height,
-    );
-    ctx.putImageData(origData, 0, 0);
-    setHistory([]);
-    setAppliedColors([]);
-    setLastTappedCoords(null);
-    setStatusMessage("Reset to original photo.");
-  };
+  const handleUndo = () => painterRef.current?.undo();
+  const handleReset = () => painterRef.current?.reset();
 
   /* Add or remove a shade from the local shortlist. */
   const toggleSaveColor = (code: string) => {
@@ -564,9 +338,9 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
             </h2>
             <p className="text-stone-600 text-base mt-2">
               Switch between architectural presets or upload a photo of your own
-              room. Tap any surface to apply your chosen shade with realistic
-              lighting preservation, then export a painter specification card or
-              request a dealer quote.
+              room. Outline a wall, exclude windows and doors, then apply your
+              chosen shade while keeping light, shadows and surface texture.
+              Export the preview or request a dealer quote.
             </p>
           </div>
         </div>
@@ -636,6 +410,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   type="file"
                   accept="image/png, image/jpeg, image/webp"
                   className="hidden"
+                  aria-label="Upload room photo"
                   onChange={handlePhotoUpload}
                 />
               </div>
@@ -654,13 +429,12 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
             </div>
 
             {/* Interactive Canvas Container */}
-            <div className="relative rounded-2xl overflow-hidden bg-stone-950 border border-stone-300 shadow-xl select-none group">
+            <div className="ap-photo-stage relative rounded-2xl overflow-hidden bg-stone-950 border border-stone-300 shadow-xl select-none group">
               {/* Painted Canvas */}
               <canvas
                 ref={canvasRef}
-                onClick={handleCanvasClick}
-                onPointerDown={handleCanvasPointerDown}
-                className="w-full h-auto block cursor-crosshair touch-manipulation max-h-[540px] object-contain mx-auto"
+                aria-label="Photo paint preview"
+                className="relative z-10 w-full h-auto block mx-auto"
                 style={{
                   clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
                   filter: isHoldingOriginal ? "opacity(0)" : "opacity(1)",
@@ -670,7 +444,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               {/* Underlying Original Canvas (For Before/After Comparison) */}
               <canvas
                 ref={originalCanvasRef}
-                className="w-full h-auto absolute inset-0 -z-10 block pointer-events-none max-h-[540px] object-contain mx-auto"
+                className="w-full h-full absolute inset-0 z-0 block pointer-events-none"
+                aria-hidden="true"
               />
 
               {/* Split Line Indicator if Slider < 100 */}
@@ -684,27 +459,29 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   </div>
                 </div>
               )}
-
-              {/* Overlay Prompt on bottom of canvas */}
-              <div className="absolute bottom-3 left-3 right-3 pointer-events-none flex items-center justify-between">
-                <span className="bg-stone-950/80 backdrop-blur-md text-stone-200 text-xs px-2.5 py-1 rounded-md font-medium border border-white/10">
-                  {statusMessage}
-                </span>
-
-                <div className="pointer-events-auto flex items-center gap-1.5">
-                  <button
-                    onMouseDown={() => setIsHoldingOriginal(true)}
-                    onMouseUp={() => setIsHoldingOriginal(false)}
-                    onTouchStart={() => setIsHoldingOriginal(true)}
-                    onTouchEnd={() => setIsHoldingOriginal(false)}
-                    className="bg-white/90 hover:bg-white text-stone-900 text-[11px] font-semibold px-2.5 py-1 rounded-md shadow-xs transition-colors"
-                    title="Hold to see unpainted original"
-                  >
-                    Hold Original
-                  </button>
-                </div>
-              </div>
             </div>
+            <div ref={toolsRef} />
+            <p className="text-sm text-purple-900" role="status">
+              {statusMessage}
+            </p>
+            <button
+              type="button"
+              className="text-xs font-semibold text-purple-900 border border-purple-200 bg-white rounded-lg px-3 py-2"
+              onPointerDown={() => setIsHoldingOriginal(true)}
+              onPointerUp={() => setIsHoldingOriginal(false)}
+              onPointerLeave={() => setIsHoldingOriginal(false)}
+              onPointerCancel={() => setIsHoldingOriginal(false)}
+              onKeyDown={(event) => {
+                if (event.key === " " || event.key === "Enter") {
+                  event.preventDefault();
+                  setIsHoldingOriginal(true);
+                }
+              }}
+              onKeyUp={() => setIsHoldingOriginal(false)}
+              onBlur={() => setIsHoldingOriginal(false)}
+            >
+              Hold Original
+            </button>
 
             {/* Canvas Toolbar & Comparison Slider */}
             <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs space-y-3">
@@ -732,7 +509,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleUndo}
-                    disabled={history.length === 0}
+                    disabled={!canUndo}
                     className="p-2 text-stone-700 hover:text-stone-950 disabled:text-stone-300 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-1 text-xs font-medium"
                     title="Undo last stroke"
                   >
@@ -748,24 +525,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                     <RotateCcw className="w-3.5 h-3.5" />
                     <span>Reset</span>
                   </button>
-
-                  {/* Tolerance Range Slider */}
-                  <div className="hidden sm:flex items-center gap-2 text-xs text-stone-600 pl-2">
-                    <Sliders className="w-3.5 h-3.5 text-stone-400" />
-                    <span className="text-[11px]">Tolerance:</span>
-                    <input
-                      type="range"
-                      min="12"
-                      max="55"
-                      value={tolerance}
-                      onChange={(e) => setTolerance(Number(e.target.value))}
-                      className="w-20 accent-stone-700 h-1.5 bg-stone-200 rounded"
-                      title="Adjust wall edge detection range"
-                    />
-                    <span className="font-mono text-[11px] tabular-nums">
-                      {tolerance}
-                    </span>
-                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">

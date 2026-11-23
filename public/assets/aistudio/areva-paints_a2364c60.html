@@ -351,6 +351,8 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 #grid .btn{margin-top:6px}
 </style>
 <link rel="stylesheet" href="/assets/landing-theme.css">
+<link rel="stylesheet" href="/assets/photo-paint-studio.css">
+<script src="/assets/photo-paint-studio.js"></script>
 </head>
 <body>
 <header><div class="topbar"><div class="wrap"><span>Paint your dreams</span><span id="today"></span></div></div><div class="wrap nav">
@@ -399,10 +401,11 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 <section id="visualizer"><div class="wrap"><h2>Try colours on a room</h2><p class="lead">Choose a room or upload a photo of your own home, pick a shade and see it on the walls. Drag the slider to compare, then print the result for your painter.</p>
 <div class="two"><div><p style="margin:0 0 .6rem">Painting with: <b id="cn2"></b></p><div class="chips" id="rooms"></div>
 <div class="chips" id="live" hidden><button class="btn btn-main" id="snap" type="button">Capture frame</button><button class="btn btn-line" id="stopcam" type="button">Stop camera</button></div>
-<div class="room" id="roomWrap"><canvas id="cv" aria-label="Room preview. Tap a part of the picture to paint it."></canvas><canvas id="cv0" aria-hidden="true"></canvas><div id="splitBar" class="split-divider"><div class="split-knob"><span>◀▶</span></div></div><div id="afterTag" class="split-tag split-tag-after">✨ AFTER (Painted)</div><div id="beforeTag" class="split-tag split-tag-before">🏛️ BEFORE (Original)</div></div>
+<div class="room ap-photo-stage" id="roomWrap"><canvas id="cv" aria-label="Photo paint preview"></canvas><canvas id="cv0" aria-hidden="true"></canvas><div id="splitBar" class="split-divider"><div class="split-knob"><span>◀▶</span></div></div><div id="afterTag" class="split-tag split-tag-after">✨ AFTER (Painted)</div><div id="beforeTag" class="split-tag split-tag-before">🏛️ BEFORE (Original)</div></div>
+<div id="photoPaintTools"></div>
 <label style="margin:.6rem 0">Before and after: drag the slider<input id="cmp" type="range" min="0" max="100" value="100"></label>
 <div class="chips"><label class="btn btn-main" style="cursor:pointer">Upload my home photo<input class="vh" id="up" type="file" accept="image/*"></label><label class="btn btn-line" style="cursor:pointer">Take a photo<input class="vh" id="camf" type="file" accept="image/*" capture="environment"></label><button class="btn btn-line" id="un" type="button">Undo</button><button class="btn btn-line" id="ur" type="button">Reset</button><button class="btn btn-line" id="ub" type="button">Hold to see original</button><button class="btn btn-wa" id="pr2" type="button">Print before and after</button><label class="chip" style="display:inline-flex;gap:.5rem;align-items:center">Any colour<input id="cc2" type="color" value="#6c4cf5" style="width:34px;height:28px;padding:0"></label></div>
-<label style="max-width:340px">Wall selection range (raise it if part of the wall is missed)<input id="tol" type="range" min="8" max="70" value="20"></label><p class="note" id="hm"></p><div id="ps" hidden></div></div>
+<label id="cameraRange" style="max-width:340px" hidden>Live camera colour range<input id="tol" type="range" min="8" max="70" value="20"></label><p class="note" id="hm" role="status"></p><div id="ps" hidden></div></div>
 <div><input id="q" type="search" placeholder="Search colour by name or code" aria-label="Search colours"><div class="sw" id="sw"></div>
 <p><b id="cn"></b><br>Goes well with: <span id="gw"></span></p><div style="display:flex;gap:.6rem;flex-wrap:wrap"><button class="btn btn-main" id="shr">Share my palette</button><button class="btn btn-line" data-r="Customer">View saved</button></div><p class="note">Tap ♡ to save a colour. Shade names and codes are samples.</p></div></div></div></section>
 
@@ -644,14 +647,13 @@ const save=()=>{try{localStorage.setItem("av_sv",JSON.stringify(store.sv))}catch
 function lead(t,m){store.leads.push({t,m,s:"New",d:new Date().toLocaleDateString()});window.open(wa(m),"_blank","noopener")}
 function rot(hex,d){let[r,g,b]=[1,3,5].map(i=>parseInt(hex.substr(i,2),16)/255),M=Math.max(r,g,b),m=Math.min(r,g,b),l=(M+m)/2,s=M==m?0:(M-m)/(1-Math.abs(2*l-1)),h=M==m?0:M==r?((g-b)/(M-m)+6)%6:M==g?(b-r)/(M-m)+2:(r-g)/(M-m)+4;h=(h*60+d)%360;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1)))).toString(16).padStart(2,"0")};return"#"+f(0)+f(8)+f(4)}
 let cn="Terracotta Hearth (AR108)";
-let curHex="#c8623f";
+let curHex="#c8623f", photoPainter=null;
 function paint(hex,name){
   curHex=hex;
   cn=name||hex;
   const cnEl=$("#cn"); if(cnEl) cnEl.textContent=cn;
   const cn2El=$("#cn2"); if(cn2El) cn2El.textContent=cn;
   drawSw();
-  if(typeof autoWall === "function" && typeof seeds !== "undefined" && seeds) autoWall();
   const gwEl=$("#gw");
   if(gwEl){
     gwEl.innerHTML=[30,180,330].map(d=>{
@@ -661,8 +663,9 @@ function paint(hex,name){
   }
   const hmEl=$("#hm");
   if(hmEl){
-    hmEl.textContent = "Selected " + (cn || hex) + ". Tap any wall on the room photo to paint it.";
+    hmEl.textContent = "Selected " + (cn || hex) + ". Outline a wall area, then finish the selection and paint it.";
   }
+  if(photoPainter) photoPainter.shadeChanged();
 }
 function drawSw(){
   const q=($("#q")?$("#q").value.toLowerCase():"");
@@ -1304,7 +1307,15 @@ $("#mq").innerHTML=[...C,...C].map(c=>'<span class="mp"><i style="background:'+c
 /* Room Visualizer & Interactive Paint Studio */
 const cv=$("#cv"), cx=cv.getContext("2d",{willReadFrequently:true});
 const cv0=$("#cv0");
-let orig=null, hist=[], used=[], snap=null, rm=0, seeds=null;
+let orig=null, used=[], snap=null, rm=0, photoLoadId=0;
+photoPainter = window.ArevaPaintStudio.createEditor({
+  canvas: cv,
+  controls: $("#photoPaintTools"),
+  shade: () => ({hex:curHex, name:cn}),
+  onStatus: message => { $("#hm").textContent = message; },
+  onChange: state => { used=state.colors.map(c=>({n:c.name,h:c.hex}));$("#un").disabled=!state.canUndo; },
+  onBeforeSelect: () => { $("#cmp").value=100; ov(100); }
+});
 
 /* Room Scenes Vector Generator */
 const RC=(x,y,w,h,f,s,q)=>`<rect x='${x}' y='${y}' width='${w}' height='${h}' fill='${f}'${s?` stroke='${s[0]}' stroke-width='${s[1]}'`:''}${q?` rx='${q}'`:''}/>`;
@@ -1356,63 +1367,9 @@ function rooms(){
   if(roomsEl) roomsEl.innerHTML = h;
 }
 
-function flood(cur, x, y, t){
-  const w=cur.width, h=cur.height, d=orig.data, o=cur.data;
-  const clampX = Math.max(0, Math.min(w-1, Math.floor(x)));
-  const clampY = Math.max(0, Math.min(h-1, Math.floor(y)));
-  const T = t * t * 3.2;
-  const vis = new Uint8Array(w * h);
-  const st = [clampY * w + clampX];
-
-  // 3x3 sample average for robust seed color against sensor noise / JPEG compression
-  let sumR=0, sumG=0, sumB=0, cnt=0;
-  for(let dy=-1; dy<=1; dy++){
-    for(let dx=-1; dx<=1; dx++){
-      const nx = Math.max(0, Math.min(w-1, clampX + dx));
-      const ny = Math.max(0, Math.min(h-1, clampY + dy));
-      const idx = (ny * w + nx) * 4;
-      sumR += d[idx];
-      sumG += d[idx+1];
-      sumB += d[idx+2];
-      cnt++;
-    }
-  }
-  const sr = sumR / cnt, sg = sumG / cnt, sb = sumB / cnt;
-  const Ls = Math.max(0.12, (0.299*sr + 0.587*sg + 0.114*sb) / 255);
-  const tc = parseInt(curHex.slice(1), 16), tr = tc >> 16, tg = (tc >> 8) & 255, tb = tc & 255;
-  let n = 0;
-  while(st.length){
-    const p = st.pop();
-    if(vis[p]) continue;
-    vis[p] = 1;
-    const i = p * 4;
-    const dr = d[i] - sr, dg = d[i+1] - sg, db = d[i+2] - sb;
-    if(dr*dr + dg*dg + db*db > T) continue;
-    const f = Math.min(1.5, Math.max(0.4, (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]) / 255 / Ls));
-    o[i] = Math.min(255, Math.round(tr * f));
-    o[i+1] = Math.min(255, Math.round(tg * f));
-    o[i+2] = Math.min(255, Math.round(tb * f));
-    n++;
-    const px = p % w;
-    if(px > 0) st.push(p - 1);
-    if(px < w - 1) st.push(p + 1);
-    if(p >= w) st.push(p - w);
-    if(p < w * (h - 1)) st.push(p + w);
-  }
-  return n;
-}
-
-window.autoWall = function(){
-  if(!orig || !seeds) return;
-  const cur=cx.getImageData(0, 0, cv.width, cv.height);
-  seeds.forEach(s => flood(cur, s[0], s[1], +$("#tol").value || 25));
-  cx.putImageData(cur, 0, 0);
-  used=used.filter(u => !u.auto);
-  used.unshift({n: cn || curHex, h: curHex, auto: 1});
-};
-
 function ov(v){
   const val = +v;
+  if(photoPainter) photoPainter.setComparison(val < 100);
   if(cv0) cv0.style.clipPath = "inset(0 0 0 " + val + "%)";
   const splitBar = $("#splitBar"), beforeTag = $("#beforeTag"), afterTag = $("#afterTag");
   if(splitBar) splitBar.style.left = val + "%";
@@ -1431,13 +1388,12 @@ function ov(v){
   }
 }
 
-let roomWallMap = null;
-function afterLoad(roomName, scene = null){
-  roomWallMap = scene !== null ? makeRoomWallMap(scene) : null;
+function afterLoad(roomName){
   if(live) stopCam();
-  hist = [];
   used = [];
-  seeds = null;
+  snap = null;
+  photoPainter.setEnabled(true);
+  photoPainter.setImage(orig);
   const tolEl = $("#tol");
   if(tolEl) tolEl.value = 24;
 
@@ -1455,7 +1411,7 @@ function afterLoad(roomName, scene = null){
   const hmEl = $("#hm");
   if(hmEl){
     const title = roomName || (rm >= 0 && SC[rm] ? SC[rm].n : "Photo");
-    hmEl.textContent = title + " loaded! Pick a shade from the palette, then tap any wall to paint it.";
+    hmEl.textContent = title + " loaded. Outline one wall section, finish the area, then click Paint selected area.";
   }
 }
 
@@ -1564,6 +1520,8 @@ function loadScene(i){
   const item = SC[i];
   if(!item) return;
 
+  const request=++photoLoadId;
+  photoPainter.setEnabled(false);
   rm = i;
   rooms();
 
@@ -1584,10 +1542,12 @@ function loadScene(i){
         return res.blob();
       })
       .then(blob => {
+        if(request!==photoLoadId) return;
         const blobUrl = URL.createObjectURL(blob);
         const im = new Image();
         im.onload = () => {
           URL.revokeObjectURL(blobUrl);
+          if(request!==photoLoadId) return;
           const s = Math.min(1, 900 / Math.max(im.width, im.height));
           cv.width = Math.round(im.width * s);
           cv.height = Math.round(im.height * s);
@@ -1595,13 +1555,14 @@ function loadScene(i){
           orig = cx.getImageData(0, 0, cv.width, cv.height);
           afterLoad(item.n, i);
         };
-        im.onerror = () => nextUrl();
+        im.onerror = () => { URL.revokeObjectURL(blobUrl); nextUrl(); };
         im.src = blobUrl;
       })
       .catch(() => nextUrl());
   }
 
   function nextUrl() {
+    if(request!==photoLoadId) return;
     tried++;
     if(tried < candidateUrls.length) {
       tryFetch(candidateUrls[tried]);
@@ -1609,6 +1570,7 @@ function loadScene(i){
       const im = new Image();
       im.crossOrigin = "anonymous";
       im.onload = () => {
+        if(request!==photoLoadId) return;
         const s = Math.min(1, 900 / Math.max(im.width, im.height));
         cv.width = Math.round(im.width * s);
         cv.height = Math.round(im.height * s);
@@ -1617,6 +1579,7 @@ function loadScene(i){
         afterLoad(item.n, i);
       };
       im.onerror = () => {
+        if(request!==photoLoadId) return;
         cv.width = 900;
         cv.height = 520;
         drawSceneToCanvas(cx, i);
@@ -1630,97 +1593,8 @@ function loadScene(i){
   tryFetch(candidateUrls[0]);
 }
 
-// Outlines in the living-room photograph's reference coordinates.
-function makeRoomWallMap(scene){
-  const mask = document.createElement("canvas");
-  mask.width = cv.width;
-  mask.height = cv.height;
-  const ctx = mask.getContext("2d");
-  ctx.scale(mask.width / 600, mask.height / 338);
-  function polygon(points, colour){
-    ctx.fillStyle = colour;
-    ctx.beginPath();
-    points.forEach(([x,y], index) => index ? ctx.lineTo(x,y) : ctx.moveTo(x,y));
-    ctx.closePath();
-    ctx.fill();
-  }
-  if(scene > 0){
-    ctx.setTransform(mask.width/400,0,0,mask.height/225,0,0);
-    const zones = [[[1,[[0,0],[65,8],[65,163],[0,202]]],[0,[[19,21],[48,32],[48,91],[19,88]]],[2,[[67,9],[330,9],[330,164],[67,164]]],[0,[[79,132],[94,131],[90,119],[76,115],[73,109],[84,113],[78,90],[89,100],[95,112],[103,94],[108,96],[99,117],[98,131],[105,131],[108,124],[110,93],[128,93],[128,132],[139,129],[140,87],[266,87],[267,128],[281,134],[291,141],[300,152],[310,169],[80,169]]],[0,[[293,116],[302,117],[311,110],[321,112],[319,117],[329,119],[326,125],[332,129],[326,136],[329,141],[321,147],[322,165],[302,165],[301,148],[294,145],[297,141],[291,135],[300,132],[294,128],[299,125]]],[3,[[368,144],[399,152],[399,192],[368,180]]]],[[1,[[0,3],[101,29],[101,122],[55,129],[55,186],[39,190],[39,25],[0,16]]],[0,[[53,68],[69,67],[69,63],[75,63],[76,68],[83,68],[84,63],[92,64],[94,70],[103,70],[103,79],[53,75]]],[0,[[53,94],[64,93],[68,89],[78,89],[80,93],[88,92],[89,86],[99,87],[101,100],[53,100]]],[0,[[63,113],[84,110],[91,111],[95,119],[101,120],[102,128],[64,130]]],[2,[[104,30],[147,20],[147,55],[149,55],[149,75],[137,59],[117,55],[117,31]]],[2,[[105,83],[141,84],[148,81],[148,107],[139,107],[139,118],[105,122]]],[3,[[299,64],[357,63],[357,71],[316,72],[316,124],[299,141]]]],[[1,[[89,56],[133,24],[214,63],[212,72],[178,60],[178,102],[199,108],[199,153],[183,153],[183,114],[89,116],[89,110],[176,102],[176,58],[151,48],[89,71]]],[2,[[215,63],[334,20],[334,67],[312,64],[312,95],[272,109],[272,153],[263,154],[263,113],[202,116],[202,106],[268,98],[285,51],[216,76]]],[2,[[272,99],[310,89],[310,164],[297,161],[296,154],[294,154],[294,112],[285,113],[285,153],[273,154]]],[3,[[335,22],[373,43],[373,157],[367,158],[367,117],[337,116],[337,162],[312,164],[312,92],[335,94]]],[0,[[354,55],[362,58],[361,101],[354,99]]]],[[1,[[0,13],[173,55],[173,140],[158,141],[130,145],[105,155],[102,177],[0,203]]],[0,[[48,66],[105,72],[105,137],[48,143]]],[0,[[110,73],[150,79],[150,134],[110,138]]],[2,[[201,63],[230,71],[230,94],[225,100],[224,130],[221,130],[221,102],[206,102],[206,131],[201,134]]]]];
-    for(const [zone, points] of zones[scene-1]) polygon(points, ["black","red","lime","blue"][zone]);
-    return ctx.getImageData(0,0,mask.width,mask.height).data;
-  }
-  polygon([[140,44],[172,44],[172,22],[514,22],[514,267],[502,267],[501,239],[498,232],[484,226],[472,226],[461,233],[457,208],[310,207],[305,211],[302,208],[270,210],[268,204],[259,208],[235,208],[232,212],[217,209],[223,227],[213,231],[208,238],[208,268],[140,268]], "#ff0000");
-  polygon([[389,95],[442,95],[442,167],[389,167]], "black");
-  polygon([[155,165],[168,165],[168,178],[155,178]], "black");
-  polygon([[516,22],[543,1],[593,0],[541,32],[541,242],[599,264],[599,310],[516,268]], "#00ff00");
-  return ctx.getImageData(0,0,mask.width,mask.height).data;
-}
-
-function paintRoomWall(cur,x,y){
-  const seed = (y * cur.width + x) * 4;
-  const channel = roomWallMap[seed] === 255 ? 0 : roomWallMap[seed+1] === 255 ? 1 : 2;
-  if(roomWallMap[seed + channel] !== 255 || roomWallMap[seed+3] !== 255) return 0;
-  const rgb = [1,3,5].map(i => parseInt(curHex.slice(i,i+2),16));
-  let count = 0;
-  for(let i=0;i<cur.data.length;i+=4){
-    if(roomWallMap[i+channel] !== 255 || !roomWallMap[i+3]) continue;
-    const shade = (0.299*orig.data[i]+0.587*orig.data[i+1]+0.114*orig.data[i+2])/194;
-    const alpha = roomWallMap[i+3]/255;
-    for(let k=0;k<3;k++) cur.data[i+k] = orig.data[i+k]*(1-alpha)+rgb[k]*shade*alpha;
-    count++;
-  }
-  return count;
-}
-
-/* User taps canvas to paint specific wall or surface */
-let lastCanvasTapTime = 0;
-function handleCanvasPaint(clientX, clientY){
-  const now = Date.now();
-  if(now - lastCanvasTapTime < 180) return;
-  lastCanvasTapTime = now;
-
-  if(!orig){
-    const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "Upload a photo or select a room first.";
-    return;
-  }
-  const r = cv.getBoundingClientRect(), w = cv.width, h = cv.height;
-  const x = Math.floor((clientX - r.left) * w / r.width);
-  const y = Math.floor((clientY - r.top) * h / r.height);
-  if(x < 0 || x >= w || y < 0 || y >= h) return;
-
-  const cur = cx.getImageData(0, 0, w, h);
-  const prev = new ImageData(new Uint8ClampedArray(cur.data), w, h);
-  const t = +($("#tol") ? $("#tol").value : 25) || 25;
-  const n = roomWallMap ? paintRoomWall(cur,x,y) : flood(cur, x, y, t);
-
-  if(n < 20){
-    const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = roomWallMap ? "Tap an exposed wall surface to paint the whole section." : "That spot is too small. Tap a larger wall area, or raise the wall selection range.";
-    return;
-  }
-
-  hist.push(prev);
-  if(hist.length > 10) hist.shift();
-  used.push({n: cn || curHex, h: curHex});
-  cx.putImageData(cur, 0, 0);
-  const hmEl = $("#hm");
-  if(hmEl) hmEl.textContent = "Painted with " + (cn || curHex) + ". Tap another wall, or change the colour.";
-}
-
-cv.addEventListener("click", e => {
-  // In live mode, taps must sample the raw camera frame; the normal wall painter
-  // cannot run because there is no still-image baseline while the camera is active.
-  if(live) liveTap(e);
-  else handleCanvasPaint(e.clientX, e.clientY);
-});
-cv.addEventListener("pointerdown", e => {
-  if(e.pointerType === "touch" || e.pointerType === "pen"){
-    if(live) liveTap(e);
-    else handleCanvasPaint(e.clientX, e.clientY);
-  }
-});
+/* Live camera taps still sample the raw frame; still photos use the selection overlay. */
+cv.addEventListener("pointerup", e => { if(live && e.isPrimary && e.button===0) liveTap(e); });
 
 /* Upload custom photo */
 const upInput = $("#up");
@@ -1728,16 +1602,29 @@ if(upInput){
   upInput.onchange = e => {
     const f = e.target.files && e.target.files[0];
     if(!f) return;
+    if(!["image/jpeg","image/png","image/webp"].includes(f.type) || f.size>20*1024*1024){
+      $("#hm").textContent="Choose a JPEG, PNG or WebP photo up to 20 MB."; e.target.value=""; return;
+    }
+    if(live) stopCam();
+    const request=++photoLoadId;
+    photoPainter.setEnabled(false);
     const hmEl = $("#hm");
     if(hmEl) hmEl.textContent = "Loading your photo...";
     const fr = new FileReader();
     fr.onerror = () => {
+      if(request!==photoLoadId) return;
+      photoPainter.setEnabled(!!orig);
       if(hmEl) hmEl.textContent = "That file could not be read. Please choose a JPG, PNG, or WebP photo.";
       upInput.value = "";
     };
     fr.onload = () => {
+      if(request!==photoLoadId) return;
       const im = new Image();
       im.onload = () => {
+        if(request!==photoLoadId) return;
+        if(!im.width || !im.height || im.width*im.height>40000000){
+          photoPainter.setEnabled(!!orig); if(hmEl) hmEl.textContent="Choose a photo smaller than 40 megapixels."; return;
+        }
         const s = Math.min(1, 900 / Math.max(im.width, im.height));
         cv.width = Math.round(im.width * s);
         cv.height = Math.round(im.height * s);
@@ -1747,6 +1634,8 @@ if(upInput){
         afterLoad("Your uploaded photo");
       };
       im.onerror = () => {
+        if(request!==photoLoadId) return;
+        photoPainter.setEnabled(!!orig);
         if(hmEl) hmEl.textContent = "That file could not be read. Please try a JPG or PNG photo.";
       };
       im.src = fr.result;
@@ -1774,29 +1663,9 @@ if(roomsContainer){
 
 /* Controls */
 const unBtn = $("#un");
-if(unBtn){
-  unBtn.onclick = () => {
-    if(hist.length){
-      cx.putImageData(hist.pop(), 0, 0);
-      used.pop();
-      const hmEl = $("#hm");
-      if(hmEl) hmEl.textContent = "Undone last paint stroke.";
-    }
-  };
-}
-
+if(unBtn) { unBtn.disabled=true; unBtn.onclick=()=>photoPainter.undo(); }
 const urBtn = $("#ur");
-if(urBtn){
-  urBtn.onclick = () => {
-    if(orig){
-      cx.putImageData(orig, 0, 0);
-      hist = [];
-      used = [];
-      const hmEl = $("#hm");
-      if(hmEl) hmEl.textContent = "Reset to original image.";
-    }
-  };
-}
+if(urBtn) urBtn.onclick=()=>photoPainter.reset();
 
 const ubBtn = $("#ub");
 if(ubBtn){
@@ -1874,6 +1743,8 @@ function startCam(){
     })
     .then(() => {
       live = true;
+      photoPainter.setEnabled(false);
+      $("#cameraRange").hidden=false;
       orig = null;
       rm = -2;
       const tolEl = $("#tol");
@@ -1902,6 +1773,7 @@ function camFail(){
 
 function stopCam(){
   live = false;
+  $("#cameraRange").hidden=true;
   cancelAnimationFrame(raf);
   if(stream){
     stream.getTracks().forEach(t => t.stop());
@@ -1987,7 +1859,7 @@ if(snapBtn){
     orig = cx.getImageData(0, 0, cv.width, cv.height);
     afterLoad(null);
     const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "Frame captured. Tap walls to paint, then print.";
+    if(hmEl) hmEl.textContent = "Frame captured. Outline a wall, finish the area, then paint and print.";
   };
 }
 

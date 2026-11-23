@@ -24,6 +24,7 @@ The project does not currently enable TypeScript's `strict` option. `npm run lin
 ## Features and integration status
 
 - Public catalogue with category pages, technical specifications, bases/packing, optional product warranty badges, shades, visualizers, calculator and dealer search.
+- Photo visualizer with coordinate-based wall outlines, window/door exclusions, explicit paint confirmation, shadow-preserving shades, quick selection and undo. Both public studios use the same painter; uploaded photos stay in the browser. See [photo painting](docs/photo-paint-selection.md).
 - Admin editing for Certifications and documents, products, landing images, dealers, colours/shade PDFs, Gallery projects/campaigns/reviews, accounts and activity history.
 - Warranty purchase registration with a captured login phone, dealer/invoice/site details, private receipt upload, admin search/date filters, final review decisions and decision PDFs.
 - Customer **My registrations** after mobile/demo entry, with reference-protected history, current review status, existing-reference lookup and new/unfinished registration actions. Approved cards offer **View PDF** and **Download PDF** for the same saved decision report as the admin portal, including review notes. See [customer history](docs/customer-warranty-history.md) for demo access limits and private SQL table migration 014, and [PDF and OTP details](docs/customer-warranty-pdfs-and-random-otp.md).

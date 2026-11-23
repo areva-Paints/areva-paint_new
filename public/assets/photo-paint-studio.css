@@ -1,0 +1,117 @@
+/* The two studios share coordinate selection tools and keep the overlay aligned
+ * with the full image, including narrow/mobile viewports.
+ */
+.ap-tools {
+  margin: 14px 0;
+  padding: 16px;
+  border: 1px solid #e4d9ee;
+  border-radius: 14px;
+  background: #fff;
+  color: #32104c;
+  font:
+    400 13px/1.6 "DM Sans",
+    Arial,
+    sans-serif;
+}
+.ap-instructions {
+  margin: 0 0 12px;
+  font-weight: 600;
+}
+.ap-tool-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 10px 0;
+}
+.ap-tools button {
+  min-height: 42px;
+  border: 1px solid #ded0eb;
+  border-radius: 9px;
+  padding: 8px 12px;
+  color: #55237d;
+  background: #fff;
+  cursor: pointer;
+  font:
+    600 12px/1.4 "DM Sans",
+    Arial,
+    sans-serif;
+}
+.ap-tools button:hover:not(:disabled) {
+  background: #f3edf8;
+}
+.ap-tools button[aria-pressed="true"] {
+  background: #eee3f8;
+  border-color: #8550ae;
+  box-shadow: inset 0 0 0 1px #8550ae;
+}
+.ap-tools button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.ap-tools button.ap-paint {
+  background: #61318a;
+  border-color: #61318a;
+  color: #fff;
+  padding: 12px 18px;
+}
+.ap-tools button.ap-paint:hover:not(:disabled) {
+  background: #442060;
+}
+.ap-tools button:focus-visible,
+.ap-selection:focus-visible {
+  outline: 3px solid #e8b33b;
+  outline-offset: 2px;
+}
+.ap-points {
+  color: #75647d;
+  font-size: 12px;
+}
+.ap-tools .ap-range {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.ap-range input {
+  flex: 1 1 100px;
+  min-width: 0;
+  width: 120px;
+  accent-color: #61318a;
+}
+.ap-tools .ap-note {
+  margin: 12px 0 0;
+  font-size: 11px;
+  color: #75647d;
+}
+.ap-tools [hidden],
+.ap-tools[hidden],
+.ap-selection[hidden] {
+  display: none !important;
+}
+.room canvas.ap-selection,
+canvas.ap-selection {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+.ap-photo-stage {
+  position: relative;
+  isolation: isolate;
+}
+@media (max-width: 520px) {
+  .ap-tools {
+    padding: 12px;
+  }
+  .ap-tools button {
+    flex: 1 1 auto;
+  }
+  .ap-tools .ap-paint {
+    width: 100%;
+  }
+}
