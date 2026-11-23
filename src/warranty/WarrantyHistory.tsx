@@ -5,12 +5,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
+  Download,
+  Eye,
   FileSearch,
   Plus,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { WarrantyApiError, warrantyApi } from "./api";
+import { WarrantyReport, type WarrantyReportAction } from "./WarrantyReport";
 import {
   readWarrantyReferences,
   rememberWarrantyReference,
@@ -53,8 +56,11 @@ export function WarrantyHistory({
     [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(""),
     [message, setMessage] = useState("");
+  const [reportAction, setReportAction] = useState<WarrantyReportAction | null>(
+    null,
+  );
   const generation = useRef(0);
-  const working = busy || externalBusy;
+  const working = busy || externalBusy || !!reportAction;
   const sorted = (rows: WarrantyHistoryItem[]) =>
     [...rows].sort(
       (a, b) =>
@@ -126,6 +132,11 @@ export function WarrantyHistory({
     void load(value);
   }
 
+  function openReport(reference: string, mode: WarrantyReportAction["mode"]) {
+    setError("");
+    setReportAction({ reference, mode });
+  }
+
   return (
     <section className="wr-history" aria-labelledby="wr-history-title">
       <div className="wr-session">
@@ -195,6 +206,14 @@ export function WarrantyHistory({
           {message}
         </p>
       )}
+      {reportAction && (
+        <WarrantyReport
+          action={reportAction}
+          onDone={() => setReportAction(null)}
+          onError={setError}
+          onSessionExpired={onSessionExpired}
+        />
+      )}
       <div className="wr-history-results-heading">
         <p role="status">
           {busy
@@ -235,6 +254,26 @@ export function WarrantyHistory({
                 <dd>{displayDate(item.createdAt)}</dd>
               </div>
             </dl>
+            {item.status === "approved" && item.reportAvailable && (
+              <div className="wr-history-report-actions">
+                <button
+                  type="button"
+                  className="wr-primary"
+                  disabled={working}
+                  onClick={() => openReport(item.reference, "view")}
+                >
+                  <Eye size={17} /> View PDF
+                </button>
+                <button
+                  type="button"
+                  className="wr-history-refresh"
+                  disabled={working}
+                  onClick={() => openReport(item.reference, "download")}
+                >
+                  <Download size={17} /> Download PDF
+                </button>
+              </div>
+            )}
           </article>
         ))}
       </div>

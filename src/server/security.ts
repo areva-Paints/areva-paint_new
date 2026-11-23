@@ -68,10 +68,11 @@ export function securityHeaders(production: boolean): RequestHandler {
     );
     if (production && req.secure)
       res.setHeader("Strict-Transport-Security", "max-age=31536000");
-    const admin = /^\/(admin(?:\/|$)|api\/(?:admin|auth|project)(?:\/|$))/i.test(
-      req.path,
-    );
-    if (admin) {
+    const privateRoute =
+      /^\/(admin(?:\/|$)|warranty(?:\/|$)|api\/(?:admin|auth|project|warranty)(?:\/|$))/i.test(
+        req.path,
+      );
+    if (privateRoute) {
       res.setHeader("Cache-Control", "no-store");
       res.setHeader("X-Frame-Options", "DENY");
     }
@@ -89,8 +90,8 @@ export function securityHeaders(production: boolean): RequestHandler {
           "font-src 'self' https://fonts.gstatic.com data:",
           "img-src 'self' data: blob: https:",
           `connect-src 'self' ${origins.join(" ")} https://images.unsplash.com`,
-          `frame-src 'self' ${origins.join(" ")}`,
-          `frame-ancestors ${admin ? "'none'" : "'self' " + origins.join(" ")}`,
+          `frame-src 'self' ${/^\/warranty\/?$/i.test(req.path) ? "blob: " : ""}${origins.join(" ")}`,
+          `frame-ancestors ${privateRoute ? "'none'" : "'self' " + origins.join(" ")}`,
           "worker-src 'self' blob:",
           "media-src 'self' blob:",
           "object-src 'none'",

@@ -1,4 +1,4 @@
-# Customer warranty history — 22 November 2026
+# Customer warranty history — updated 23 November 2026
 
 The public Warranty Registration flow now follows **Mobile number → Demo code → My registrations**. Customers can review previous submissions, find an existing registration using its complete reference, or start a **New registration**. A registration card shows the reference, product, product type, purchase date, submission date and current review status. **Refresh** reads the latest saved decision.
 
@@ -6,13 +6,15 @@ The purchase form includes **My registrations** navigation. Leaving it for histo
 
 ## Access during demo OTP
 
-The existing shared demo code does not prove mobile ownership. Automatically returning every registration for a supplied mobile number would disclose other customers' purchases. The new endpoint therefore requires **both** the session's primary/login mobile and each **complete, unguessable registration reference**. It does not return record existence or a total based only on a phone number.
+The random on-screen demo code does not prove mobile ownership. Automatically returning every registration for a supplied mobile number would disclose other customers' purchases. The endpoint therefore requires **both** the session's primary/login mobile and each **complete, unguessable registration reference**. It does not return record existence or a total based only on a phone number.
 
 New successful references are remembered in browser local storage under `areva:warranty:references:v1`, limited to 100. No names, phone numbers, addresses, invoices, receipt/photo URLs, internal IDs or review notes are stored there. Opening My registrations sends those references to the server; only records matching the current login phone are returned. A full reference from a prior browser or older registration can be entered manually. Treat complete references as private access information. Blocked browser storage does not prevent submission or lookup; the customer is prompted to keep the reference for another visit.
 
 Older records without a separate `loginMobile` snapshot use their saved `mobile`. A record with `loginMobile` always uses that field; alternate/customer phone fields and caller-supplied `mobile`, `mobileVerified` or verification mode cannot broaden access. History is read-only and does not approve, activate or modify warranties.
 
-The API is `POST /api/warranty/registrations/history` with `{ "references": ["ARV-WR-YYYYMMDD-<complete UUID>"] }`. Authentication precedes its 12 KiB body parser, input is bounded to 100 references, and lookups are limited to 60 requests per 15 minutes per IP. Requests retain same-origin protection and `Cache-Control: no-store`. The response contains only the customer-card fields. Private admin review notes, receipts, building photos, addresses and decision PDFs remain behind their existing admin authorization; this feature does not create customer attachment download routes.
+The API is `POST /api/warranty/registrations/history` with `{ "references": ["ARV-WR-YYYYMMDD-<complete UUID>"] }`. Authentication precedes its 12 KiB body parser, input is bounded to 100 references, and lookups are limited to 60 requests per 15 minutes per IP. Requests retain same-origin protection and `Cache-Control: no-store`. The response contains only the customer-card fields and `reportAvailable`. Addresses and review notes are excluded from these JSON summaries. Original receipts and building photos remain behind admin authorization.
+
+Approved cards now offer **View PDF** and **Download PDF**. `POST /api/warranty/registrations/report.pdf` accepts `{ "reference": "ARV-WR-YYYYMMDD-<complete UUID>" }` with the same live customer session and matching login phone. It returns the same report as the admin portal, including the saved review decision, review notes and entered details. Pending, needs-information and rejected records do not expose customer PDFs. There are no public document URLs. See [PDF and random OTP details](customer-warranty-pdfs-and-random-otp.md).
 
 Real WhatsApp OTP remains a separate integration. Once it genuinely verifies phone ownership, the server can support full phone-based history across devices after checking the verified session. **Do not remove the reference requirement based on the demo code or a client-supplied flag.**
 

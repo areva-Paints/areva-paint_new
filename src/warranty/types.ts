@@ -21,7 +21,6 @@ export interface WarrantyReview {
 export function isFinalWarrantyStatus(status: WarrantyStatus): boolean {
   return status === "approved" || status === "rejected";
 }
-export const DEMO_OTP = "123456";
 export const WARRANTY_HISTORY_LIMIT = 100;
 /* Complete references contain a random UUID; a short date, phone or ID is never a lookup proof. */
 export function normalizeWarrantyReference(value: unknown): string | null {
@@ -41,6 +40,7 @@ export interface WarrantyHistoryItem {
   purchaseDate: string;
   createdAt: string;
   status: WarrantyStatus;
+  reportAvailable: boolean;
 }
 export interface WarrantyHistoryResponse {
   registrations: WarrantyHistoryItem[];

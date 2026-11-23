@@ -485,7 +485,7 @@ export function WarrantyPage() {
                 <p className="wr-demo">
                   {options?.otpMode === "disabled"
                     ? "Mobile OTP delivery is not configured yet. Please try again later."
-                    : "Demo registration: a test code will appear on this page. No SMS or WhatsApp message will be sent."}
+                    : "Demo registration: a random six-digit code will appear on this page. No SMS or WhatsApp message will be sent."}
                 </p>
               </div>
             )}
@@ -496,8 +496,9 @@ export function WarrantyPage() {
                   Continue with mobile number <strong>{phone}</strong>.
                 </p>
                 <p className="wr-demo">
-                  Demo OTP: <strong>{demoCode}</strong>. This does not verify
-                  ownership of the mobile number. Code expires in 5 minutes.
+                  Demo OTP: <strong data-demo-code>{demoCode}</strong>. This
+                  does not verify ownership of the mobile number. Code expires
+                  in 5 minutes.
                 </p>
                 <form onSubmit={verify}>
                   <label className="wr-field">

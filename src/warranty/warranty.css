@@ -395,6 +395,26 @@
 .wr-history-item dt { font-size: 11px; color: #80618d; }
 .wr-history-item dd { margin: 2px 0 0; }
 .wr-history-item .wr-reference { padding: 0; font-size: 12px; }
+.wr-history-report-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.wr-report-loading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 16px 0; }
+/* Private PDF previews use a modal with an explicit download fallback on mobile. */
+.wr-report-dialog { width: min(1040px, calc(100vw - 24px)); max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px); margin: auto; padding: 0; border: 1px solid #dfd5e7; border-radius: 16px; color: #291d3c; background: #fff; font: inherit; overflow: auto; box-shadow: 0 24px 80px #291d3c40; }
+.wr-report-dialog::backdrop { background: #1e102ab3; }
+.wr-report-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px; border-bottom: 1px solid #ece5f2; }
+.wr-report-header > div { min-width: 0; }
+.wr-report-header h2 { font: 700 24px/1.3 "DM Sans", Arial, sans-serif; color: #32104c; margin: 0 0 8px; }
+.wr-report-header p { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.wr-report-header button { flex-shrink: 0; }
+.wr-report-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding: 14px 20px; }
+.wr-report-toolbar p { margin: 0; flex: 1 1 240px; font-size: 13px; color: #766480; }
+.wr-report-toolbar a { text-decoration: none; }
+.wr-report-dialog iframe { display: block; width: 100%; height: 60dvh; min-height: 240px; border: 0; background: #f5f1f8; }
+.wr-report-hint { padding: 12px 20px; margin: 0; font-size: 12px; color: #766480; }
+.wr-report-feedback { padding: 20px; }
+@media (max-width: 520px) {
+  .wr-report-header { flex-wrap: wrap; }
+  .wr-history-report-actions > button { flex: 1 1 auto; }
+}
 .wr-history-empty { text-align: center; padding: 35px 25px; }
 .wr-history-empty > svg { color: #9564bc; margin-bottom: 18px; }
 .wr-history-empty p { color: #766480; max-width: 620px; margin: 0 auto 22px; }

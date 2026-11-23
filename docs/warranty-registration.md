@@ -1,16 +1,16 @@
-# Warranty Registration — updated 17 November 2026
+# Warranty Registration — updated 23 November 2026
 
 The public website now has a **Warranty Registration** link, opening the Areva-branded `/warranty` page at top level. React Studio includes the same link. The form runs on the backend origin so cookies and private receipt upload do not depend on third-party iframe cookies.
 
 ## Current demo flow
 
 1. Enter a 10-digit Indian mobile number.
-2. Submit to receive an on-screen **demo OTP `123456`**. No SMS or WhatsApp message is sent. The code expires after five minutes; resend has a 60-second cooldown and five incorrect attempts invalidate a challenge.
-3. Continue to the registration form. This creates a separate, 30-minute warranty-entry session, never an admin/customer account session. Every new visit to Warranty Registration starts at mobile entry and clears the previous entry session; an old OTP cookie never skips directly into the form. Browser Back/Forward restoration also resets entry.
+2. Submit to receive a **random six-digit on-screen demo OTP**. No SMS or WhatsApp message is sent. The code expires after five minutes; resend has a 60-second cooldown and five incorrect attempts block a challenge. Resending replaces the pending challenge and code. The server retains only a keyed hash of the code.
+3. Continue to **My registrations** to find an existing reference, download an approved report or start a new form. This creates a separate, 30-minute warranty-entry session, never an admin/customer account session. Every new visit to Warranty Registration starts at mobile entry and clears the previous entry session; an old OTP cookie never skips directly into the form. Browser Back/Forward restoration also resets entry.
 4. Enter the purchase and site details, upload a private receipt, confirm accurate information/contact consent, then submit.
 5. The confirmation stays on the Warranty Registration page and shows the registration reference until the user chooses **Back to website**. There is no automatic redirect. Back to website (including the header logo) ends the entry session and returns to the website. Opening Warranty Registration again shows mobile entry and requires a fresh OTP step. Failed submissions stay on the form with their details intact. Every new demo record starts with `verificationMode: demo`, `mobileVerified: false` and `status: pending_review` regardless of client input. No warranty start/end date or approval is assigned automatically.
 
-There is no public historical-record lookup by mobile number. Knowing the shared demo code does not give access to past registrations or receipts. A demo session can only create a new record and attach receipts uploaded in that same session. Retrying the same submission ID returns its existing confirmation instead of creating a duplicate. A separate registration can be made for another product.
+There is no historical-record lookup by mobile number alone. Customer history and approved PDF access require a live session with the matching login phone and the complete, unguessable registration reference. The demo code does not verify phone ownership. Original receipts and building photos remain admin-only; new uploads are bound to the submitting session. Retrying the same submission ID returns its existing confirmation instead of creating a duplicate. A separate registration can be made for another product. See [customer history](customer-warranty-history.md).
 
 ## Fields
 
@@ -64,6 +64,8 @@ Back up all three areas with the existing content/enquiry files and media. Recei
 | `POST /api/warranty/otp/request` | Demo challenge; five requests/15 minutes per IP, resend cooldown, bounded challenge map |
 | `POST /api/warranty/otp/verify` | Twenty attempts/15 minutes per IP plus five/challenge; consumes challenge; HttpOnly/SameSite Strict cookie |
 | `GET /api/warranty/session` | Returns only the current entry session's mobile/demo status; no past records |
+| `POST /api/warranty/registrations/history` | Scoped customer summaries for complete references matching the login phone |
+| `POST /api/warranty/registrations/report.pdf` | Same session/reference/phone checks; approved report only, thirty requests/minute per IP; shares the two-job PDF pool with admin |
 | `POST /api/warranty/logout` | Ends only the warranty-entry session |
 | `POST /api/warranty/receipt` | Entry session required before parsing; 8 MiB JSON-body limit, five-MiB file limit, signature checks, ten uploads/hour per IP, three temporary uploads/session |
 | `POST /api/warranty/registrations` | Entry session required, 32 KiB body limit, five attempts/hour per IP, validated/idempotent save |
@@ -77,7 +79,7 @@ All warranty requests use no-store responses; writes require JSON and same-origi
 
 ## PostgreSQL / Supabase table
 
-The fresh schema and regenerated `database/supabase-setup.sql` now have **23 tables**, with new private `warranty_registrations`. The table holds all form fields, snapshots, receipt metadata/storage key, consent and status. It includes RLS and revoked direct browser-role access. SQL constraints prevent a demo registration from becoming phone-verified. Approval requires real non-demo phone verification or explicit manual confirmation with an identified reviewer and timestamp. Review version, notes, current reviewer/time, confirmation and JSON review history are separate columns. Product/dealer references may become NULL on deletion while their text snapshots remain.
+The fresh schema and regenerated `database/supabase-setup.sql` have **24 tables**, including private `warranty_registrations` and `warranty_history_access`. The registration table holds all form fields, snapshots, receipt metadata/storage key, consent and status. It includes RLS and revoked direct browser-role access. SQL constraints prevent a demo registration from becoming phone-verified. Approval requires real non-demo phone verification or explicit manual confirmation with an identified reviewer and timestamp. Review version, notes, current reviewer/time, confirmation and JSON review history are separate columns. Product/dealer references may become NULL on deletion while their text snapshots remain. Customer PDF sharing and ephemeral OTPs require no additional SQL columns or migration.
 
 For an existing 19-table installation after migrations 001–005, review and apply [006-warranty-registrations.sql](../database/migrations/006-warranty-registrations.sql) once in the SQL Editor using the database owner. It selects either `areva` or `public` and stops on ambiguity. Then apply [007-warranty-review-and-filters.sql](../database/migrations/007-warranty-review-and-filters.sql) once for review metadata and manual approval. An existing 20-table installation with migration 006 needs migration 007, followed by [008-final-warranty-decisions.sql](../database/migrations/008-final-warranty-decisions.sql). After 007 is already applied, only 008 is needed for final review locking. Fresh setup includes all three; the warranty migration itself keeps the table count unchanged. Do not rerun the full setup on an existing schema.
 
@@ -96,7 +98,7 @@ WARRANTY_STORAGE_MB=128
 
 This is future integration work, not part of the current delivery. An operator will need a Meta business/app, WhatsApp Business Account and registered sending number, a suitable authentication-template approval, private production credentials/permissions and the required webhook configuration. Confirm provider eligibility, recipient opt-in and current Meta requirements during that setup.
 
-Implement a backend provider adapter that generates unpredictable OTPs, stores only appropriate server-side challenge verification material, sends through the approved authentication template and validates expiry/attempts/replay. Keep the recipient and OTP out of public logs, verify webhook signatures if accepting callbacks, and keep production access tokens/app secrets in private hosting settings. Remove demo-code output in real mode and record real verification only after successful OTP validation; a delivery callback alone does not prove the recipient entered the code. A failed provider must never fall back to the shared demo code. Existing demo registrations remain unverified; do not bulk-upgrade them.
+Implement a backend provider adapter that sends unpredictable OTPs through the approved authentication template, retaining server-side hash, expiry, attempts and replay protection. Keep the recipient and OTP out of public logs, verify webhook signatures if accepting callbacks, and keep production access tokens/app secrets in private hosting settings. Remove demo-code output in real mode and record real verification only after successful OTP validation; a delivery callback alone does not prove the recipient entered the code. A failed provider must never fall back to on-screen demo access. Existing demo registrations remain unverified; do not bulk-upgrade them.
 
 ## Verification
 
@@ -110,7 +112,7 @@ Implement a backend provider adapter that generates unpredictable OTPs, stores o
 
 Migration 008 adds an invoker trigger that prevents changes to the status, review notes, reviewer/time, confirmation, review history and version once the old status is Approved or Rejected. It preserves existing rows, allows harmless no-op updates and does not block product/dealer FK cleanup. Fresh schema/setup include it; table count remains 20.
 
-PDFs are generated on demand from the saved record, without changing it or exposing a public file URL. No extra report-storage table is needed. The server rechecks admin access after generation and limits simultaneous jobs. Bundled SIL-OFL Noto fonts support Latin/currency and common Indian scripts; uncovered code points use explicit markers rather than disappearing. Long notes wrap across pages. Fonts/logos are local assets, so production does not require Chromium, an external PDF service or system fonts. Source packaging includes the fonts and license. Private decision PDFs contain customer information; downloaded files should be handled accordingly.
+PDFs are generated on demand from the saved record, without changing it or exposing a public file URL. No extra report-storage table is needed. The server rechecks admin or scoped customer access after generation and limits simultaneous jobs. Bundled SIL-OFL Noto fonts support Latin/currency and common Indian scripts; uncovered code points use explicit markers rather than disappearing. Long notes wrap across pages. Fonts/logos are local assets, so production does not require Chromium, an external PDF service or system fonts. Source packaging includes the fonts and license. Private decision PDFs contain customer information; downloaded files should be handled accordingly.
 
 `tests/warranty-pdf.test.mjs` checks complete report text, long-note pagination, rejected/approved content, no PDF scripts, and migration-008 locks in public/private schemas. The updated review tests check final API rejection, private PDF authorization, pending-record denial and persistence. Browser checks cover automatic download and closing the dialog, read-only final details, later downloads and recovery from a failed PDF request without losing the saved decision.
 

@@ -78,7 +78,7 @@ test("demo warranty registration persists private details and receipts with admi
     const challenge = await req("/api/warranty/otp/request", { mobile });
     assert.equal(challenge.status, 200);
     const d = await challenge.json();
-    assert.equal(d.demoCode, "123456");
+    assert.match(d.demoCode, /^[1-9]\d{5}$/);
     const response = await req("/api/warranty/otp/verify", {
       challengeId: d.challengeId,
       code: d.demoCode,
@@ -128,7 +128,7 @@ test("demo warranty registration persists private details and receipts with admi
     );
     const verified = await req("/api/warranty/otp/verify", {
         challengeId: challenge.challengeId,
-        code: "123456",
+        code: challenge.demoCode,
       }),
       cookie = verified.headers.get("set-cookie").split(";")[0];
     assert.equal(verified.status, 200);
@@ -136,7 +136,7 @@ test("demo warranty registration persists private details and receipts with admi
       (
         await req("/api/warranty/otp/verify", {
           challengeId: challenge.challengeId,
-          code: "123456",
+          code: challenge.demoCode,
         })
       ).status,
       400,

@@ -8,7 +8,8 @@ import {
   consumeSitePhotos,
   sitePhotoPath,
 } from "./warranty-site-photos";
-import { createWarrantyPdf } from "./warranty-pdf";
+import { sendWarrantyReport } from "./warranty-report-response";
+import { createWarrantyOtp, matchesWarrantyOtp } from "./warranty-otp";
 import { recordWarrantyHistoryAccess } from "./warranty-history-access";
 import { warrantySearch } from "./warranty-search";
 import express from "express";
@@ -28,7 +29,6 @@ import {
 import { DOCUMENT_MAX_BYTES } from "../data/uploadLimits";
 import { rateLimit, sensitiveRequestGuard } from "./security";
 import {
-  DEMO_OTP,
   WARRANTY_HISTORY_LIMIT,
   normalizeWarrantyReference,
   WARRANTY_STATUSES,
@@ -39,7 +39,12 @@ import {
 } from "../warranty/types";
 
 type Session = { mobile: string; until: number };
-type Challenge = { mobile: string; until: number; attempts: number };
+type Challenge = {
+  mobile: string;
+  until: number;
+  attempts: number;
+  codeHash: string;
+};
 type Upload = { receipt: ReceiptInfo; session: string; until: number };
 type Row = WarrantyRegistration & { submissionId: string };
 const sessions = new Map<string, Session>(),
@@ -211,8 +216,11 @@ warrantyRouter.post(
         .status(400)
         .json({ error: "Enter a valid 10-digit Indian mobile number." });
     prune();
-    const existing = [...challenges.values()].find(
-      (value) => value.mobile === phone && value.until > Date.now() + 4 * 60000,
+    const previous = [...challenges].filter(
+      ([, value]) => value.mobile === phone,
+    );
+    const existing = previous.some(
+      ([, value]) => value.until > Date.now() + 4 * 60000,
     );
     if (existing) {
       res.setHeader("Retry-After", "60");
@@ -220,22 +228,28 @@ warrantyRouter.post(
         error: "Please wait 60 seconds before requesting another code.",
       });
     }
-    if (challenges.size >= 2000)
+    if (challenges.size - previous.length >= 2000)
       return res
         .status(503)
         .json({ error: "Registration is busy. Please try again later." });
     const challengeId = crypto.randomUUID();
+    const otp = createWarrantyOtp(
+      challengeId,
+      previous.map(([id, value]) => ({ id, codeHash: value.codeHash })),
+    );
+    for (const [id] of previous) challenges.delete(id);
     challenges.set(challengeId, {
       mobile: phone,
       until: Date.now() + 5 * 60000,
       attempts: 0,
+      codeHash: otp.codeHash,
     });
     res.json({
       challengeId,
       expiresIn: 300,
       resendAfter: 60,
       mode: "demo",
-      demoCode: DEMO_OTP,
+      demoCode: otp.code,
       message:
         "Demo only. No SMS or WhatsApp message was sent; the mobile number is not actually verified.",
     });
@@ -262,7 +276,13 @@ warrantyRouter.post(
         .json({ error: "Too many incorrect codes. Request a new one." });
     }
     challenge.attempts++;
-    if (typeof req.body.code !== "string" || req.body.code !== DEMO_OTP)
+    if (
+      !matchesWarrantyOtp(
+        req.body.challengeId,
+        req.body.code,
+        challenge.codeHash,
+      )
+    )
       return res.status(400).json({
         error:
           "Incorrect demo code. Use the six-digit code shown on this page.",
@@ -355,9 +375,69 @@ warrantyRouter.post(
         purchaseDate,
         createdAt,
         status,
+        reportAvailable: status === "approved",
       }),
     );
     res.json({ registrations, total: registrations.length });
+  },
+);
+/* The complete reference stays in a POST body, not a public download URL.
+ * A demo session alone cannot unlock another customer's approved report.
+ */
+warrantyRouter.post(
+  "/registrations/report.pdf",
+  requireWarranty,
+  rateLimit(30, 60000),
+  express.json({ limit: "4kb" }),
+  async (req, res, next) => {
+    try {
+      const reference = normalizeWarrantyReference(req.body?.reference);
+      if (!reference)
+        return res
+          .status(400)
+          .json({ error: "Enter your complete registration reference." });
+      const phone = current(req)?.mobile;
+      if (!phone)
+        return res
+          .status(401)
+          .json({
+            error:
+              "Your registration session expired. Enter your mobile number again.",
+          });
+      const row = readWarranties().find(
+        (item) => item.reference === reference && item.loginMobile === phone,
+      );
+      if (!row)
+        return res
+          .status(404)
+          .json({
+            error:
+              "Registration not found for this mobile number and reference.",
+          });
+      if (row.status !== "approved")
+        return res
+          .status(409)
+          .json({
+            error: "Your warranty PDF will be available after approval.",
+          });
+      await sendWarrantyReport(row, res, next, {
+        authorized: () =>
+          current(req)?.mobile === phone &&
+          readWarranties().some(
+            (item) =>
+              item.id === row.id &&
+              item.loginMobile === phone &&
+              item.status === "approved" &&
+              item.version === row.version,
+          ),
+        expiredMessage:
+          "Your registration access changed or expired. Enter your mobile number and find the registration again.",
+        recordAccess: () =>
+          recordWarrantyHistoryAccess([row.id], sessionKey(req)),
+      });
+    } catch (error) {
+      next(error);
+    }
   },
 );
 /* POST /logout: Invalidate the scoped session and expire its cookie. */
@@ -794,13 +874,11 @@ warrantyAdminRouter.patch("/:id", rateLimit(60, 60000), (req, res) => {
   writePrivateJson(storeFile(), rows);
   res.json({ registration: publicRow(next) });
 });
-let activeReports = 0;
 /* GET /:id/report.pdf: Generate a private PDF only for a saved final decision. */
 warrantyAdminRouter.get(
   "/:id/report.pdf",
   rateLimit(30, 60000),
   async (req, res, next) => {
-    let started = false;
     try {
       const row = uuid(req.params.id)
         ? readWarranties().find((row) => row.id === req.params.id)
@@ -811,30 +889,12 @@ warrantyAdminRouter.get(
         return res.status(409).json({
           error: "A decision PDF is available after approval or rejection.",
         });
-      if (activeReports >= 2) {
-        res.setHeader("Retry-After", "5");
-        return res
-          .status(503)
-          .json({ error: "PDF generation is busy. Please try again shortly." });
-      }
-      activeReports++;
-      started = true;
-      const pdf = await createWarrantyPdf(row);
-      // A logout or account revocation during generation must also revoke this response.
-      if (!currentUser(req))
-        return res.status(401).json({ error: "Please sign in as an admin." });
-      res.setHeader("Cache-Control", "no-store");
-      res.setHeader("Content-Type", "application/pdf");
-      res.setHeader(
-        "Content-Disposition",
-        'attachment; filename="Areva-Warranty-' + row.reference + '.pdf"',
-      );
-      res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'");
-      res.send(pdf);
+      await sendWarrantyReport(row, res, next, {
+        authorized: () => !!currentUser(req),
+        expiredMessage: "Please sign in as an admin.",
+      });
     } catch (error) {
       next(error);
-    } finally {
-      if (started) activeReports--;
     }
   },
 );

@@ -35,3 +35,29 @@ export async function warrantyApi<T = any>(
     );
   return data;
 }
+
+/* Keep the full reference in the request body and the private PDF in memory.
+ * The server checks the scoped session, login phone and saved approval again.
+ */
+export async function fetchWarrantyReport(
+  reference: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch("/api/warranty/registrations/report.pdf", {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reference }),
+    signal,
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new WarrantyApiError(
+      data.error || "Your warranty PDF could not be loaded. Please try again.",
+      response.status,
+    );
+  }
+  if (!response.headers.get("Content-Type")?.startsWith("application/pdf"))
+    throw Error("Your warranty PDF could not be loaded. Please try again.");
+  return response.blob();
+}

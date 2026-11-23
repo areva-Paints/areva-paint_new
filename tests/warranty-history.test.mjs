@@ -234,7 +234,7 @@ test("customer history requires a live session, full reference and matching logi
       ...records[0],
       id: crypto.randomUUID(),
       reference: reference(),
-      createdAt: "2026-11-23T00:00:00Z",
+      createdAt: new Date(Date.parse(records[0].createdAt) + 60000).toISOString(),
       status: "needs_information",
       reviewNotes: "PRIVATE review notes",
     };
@@ -341,9 +341,13 @@ test("customer history requires a live session, full reference and matching logi
           "purchaseDate",
           "createdAt",
           "status",
+          "reportAvailable",
         ].sort(),
       );
     const serialized = JSON.stringify(history);
+    assert.ok(
+      history.registrations.every((item) => item.reportAvailable === false),
+    );
     for (const privateValue of [
       form.customerName,
       form.email,
