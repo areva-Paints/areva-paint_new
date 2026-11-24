@@ -6,15 +6,7 @@ import { ColourCollectionHeading, ShadeLibrary } from "./ShadeLibrary";
 
 import { useSiteContent } from "../admin/ContentContext";
 import React, { useState, useRef, useEffect } from "react";
-import {
-  RotateCcw,
-  Undo2,
-  Upload,
-  Printer,
-  Palette,
-  MessageSquare,
-  Camera,
-} from "lucide-react";
+import { Upload, Printer, Palette, MessageSquare, Camera } from "lucide-react";
 import { RoomPreset } from "../types";
 import {
   decodePhoto,
@@ -49,6 +41,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   const originalCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const toolsRef = useRef<HTMLDivElement | null>(null);
+  const toolbarRef = useRef<HTMLDivElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const painterRef = useRef<PhotoPainter | null>(null);
   const imageGeneration = useRef(0);
   const chosenShade = useRef({
@@ -57,7 +51,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   });
   chosenShade.current = { hex: selectedColorHex, name: selectedColorName };
   const [painterReady, setPainterReady] = useState(false);
-  const [canUndo, setCanUndo] = useState(false);
 
   const [activePreset, setActivePreset] = useState<RoomPreset>(ROOM_PRESETS[0]);
   const [isCustomPhoto, setIsCustomPhoto] = useState(false);
@@ -105,14 +98,24 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     let active = true;
     void loadPhotoPainter()
       .then((studio) => {
-        if (!active || !canvasRef.current || !toolsRef.current) return;
+        if (
+          !active ||
+          !canvasRef.current ||
+          !toolsRef.current ||
+          !toolbarRef.current ||
+          !viewportRef.current
+        )
+          return;
         painterRef.current = studio.createEditor({
           canvas: canvasRef.current,
           controls: toolsRef.current,
+          toolbar: toolbarRef.current,
+          viewport: viewportRef.current,
+          onSelectShade: ({ hex, name }) => onSelectColor(hex, name),
           shade: () => chosenShade.current,
-          onStatus: setStatusMessage,
-          onChange: ({ canUndo, colors }) => {
-            setCanUndo(canUndo);
+          swatches: COLOR_SHADES,
+          onStatus: () => setStatusMessage(""),
+          onChange: ({ colors }) => {
             setAppliedColors(colors);
           },
           onBeforeSelect: () => {
@@ -198,6 +201,9 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     painterRef.current?.shadeChanged();
   }, [selectedColorHex, selectedColorName]);
   useEffect(() => {
+    painterRef.current?.setSwatches(COLOR_SHADES);
+  }, [COLOR_SHADES, painterReady]);
+  useEffect(() => {
     painterRef.current?.setComparison(
       sliderPosition < 100 || isHoldingOriginal,
     );
@@ -239,9 +245,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       }
     }
   };
-
-  const handleUndo = () => painterRef.current?.undo();
-  const handleReset = () => painterRef.current?.reset();
 
   /* Add or remove a shade from the local shortlist. */
   const toggleSaveColor = (code: string) => {
@@ -338,8 +341,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
             </h2>
             <p className="text-stone-600 text-base mt-2">
               Switch between architectural presets or upload a photo of your own
-              room. Outline a wall, exclude windows and doors, then apply your
-              chosen shade while keeping light, shadows and surface texture.
+              room. Brush a wall, erase around windows and doors, and try any
+              shade instantly while keeping light, shadows and surface texture.
               Export the preview or request a dealer quote.
             </p>
           </div>
@@ -394,17 +397,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   </button>
                 )}
 
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-all whitespace-nowrap ${
-                    isCustomPhoto
-                      ? "bg-amber-700 text-white shadow-sm"
-                      : "bg-white text-amber-800 border border-amber-300 hover:bg-amber-50"
-                  }`}
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload My Photo</span>
-                </button>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -428,61 +420,56 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               </div>
             </div>
 
-            {/* Interactive Canvas Container */}
-            <div className="ap-photo-stage relative rounded-2xl overflow-hidden bg-stone-950 border border-stone-300 shadow-xl select-none group">
-              {/* Painted Canvas */}
-              <canvas
-                ref={canvasRef}
-                aria-label="Photo paint preview"
-                className="relative z-10 w-full h-auto block mx-auto"
-                style={{
-                  clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
-                  filter: isHoldingOriginal ? "opacity(0)" : "opacity(1)",
-                }}
-              />
-
-              {/* Underlying Original Canvas (For Before/After Comparison) */}
-              <canvas
-                ref={originalCanvasRef}
-                className="w-full h-full absolute inset-0 z-0 block pointer-events-none"
-                aria-hidden="true"
-              />
-
-              {/* Split Line Indicator if Slider < 100 */}
-              {sliderPosition < 99 && sliderPosition > 1 && (
-                <div
-                  className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none z-10"
-                  style={{ left: `${sliderPosition}%` }}
-                >
-                  <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white text-stone-900 shadow-md flex items-center justify-center text-[10px] font-bold border border-stone-300">
-                    ⇄
-                  </div>
-                </div>
-              )}
-            </div>
-            <div ref={toolsRef} />
-            <p className="text-sm text-purple-900" role="status">
-              {statusMessage}
-            </p>
             <button
               type="button"
-              className="text-xs font-semibold text-purple-900 border border-purple-200 bg-white rounded-lg px-3 py-2"
-              onPointerDown={() => setIsHoldingOriginal(true)}
-              onPointerUp={() => setIsHoldingOriginal(false)}
-              onPointerLeave={() => setIsHoldingOriginal(false)}
-              onPointerCancel={() => setIsHoldingOriginal(false)}
-              onKeyDown={(event) => {
-                if (event.key === " " || event.key === "Enter") {
-                  event.preventDefault();
-                  setIsHoldingOriginal(true);
-                }
-              }}
-              onKeyUp={() => setIsHoldingOriginal(false)}
-              onBlur={() => setIsHoldingOriginal(false)}
+              className="ap-upload-home"
+              onClick={() => fileInputRef.current?.click()}
             >
-              Hold Original
+              <Upload size={18} />
+              Upload your home photo
             </button>
+            <div ref={toolbarRef} />
+            <div ref={viewportRef} className="ap-viewport">
+              {/* Interactive Canvas Container */}
+              <div className="ap-photo-stage relative rounded-2xl overflow-hidden bg-stone-950 border border-stone-300 shadow-xl select-none group">
+                {/* Painted Canvas */}
+                <canvas
+                  ref={canvasRef}
+                  aria-label="Photo paint preview"
+                  className="relative z-10 w-full h-auto block mx-auto"
+                  style={{
+                    clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
+                    filter: isHoldingOriginal ? "opacity(0)" : "opacity(1)",
+                  }}
+                />
 
+                {/* Underlying Original Canvas (For Before/After Comparison) */}
+                <canvas
+                  ref={originalCanvasRef}
+                  className="w-full h-full absolute inset-0 z-0 block pointer-events-none"
+                  aria-hidden="true"
+                />
+
+                {/* Split Line Indicator if Slider < 100 */}
+                {sliderPosition < 99 && sliderPosition > 1 && (
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none z-10"
+                    style={{ left: `${sliderPosition}%` }}
+                  >
+                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white text-stone-900 shadow-md flex items-center justify-center text-[10px] font-bold border border-stone-300">
+                      ⇄
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div ref={toolsRef} />
+            <p
+              className="ap-external-status text-sm text-purple-900"
+              role="status"
+            >
+              {statusMessage}
+            </p>
             {/* Canvas Toolbar & Comparison Slider */}
             <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs space-y-3">
               {/* Slider Row */}
@@ -506,27 +493,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
               {/* Tool Buttons */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-100">
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleUndo}
-                    disabled={!canUndo}
-                    className="p-2 text-stone-700 hover:text-stone-950 disabled:text-stone-300 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-1 text-xs font-medium"
-                    title="Undo last stroke"
-                  >
-                    <Undo2 className="w-3.5 h-3.5" />
-                    <span>Undo</span>
-                  </button>
-
-                  <button
-                    onClick={handleReset}
-                    className="p-2 text-stone-700 hover:text-stone-950 border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors flex items-center gap-1 text-xs font-medium"
-                    title="Reset to original photo"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Reset</span>
-                  </button>
-                </div>
-
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     onClick={() =>

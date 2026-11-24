@@ -5,8 +5,15 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import "../public/assets/photo-paint-studio.js";
 
-const { polygonMask, subtractMask, connectedMask, paintImage, validPolygon } =
-  globalThis.ArevaPaintStudio;
+const {
+  polygonMask,
+  subtractMask,
+  connectedMask,
+  paintImage,
+  validPolygon,
+  brushMask,
+  composeImage,
+} = globalThis.ArevaPaintStudio;
 const image = (width, height, pixel) => ({
   width,
   height,
@@ -19,6 +26,149 @@ const image = (width, height, pixel) => ({
 });
 const rgb = (data, width, x, y) =>
   Array.from(data.slice((y * width + x) * 4, (y * width + x) * 4 + 3));
+
+test("brush strokes cover fast pointer movement and leave surrounding pixels untouched", () => {
+  const blank = new Uint8Array(80 * 50);
+  const mask = brushMask(
+    80,
+    50,
+    blank,
+    [
+      [10, 25],
+      [70, 25],
+    ],
+    5,
+  );
+  assert.ok(
+    blank.every((value) => value === 0),
+    "Saved masks must not be changed in place",
+  );
+  for (let x = 10; x < 70; x++) assert.equal(mask[25 * 80 + x], 255);
+  for (const [x, y] of [
+    [0, 0],
+    [40, 15],
+    [40, 35],
+    [79, 49],
+  ])
+    assert.equal(mask[y * 80 + x], 0);
+  assert.ok(
+    mask.some((value) => value > 0 && value < 255),
+    "Brush edges should be smooth",
+  );
+  assert.deepEqual(
+    brushMask(
+      80,
+      50,
+      mask,
+      [
+        [10, 25],
+        [70, 25],
+      ],
+      5,
+    ),
+    mask,
+    "A repeated stroke must not build up edge opacity",
+  );
+});
+
+test("an eraser protects openings after painting and a later shade change keeps them clear", () => {
+  const original = image(40, 30, () => [205, 198, 181]);
+  const filled = polygonMask(40, 30, [
+    [2, 2],
+    [38, 2],
+    [38, 28],
+    [2, 28],
+  ]);
+  const erased = brushMask(
+    40,
+    30,
+    filled,
+    [
+      [20, 10],
+      [20, 22],
+    ],
+    5,
+    true,
+  );
+  assert.equal(erased[15 * 40 + 20], 0);
+  assert.equal(filled[15 * 40 + 20], 255);
+  for (const hex of ["#d4b25e", "#59858b", "#c67668"]) {
+    const output = composeImage(original, [{ mask: erased, hex }]);
+    assert.deepEqual(
+      rgb(output.data, 40, 20, 15),
+      rgb(original.data, 40, 20, 15),
+    );
+    assert.notDeepEqual(
+      rgb(output.data, 40, 7, 15),
+      rgb(original.data, 40, 7, 15),
+    );
+  }
+});
+
+test("named wall recomposition isolates shade changes and restores lower walls on erase/remove", () => {
+  const original = image(24, 16, () => [211, 207, 198]);
+  const first = {
+    mask: polygonMask(24, 16, [
+      [2, 2],
+      [14, 2],
+      [14, 14],
+      [2, 14],
+    ]),
+    hex: "#a282bb",
+  };
+  const second = {
+    mask: polygonMask(24, 16, [
+      [10, 4],
+      [22, 4],
+      [22, 13],
+      [10, 13],
+    ]),
+    hex: "#59928b",
+  };
+  const before = composeImage(original, [first, second]);
+  const changed = composeImage(original, [
+    { ...first, hex: "#cc8855" },
+    second,
+  ]);
+  assert.deepEqual(rgb(before.data, 24, 18, 8), rgb(changed.data, 24, 18, 8));
+  assert.notDeepEqual(rgb(before.data, 24, 5, 8), rgb(changed.data, 24, 5, 8));
+  const cut = {
+    ...second,
+    mask: brushMask(24, 16, second.mask, [[12, 8]], 3, true),
+  };
+  const erased = composeImage(original, [first, cut]);
+  assert.deepEqual(
+    rgb(erased.data, 24, 12, 8),
+    rgb(composeImage(original, [first]).data, 24, 12, 8),
+  );
+  assert.deepEqual(composeImage(original, []).data, original.data);
+  assert.deepEqual(
+    composeImage(original, [first, second]).data,
+    before.data,
+    "Shade trials start from the untouched photo",
+  );
+  assert.throws(() => composeImage(original, Array(9).fill(first)));
+});
+
+test("edge and out-of-bounds brush gestures stay clipped to valid image coordinates", () => {
+  const mask = brushMask(
+    10,
+    8,
+    new Uint8Array(80),
+    [
+      [-4, -4],
+      [15, 12],
+    ],
+    2,
+  );
+  assert.equal(mask.length, 80);
+  assert.ok(mask.some((value) => value > 0));
+  for (const invalid of [0, -2, Infinity, NaN, 513])
+    assert.throws(() =>
+      brushMask(10, 8, new Uint8Array(80), [[3, 4]], invalid),
+    );
+  assert.throws(() => brushMask(10, 8, new Uint8Array(80), [[NaN, 4]], 2));
+});
 
 test("coordinate outlines stay inside the chosen wall and preserve antialiased edges", () => {
   const mask = polygonMask(16, 12, [
