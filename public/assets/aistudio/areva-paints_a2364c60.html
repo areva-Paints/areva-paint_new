@@ -351,8 +351,8 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 #grid .btn{margin-top:6px}
 </style>
 <link rel="stylesheet" href="/assets/landing-theme.css">
-<link rel="stylesheet" href="/assets/photo-paint-studio.css?v=3">
-<script src="/assets/photo-paint-studio.js?v=3"></script>
+<link rel="stylesheet" href="/assets/photo-paint-studio.css?v=4">
+<script src="/assets/photo-paint-studio.js?v=4"></script>
 </head>
 <body>
 <header><div class="topbar"><div class="wrap"><span>Paint your dreams</span><span id="today"></span></div></div><div class="wrap nav">
@@ -398,9 +398,9 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
   <div class="grid" id="grid" aria-live="polite"></div>
 </div></section>
 
-<section id="visualizer"><div class="wrap"><h2>Try colours on a room</h2><p class="lead">Choose a room or upload a photo of your own home, pick a shade and see it on the walls. Choose a colour and tap a wall, then save your favourite result.</p>
-<div class="two"><div><p class="colour-painting-label" hidden>Painting with: <b id="cn2"></b></p><div class="ap-upload-actions"><label class="btn btn-main" style="cursor:pointer">Upload my home photo<input class="vh" id="up" type="file" accept="image/*"></label><label class="btn btn-line" style="cursor:pointer">Take a photo<input class="vh" id="camf" type="file" accept="image/*" capture="environment"></label></div>
-<details class="ap-scenes"><summary>Or try a sample room</summary><div class="chips" id="rooms"></div></details>
+<section id="visualizer"><div class="wrap"><h2>Try colours on a room</h2><p class="lead">Choose a room or upload a photo of your own home, pick a shade and see it on the walls. Select one wall, choose a colour and press Paint selected wall. Then save your favourite result.</p>
+<div class="two"><div><p class="colour-painting-label" hidden>Painting with: <b id="cn2"></b></p><div class="ap-scenes" role="group" aria-label="Choose a room photo"><h3>1. Choose a room or upload your home</h3><div class="ap-room-presets" id="rooms" role="group" aria-label="Room types"></div></div><div class="ap-upload-actions"><label class="btn btn-main" style="cursor:pointer">Upload my home photo<input class="vh" id="up" type="file" accept="image/*"></label><label class="btn btn-line" style="cursor:pointer">Take a photo<input class="vh" id="camf" type="file" accept="image/*" capture="environment"></label></div>
+
 <div class="chips" id="live" hidden><button class="btn btn-main" id="snap" type="button">Capture frame</button><button class="btn btn-line" id="stopcam" type="button">Stop camera</button></div>
 <div id="photoPaintToolbar"></div><div id="photoPaintViewport" class="ap-viewport"><div class="room ap-photo-stage" id="roomWrap"><canvas id="cv" aria-label="Photo paint preview"></canvas><canvas id="cv0" aria-hidden="true"></canvas><div id="splitBar" class="split-divider"><div class="split-knob"><span>◀▶</span></div></div><div id="afterTag" class="split-tag split-tag-after">✨ AFTER (Painted)</div><div id="beforeTag" class="split-tag split-tag-before">🏛️ BEFORE (Original)</div></div>
 </div><div id="photoPaintTools"></div>
@@ -1331,45 +1331,42 @@ const WN=(x,y,w,h)=>RC(x,y,w,h,'#8ec8f0',['#fff',10])+RC(x+w/2-4,y,8,h,'#fff')+R
 
 const SC=[
   {
-    n:'Scandinavian Living',
+    id:'nordic-living',
+    n:'Living room',
     g:0,
     src:'/assets/images/room_visualizer_living_1793203848949.jpg'
   },
   {
-    n:'Master Bedroom',
+    id:'master-bedroom',
+    n:'Bedroom',
     g:0,
     src:'/assets/images/room_visualizer_bedroom_1793203849707.jpg'
   },
   {
-    n:'Kitchen Studio',
+    id:'kitchen-studio',
+    n:'Kitchen',
     g:0,
     src:'/assets/images/room_visualizer_kitchen.jpg'
   },
   {
-    n:'Villa Exterior',
+    id:'modern-villa',
+    n:'Exterior',
     g:1,
     src:'/assets/images/room_visualizer_exterior_1793203850484.jpg'
   },
   {
-    n:'Office & Studio',
+    id:'office-studio',
+    n:'Office',
     g:0,
     src:'/assets/images/hero_architectural_living_1793203849445.jpg'
   }
 ];
 
 function rooms(){
-  let g=-1, h='';
-  SC.forEach((s,i)=>{
-    if(s.g!==g){
-      g=s.g;
-      h+='<b class="note" style="align-self:center;font-weight:700;color:var(--muted)">'+['Interior','Exterior'][g]+':</b>';
-    }
-    h+='<button class="chip" type="button" data-rm="'+i+'" aria-pressed="'+(i===rm)+'">'+s.n+'</button>';
-  });
-
-  h+='<button class="chip live" type="button" id="camb" aria-pressed="'+(rm===-2)+'">📷 Live Camera AR</button>';
   const roomsEl = $("#rooms");
-  if(roomsEl) roomsEl.innerHTML = h;
+  if(!roomsEl) return;
+  roomsEl.innerHTML = SC.map((scene,i)=>'<button class="ap-room-preset" type="button" data-rm="'+i+'" aria-pressed="'+(i===rm)+'"><img src="'+scene.src+'" alt="" loading="lazy"><span>'+scene.n+'</span></button>').join('')
+    + '<details class="ap-camera-option"><summary>Use a live camera instead</summary><button class="chip live" type="button" id="camb" aria-pressed="'+(rm===-2)+'">Open live camera</button></details>';
 }
 
 function ov(v){
@@ -1393,12 +1390,12 @@ function ov(v){
   }
 }
 
-function afterLoad(roomName){
+function afterLoad(roomName, presetIndex=null){
   if(live) stopCam();
   used = [];
   snap = null;
   photoPainter.setEnabled(true);
-  photoPainter.setImage(orig);
+  photoPainter.setImage(orig, {roomId: presetIndex===null ? null : SC[presetIndex].id});
   const tolEl = $("#tol");
   if(tolEl) tolEl.value = 24;
 
@@ -1416,7 +1413,7 @@ function afterLoad(roomName){
   const hmEl = $("#hm");
   if(hmEl){
     const title = roomName || (rm >= 0 && SC[rm] ? SC[rm].n : "Photo");
-    hmEl.textContent = title + " loaded. Choose a colour, then tap a wall to try it.";
+    hmEl.textContent = title + " loaded. Select one wall, choose a colour and Paint selected wall.";
   }
 }
 
@@ -1864,7 +1861,7 @@ if(snapBtn){
     orig = cx.getImageData(0, 0, cv.width, cv.height);
     afterLoad(null);
     const hmEl = $("#hm");
-    if(hmEl) hmEl.textContent = "Frame captured. Choose a colour and tap a wall, then save your image.";
+    if(hmEl) hmEl.textContent = "Frame captured. Outline one wall, finish the selection, then choose a colour and Paint selected wall.";
   };
 }
 

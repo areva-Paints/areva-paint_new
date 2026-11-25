@@ -13,6 +13,7 @@ const {
   validPolygon,
   brushMask,
   composeImage,
+  presetWallRegions,
 } = globalThis.ArevaPaintStudio;
 const image = (width, height, pixel) => ({
   width,
@@ -26,6 +27,89 @@ const image = (width, height, pixel) => ({
 });
 const rgb = (data, width, x, y) =>
   Array.from(data.slice((y * width + x) * 4, (y * width + x) * 4 + 3));
+
+test("every room preset has distinct, bounded wall selections at both photo resolutions", () => {
+  for (const id of [
+    "nordic-living",
+    "master-bedroom",
+    "kitchen-studio",
+    "modern-villa",
+    "office-studio",
+  ])
+    for (const [width, height] of [
+      [900, 502],
+      [960, 536],
+    ]) {
+      const regions = presetWallRegions(width, height, id);
+      assert.ok(regions.length >= 2, `${id} should offer separate walls`);
+      assert.equal(
+        new Set(regions.map((region) => region.regionKey)).size,
+        regions.length,
+      );
+      for (const region of regions) {
+        assert.equal(region.mask.length, width * height);
+        const selected = region.mask.filter((value) => value > 0).length;
+        assert.ok(
+          selected > width * height * 0.005,
+          `${region.regionKey}: usable wall area`,
+        );
+        assert.ok(
+          selected < width * height * 0.5,
+          `${region.regionKey}: cannot paint the entire home`,
+        );
+      }
+      for (let i = 0; i < regions.length; i++)
+        for (let j = i + 1; j < regions.length; j++)
+          assert.equal(
+            regions[i].mask.some(
+              (value, p) => value > 127 && regions[j].mask[p] > 127,
+            ),
+            false,
+            `${id}: wall regions must not overlap`,
+          );
+    }
+  assert.deepEqual(
+    presetWallRegions(20, 20, "customer-upload"),
+    [],
+    "Unknown/uploaded photos need an explicit user outline",
+  );
+});
+
+test("sample wall masks preserve furniture and leave another same-colour wall untouched", () => {
+  const original = image(1000, 600, () => [211, 207, 198]);
+  const [sofa, window] = presetWallRegions(1000, 600, "nordic-living");
+  const painted = composeImage(original, [{ ...sofa, hex: "#b67b99" }]);
+  const point = (x, y) => rgb(painted.data, 1000, x, Math.floor(y * 0.6));
+  assert.notDeepEqual(
+    point(500, 300),
+    [211, 207, 198],
+    "Selected wall gets the chosen shade",
+  );
+  for (const [x, y] of [
+    [500, 750],
+    [700, 400],
+    [270, 510],
+    [250, 100],
+    [875, 500],
+    [930, 400],
+    [400, 950],
+  ])
+    assert.deepEqual(
+      point(x, y),
+      [211, 207, 198],
+      "Sofa, framed art, switch, other wall, window and floor stay untouched",
+    );
+  const changed = composeImage(original, [
+    { ...sofa, hex: "#b67b99" },
+    { ...window, hex: "#698d98" },
+  ]);
+  assert.deepEqual(
+    rgb(changed.data, 1000, 500, 180),
+    point(500, 300),
+    "Painting the next wall retains the first wall's shade",
+  );
+  assert.notDeepEqual(rgb(changed.data, 1000, 875, 300), point(875, 500));
+});
 
 test("brush strokes cover fast pointer movement and leave surrounding pixels untouched", () => {
   const blank = new Uint8Array(80 * 50);

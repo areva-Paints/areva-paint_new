@@ -132,7 +132,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   }, []);
 
   /* Keep displayed image geometry identical to the selection overlay on every device. */
-  function showPhoto(image: HTMLImageElement) {
+  function showPhoto(image: HTMLImageElement, roomId?: string) {
     const canvas = canvasRef.current,
       original = originalCanvasRef.current;
     if (!canvas || !original || !painterRef.current) return;
@@ -157,6 +157,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     originalContext.drawImage(image, 0, 0, canvas.width, canvas.height);
     painterRef.current.setImage(
       context.getImageData(0, 0, canvas.width, canvas.height),
+      { roomId },
     );
   }
 
@@ -174,7 +175,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       })
       .then(decodePhoto)
       .then((image) => {
-        if (generation === imageGeneration.current) showPhoto(image);
+        if (generation === imageGeneration.current)
+          showPhoto(image, activePreset.id);
       })
       .catch((error) => {
         if (
@@ -331,9 +333,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
             </h2>
             <p className="text-stone-600 text-base mt-2">
               Switch between architectural presets or upload a photo of your own
-              room. Choose a colour and tap the wall to try it. Keep the
-              original lighting and texture, then save your favourite result.
-              Export the preview or request a dealer quote.
+              room. Select just one wall, choose a colour and press Paint
+              selected wall. Keep the original lighting and texture, then save
+              your favourite result. Export the preview or request a dealer
+              quote.
             </p>
           </div>
         </div>
@@ -344,75 +347,78 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         <div className="colour-studio-grid">
           {/* Room preview and painting controls */}
           <div className="colour-room-panel space-y-4">
-            <button
-              type="button"
-              className="ap-upload-home"
-              onClick={() => fileInputRef.current?.click()}
+            <div
+              className="ap-scenes"
+              role="group"
+              aria-label="Choose a room photo"
             >
-              <Upload size={18} />
-              Upload your home photo
-            </button>
-            <details className="ap-scenes">
-              <summary>Or try a sample room</summary>
-              {/* Room Selector Chips */}
-              <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
-                <div className="flex items-center gap-2 shrink-0">
-                  {ROOM_PRESETS.map((preset) => {
-                    const isCurrent =
-                      !isCustomPhoto && activePreset.id === preset.id;
-                    return (
-                      <button
-                        key={preset.id}
-                        onClick={() => {
-                          setIsCustomPhoto(false);
-                          setActivePreset(preset);
-                        }}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
-                          isCurrent
-                            ? "bg-stone-900 text-white shadow-sm"
-                            : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
-                        }`}
-                      >
-                        {preset.name}
-                      </button>
-                    );
-                  })}
-
-                  {onOpenLiveAR && (
+              <h3>1. Choose a room or upload your home</h3>
+              <div
+                className="ap-room-presets"
+                role="group"
+                aria-label="Room types"
+              >
+                {ROOM_PRESETS.map((preset) => {
+                  const label =
+                    (
+                      {
+                        "nordic-living": "Living room",
+                        "master-bedroom": "Bedroom",
+                        "kitchen-studio": "Kitchen",
+                        "modern-villa": "Exterior",
+                        "office-studio": "Office",
+                      } as Record<string, string>
+                    )[preset.id] || preset.name;
+                  return (
                     <button
-                      onClick={onOpenLiveAR}
+                      key={preset.id}
                       type="button"
-                      className="px-3.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all whitespace-nowrap bg-stone-950 text-white hover:bg-amber-800 shadow-md ring-2 ring-amber-400/40 active:scale-95 cursor-pointer"
-                      title="Open live camera feed with real-time 3D wall recoloring"
+                      className="ap-room-preset"
+                      aria-pressed={
+                        !isCustomPhoto && activePreset.id === preset.id
+                      }
+                      onClick={() => {
+                        setIsCustomPhoto(false);
+                        setActivePreset(preset);
+                      }}
                     >
-                      <Camera className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                      <span>Live Camera AR (Mobile & Webcam)</span>
+                      <img src={preset.imageUrl} alt="" loading="lazy" />
+                      <span>{label}</span>
                     </button>
-                  )}
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    className="hidden"
-                    aria-label="Upload room photo"
-                    onChange={handlePhotoUpload}
-                  />
-                </div>
-
-                {/* Status Note */}
-                <div className="hidden sm:flex items-center gap-1 text-[11px] text-stone-500 shrink-0">
-                  <span>Active:</span>
-                  <span className="font-bold text-stone-900">
-                    {currentShade.name}
-                  </span>
-                  <span
-                    className="w-3 h-3 rounded-full border border-black/20 ml-0.5 inline-block"
-                    style={{ backgroundColor: currentShade.hex }}
-                  />
-                </div>
+                  );
+                })}
               </div>
-            </details>
+              <button
+                type="button"
+                className="ap-upload-home"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload size={18} />
+                {isCustomPhoto
+                  ? "Change your home photo"
+                  : "Upload your home photo"}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png, image/jpeg, image/webp"
+                className="hidden"
+                aria-label="Upload room photo"
+                onChange={handlePhotoUpload}
+              />
+              {onOpenLiveAR && (
+                <details className="ap-camera-option">
+                  <summary>Use a live camera instead</summary>
+                  <button
+                    onClick={onOpenLiveAR}
+                    type="button"
+                    className="ap-upload-home"
+                  >
+                    <Camera size={16} /> Open live camera
+                  </button>
+                </details>
+              )}
+            </div>
             <div ref={toolbarRef} />
             <div ref={viewportRef} className="ap-viewport">
               {/* Interactive Canvas Container */}

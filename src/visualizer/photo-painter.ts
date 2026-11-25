@@ -3,7 +3,7 @@
  */
 export type PaintedShade = { hex: string; name: string; code?: string };
 export type PhotoPainter = {
-  setImage: (image: ImageData) => void;
+  setImage: (image: ImageData, options?: { roomId?: string }) => void;
   undo: () => void;
   reset: () => void;
   setEnabled: (enabled: boolean) => void;
@@ -34,13 +34,13 @@ declare global {
 }
 let pending: Promise<NonNullable<Window["ArevaPaintStudio"]>> | null = null;
 export function loadPhotoPainter() {
-  if (window.ArevaPaintStudio?.version === 3)
+  if (window.ArevaPaintStudio?.version === 4)
     return Promise.resolve(window.ArevaPaintStudio);
   if (!pending) {
-    const path = "/assets/photo-paint-studio.js?v=3";
+    const path = "/assets/photo-paint-studio.js?v=4";
     pending = import(/* @vite-ignore */ path)
       .then(() => {
-        if (window.ArevaPaintStudio?.version !== 3)
+        if (window.ArevaPaintStudio?.version !== 4)
           throw Error("Photo tools could not load. Please refresh the page.");
         return window.ArevaPaintStudio;
       })

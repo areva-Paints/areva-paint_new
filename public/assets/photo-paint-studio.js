@@ -119,6 +119,339 @@
     return mask.map((value, i) => Math.round(value * (1 - cut[i] / 255)));
   };
 
+  /* Sample photos have explicit architectural boundaries. Coordinates use a
+   * 0–1000 photo grid, so both studios share the same walls at every resolution.
+   * Furniture, openings, frames and trim are cut out before any paint is applied.
+   */
+  const roomWalls = {
+    "nordic-living": [
+      {
+        id: "feature",
+        label: "Sofa wall",
+        outline: [
+          [286, 64],
+          [857, 64],
+          [857, 796],
+          [233, 796],
+          [233, 148],
+          [286, 148],
+        ],
+        cuts: [
+          [
+            [347, 652],
+            [362, 617],
+            [444, 610],
+            [510, 617],
+            [518, 612],
+            [736, 612],
+            [779, 642],
+            [800, 674],
+            [822, 665],
+            [837, 685],
+            [837, 810],
+            [347, 810],
+          ],
+          [
+            [650, 281],
+            [737, 281],
+            [737, 492],
+            [650, 492],
+          ],
+          [
+            [260, 489],
+            [280, 489],
+            [280, 525],
+            [260, 525],
+          ],
+        ],
+      },
+      {
+        id: "window",
+        label: "Window wall",
+        outline: [
+          [860, 64],
+          [896, 2],
+          [999, 2],
+          [999, 945],
+          [860, 828],
+        ],
+        cuts: [
+          [
+            [892, 96],
+            [999, 3],
+            [999, 758],
+            [892, 720],
+          ],
+        ],
+      },
+    ],
+    "master-bedroom": [
+      {
+        id: "feature",
+        label: "Bed wall",
+        outline: [
+          [168, 43],
+          [826, 43],
+          [826, 725],
+          [168, 725],
+        ],
+        cuts: [
+          [
+            [342, 388],
+            [665, 388],
+            [670, 598],
+            [800, 725],
+            [800, 800],
+            [200, 800],
+            [200, 589],
+            [316, 580],
+            [342, 595],
+          ],
+          [
+            [271, 414],
+            [321, 414],
+            [321, 594],
+            [268, 594],
+          ],
+          [
+            [191, 416],
+            [254, 407],
+            [265, 565],
+            [246, 599],
+            [206, 599],
+          ],
+          [
+            [729, 545],
+            [754, 504],
+            [785, 483],
+            [819, 518],
+            [826, 564],
+            [826, 735],
+            [748, 735],
+          ],
+        ],
+      },
+      {
+        id: "side",
+        label: "Side wall",
+        outline: [
+          [2, 2],
+          [164, 40],
+          [164, 725],
+          [2, 892],
+        ],
+        cuts: [
+          [
+            [46, 96],
+            [119, 139],
+            [119, 413],
+            [46, 390],
+          ],
+        ],
+      },
+    ],
+    "kitchen-studio": [
+      {
+        id: "kitchen",
+        label: "Kitchen wall",
+        outline: [
+          [94, 112],
+          [257, 249],
+          [257, 314],
+          [138, 314],
+          [138, 795],
+          [94, 795],
+        ],
+        cuts: [
+          [
+            [136, 319],
+            [257, 338],
+            [257, 359],
+            [136, 344],
+          ],
+        ],
+      },
+      {
+        id: "dining",
+        label: "Dining wall",
+        outline: [
+          [744, 248],
+          [896, 241],
+          [896, 556],
+          [744, 594],
+        ],
+        cuts: [
+          [
+            [790, 322],
+            [896, 317],
+            [896, 559],
+            [790, 590],
+          ],
+        ],
+      },
+    ],
+    "modern-villa": [
+      {
+        id: "front",
+        label: "Front wall",
+        outline: [
+          [675, 446],
+          [776, 397],
+          [776, 742],
+          [675, 715],
+        ],
+        cuts: [
+          [
+            [713, 494],
+            [736, 491],
+            [736, 716],
+            [713, 716],
+          ],
+          [
+            [749, 548],
+            [760, 548],
+            [760, 571],
+            [749, 571],
+          ],
+          [
+            [665, 675],
+            [703, 678],
+            [720, 727],
+            [720, 750],
+            [665, 750],
+          ],
+        ],
+      },
+      {
+        id: "side",
+        label: "Side wall",
+        outline: [
+          [838, 86],
+          [935, 199],
+          [935, 699],
+          [838, 746],
+        ],
+        cuts: [
+          [
+            [841, 519],
+            [913, 529],
+            [913, 715],
+            [841, 743],
+          ],
+          [
+            [888, 248],
+            [904, 260],
+            [904, 455],
+            [888, 445],
+          ],
+          [
+            [923, 511],
+            [932, 511],
+            [932, 525],
+            [923, 525],
+          ],
+          [
+            [919, 674],
+            [935, 655],
+            [935, 712],
+            [917, 721],
+          ],
+        ],
+      },
+      {
+        id: "upper",
+        label: "Upper wall",
+        outline: [
+          [335, 105],
+          [530, 270],
+          [530, 287],
+          [501, 318],
+          [501, 507],
+          [445, 501],
+          [445, 262],
+          [383, 227],
+          [335, 257],
+        ],
+        cuts: [],
+      },
+    ],
+    "office-studio": [
+      {
+        id: "feature",
+        label: "Feature wall",
+        outline: [
+          [2, 97],
+          [433, 247],
+          [433, 638],
+          [2, 890],
+        ],
+        cuts: [
+          [
+            [127, 292],
+            [264, 327],
+            [264, 622],
+            [127, 637],
+          ],
+          [
+            [279, 331],
+            [373, 353],
+            [373, 600],
+            [279, 620],
+          ],
+          [
+            [258, 702],
+            [281, 676],
+            [393, 637],
+            [433, 630],
+            [433, 900],
+            [258, 900],
+          ],
+        ],
+      },
+      {
+        id: "side",
+        label: "Side wall",
+        outline: [
+          [505, 284],
+          [579, 304],
+          [579, 584],
+          [505, 584],
+        ],
+        cuts: [
+          [
+            [516, 457],
+            [547, 460],
+            [551, 582],
+            [516, 582],
+          ],
+          [
+            [535, 581],
+            [579, 573],
+            [579, 603],
+            [535, 603],
+          ],
+        ],
+      },
+    ],
+  };
+  function presetWallRegions(width, height, roomId) {
+    size(width, height);
+    const polygon = (points) =>
+      polygonMask(
+        width,
+        height,
+        points.map(([x, y]) => [(x * width) / 1000, (y * height) / 1000]),
+      );
+    return (roomWalls[roomId] || []).map(({ id, label, outline, cuts }) => ({
+      regionKey: `${roomId}:${id}`,
+      label,
+      mask: cuts.reduce(
+        (mask, cut) => subtractMask(mask, polygon(cut)),
+        polygon(outline),
+      ),
+    }));
+  }
+
   /* Smooth only the selection analysis, not the displayed photograph. This makes
    * small texture changes tolerable without erasing real light/shadow detail.
    */
@@ -370,8 +703,8 @@
     return { width: original.width, height: original.height, data };
   }
 
-  /* The main workflow applies a chosen shade with a wall tap. Corrections are
-   * optional; all geometry and rendering remain in image coordinates.
+  /* Select a bounded wall first, then explicitly paint that selection. Sample
+   * photos use known wall regions; uploads use the customer's own corner outline.
    */
   function createEditor({
     canvas,
@@ -399,7 +732,7 @@
     overlay.hidden = true;
     overlay.setAttribute(
       "aria-label",
-      "Paint your wall. Drag to brush; use the eraser to protect windows and doors.",
+      "Select one wall. In your own photo, tap around its corners and finish the selection.",
     );
     overlay.setAttribute(
       "aria-keyshortcuts",
@@ -417,15 +750,23 @@
     const eraserIcon = icon(
       '<path d="m15 3 6 6-11 12H5l-3-4L15 3zM9 9l7 7M10 21h11"/>',
     );
-    toolbar.innerHTML = `<div class="ap-heading"><p>Choose a colour. Tap the wall.</p><div class="ap-shade"><i></i><div><strong></strong><span hidden></span></div></div></div>
+    toolbar.innerHTML = `<div class="ap-select-heading"><p>2. Select one wall</p><span class="ap-selected-name" role="status">No wall selected</span></div>
+      <div class="ap-wall-choices" role="group" aria-label="Select a wall"></div>
+      <div class="ap-selection-actions"><button type="button" data-tool="outline">Outline my wall</button><div class="ap-outline-actions" hidden><button type="button" data-action="finish">Finish selection</button><button type="button" data-action="back">Undo corner</button><button type="button" data-action="cancel">Cancel</button><span class="ap-points"></span></div></div>
+      <p class="ap-selection-help">Tap a wall in the sample photo, or select its name above.</p>
+      <div class="ap-heading"><p>3. Choose a colour</p><div class="ap-shade"><i></i><div><strong></strong><span hidden></span></div></div></div>
       <div class="ap-colour-options"><div class="ap-quick-swatches" role="group" aria-label="Quick shades"></div><details class="ap-palette"><summary>More colours</summary><div class="ap-palette-panel"><label>Find a shade<input type="search" aria-label="Find a paint shade" placeholder="Name or colour code" autocomplete="off"></label><div class="ap-palette-results" role="group" aria-label="Paint shades"></div><p class="ap-palette-count" role="status"></p><button type="button" data-action="close-palette">Close colours</button></div></details></div>`;
+    toolbar.insertAdjacentHTML(
+      "beforeend",
+      '<button type="button" class="ap-paint" data-action="paint">Paint selected wall</button>',
+    );
     controls.innerHTML = `<div class="ap-footer"><div class="ap-history" role="group" aria-label="Paint history"><button type="button" data-action="undo" aria-label="Undo">↶ Undo</button><button type="button" data-action="compare" aria-pressed="false">Before / After</button></div><button type="button" data-action="save" class="ap-save">${icon('<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>')}Save image</button></div>
       <p class="ap-feedback" role="status"></p>
       <details class="ap-refine"><summary>Refine a wall <span>Optional</span></summary><div class="ap-refine-body">
         <p class="ap-refine-hint">Only needed if a wall edge needs correcting.</p>
-        <div class="ap-main-tools" role="group" aria-label="Correction tools"><button type="button" data-tool="tap" aria-pressed="true">Tap to paint</button><button type="button" data-tool="brush" aria-pressed="false">${brushIcon}Add paint</button><button type="button" data-tool="erase" aria-pressed="false">${eraserIcon}Remove paint</button></div>
-        <div class="ap-settings"><label class="ap-brush-size" hidden>Brush size <input data-brush type="range" min="6" max="100" value="36" aria-label="Brush size"><output>36 px</output></label><div class="ap-coverage"><button type="button" data-action="less">Select less</button><button type="button" data-action="more">Select more</button><input data-spread type="hidden" value="24"></div></div>
-        <details class="ap-more"><summary>More tools</summary><div class="ap-tool-row"><button type="button" data-tool="outline" aria-pressed="false">Outline a wall</button><button type="button" data-tool="cutout" aria-pressed="false">Outline a window / door</button><button type="button" data-action="finish">Close outline</button><button type="button" data-action="back">Remove point</button><button type="button" data-action="cancel">Cancel outline</button><span class="ap-points"></span></div>
+        <div class="ap-main-tools" role="group" aria-label="Correction tools"><button type="button" data-tool="tap" aria-pressed="true">Select a wall</button><button type="button" data-tool="brush" aria-pressed="false">${brushIcon}Add paint</button><button type="button" data-tool="erase" aria-pressed="false">${eraserIcon}Remove paint</button><button type="button" data-tool="cutout" aria-pressed="false">Protect window / door</button></div>
+        <div class="ap-settings"><label class="ap-brush-size" hidden>Brush size <input data-brush type="range" min="6" max="100" value="36" aria-label="Brush size"><output>36 px</output></label></div>
+        <details class="ap-more"><summary>More tools</summary>
           <div class="ap-settings"><div class="ap-zoom" role="group" aria-label="Photo zoom"><button type="button" data-action="out" aria-label="Zoom out">−</button><button type="button" data-action="fit" aria-label="Fit photo">100%</button><button type="button" data-action="in" aria-label="Zoom in">+</button></div><button type="button" data-tool="pan" aria-pressed="false">Move photo</button><button type="button" data-action="redo" aria-label="Redo">↷ Redo</button><button type="button" data-action="reset">Reset photo</button><button type="button" data-action="original" hidden>Hold original</button></div>
           <div class="ap-wall-heading"><h4>Painted walls</h4><button type="button" data-action="add" aria-label="Add wall" class="ap-add">+ Add wall</button></div><div class="ap-walls" role="group" aria-label="Painted walls"></div><p class="ap-empty" hidden>Tap a wall in the photo to begin.</p><div class="ap-wall-edit" hidden><label>Wall name <input type="text" maxlength="32" aria-label="Wall name" placeholder="e.g. Front wall"></label><button type="button" data-action="delete">Remove wall</button></div>
         </details></div></details>
@@ -450,6 +791,8 @@
     let original = null,
       current = null,
       walls = [],
+      regions = [],
+      pendingWall = null,
       activeId = null,
       nextId = 1,
       history = [],
@@ -475,6 +818,7 @@
       toolbar.querySelector(selector) || controls.querySelector(selector);
     const byAction = (name) => all(`[data-action="${name}"]`)[0];
     const active = () => walls.find((wall) => wall.id === activeId);
+    const selectedWall = () => pendingWall || active();
     const shadeValue = () => {
       const value = shade();
       return /^#[0-9a-f]{6}$/i.test(value.hex)
@@ -494,7 +838,7 @@
         onStatus(message);
       }
     };
-    const snapshot = () => ({ walls: [...walls], activeId });
+    const snapshot = () => ({ walls: [...walls], activeId, pendingWall });
     const remember = () => {
       history.push(snapshot());
       if (history.length > 8) history.shift();
@@ -615,7 +959,8 @@
     }
     function refresh() {
       const ready = !!original && enabled,
-        wall = active();
+        wall = active(),
+        selection = selectedWall();
       all("button").forEach((button) => (button.disabled = !ready));
       all("[data-tool]").forEach((button) =>
         button.setAttribute(
@@ -623,29 +968,86 @@
           String(button.dataset.tool === mode),
         ),
       );
-      all('[data-tool="erase"], [data-tool="cutout"]').forEach(
+      all('[data-tool="brush"], [data-tool="erase"]').forEach(
         (button) => (button.disabled = !ready || !wall),
       );
+      find('[data-tool="cutout"]').disabled = !ready || !selection;
       byAction("finish").disabled = !ready || points.length < 3;
+      byAction("finish").textContent =
+        mode === "cutout" ? "Protect opening" : "Finish selection";
       byAction("back").disabled = !ready || !points.length;
       byAction("cancel").disabled = !ready || !points.length;
       byAction("undo").disabled = !ready || !history.length;
       byAction("redo").disabled = !ready || !future.length;
-      byAction("reset").disabled = !ready || (!walls.length && !points.length);
+      byAction("reset").disabled =
+        !ready || (!walls.length && !points.length && !pendingWall);
       byAction("add").disabled = !ready || walls.length >= 8;
       byAction("save").disabled = !ready || !walls.length;
       byAction("compare").disabled = !ready || !walls.length;
+      byAction("paint").disabled =
+        !ready ||
+        !selection ||
+        points.length > 0 ||
+        ["outline", "cutout"].includes(mode);
       byAction("compare").setAttribute("aria-pressed", String(holding));
       byAction("compare").textContent = holding
         ? "Show painted"
         : "Before / After";
-      byAction("less").disabled = !ready || !wall?.seed || wall.tolerance <= 8;
-      byAction("more").disabled = !ready || !wall?.seed || wall.tolerance >= 50;
       byAction("in").disabled = !ready || zoom >= 3;
       byAction("out").disabled = !ready || zoom <= 1;
       byAction("fit").textContent = Math.round(zoom * 100) + "%";
       find(".ap-brush-size").hidden = !["brush", "erase"].includes(mode);
-      controls.querySelector(".ap-coverage").hidden = mode !== "tap";
+      find(".ap-outline-actions").hidden = !["outline", "cutout"].includes(
+        mode,
+      );
+      find(".ap-selected-name").textContent = selection
+        ? `${selection.label} selected`
+        : "No wall selected";
+      find(".ap-selection-help").textContent = ["outline", "cutout"].includes(
+        mode,
+      )
+        ? mode === "cutout"
+          ? "Tap around a window or door, then Protect opening."
+          : `Tap around ONE wall, then Finish selection. ${points.length ? points.length + " corners added." : "Start at a corner."}`
+        : selection
+          ? "Only the outlined wall will be painted. Choose a colour, then Paint selected wall."
+          : regions.length
+            ? "Tap a wall in the sample photo, or select its name above."
+            : "Use Outline my wall to select one surface in your photo.";
+      const choices = find(".ap-wall-choices"),
+        focusedChoice = choices.contains(document.activeElement)
+          ? document.activeElement.dataset.region ||
+            document.activeElement.dataset.wall
+          : null;
+      choices.replaceChildren();
+      for (const region of regions) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.region = region.regionKey;
+        button.textContent = region.label;
+        button.disabled = !ready;
+        button.setAttribute(
+          "aria-pressed",
+          String(selection?.regionKey === region.regionKey),
+        );
+        choices.append(button);
+      }
+      for (const item of walls.filter((wall) => !wall.regionKey)) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.dataset.wall = String(item.id);
+        button.textContent = item.label;
+        button.disabled = !ready;
+        button.setAttribute("aria-pressed", String(item.id === activeId));
+        choices.append(button);
+      }
+      if (focusedChoice)
+        [...choices.children]
+          .find(
+            (button) =>
+              (button.dataset.region || button.dataset.wall) === focusedChoice,
+          )
+          ?.focus({ preventScroll: true });
       find(".ap-points").textContent = points.length
         ? `${points.length} corners`
         : "";
@@ -691,21 +1093,34 @@
       draw();
     }
     function begin() {
+      const wasOriginal = holding;
       holding = false;
       comparing = false;
       onBeforeSelect();
+      if (wasOriginal && current)
+        context.putImageData(
+          new ImageData(current.data, current.width, current.height),
+          0,
+          0,
+        );
     }
     function draw() {
       oc.clearRect(0, 0, overlay.width, overlay.height);
       if (!original || comparing || holding) return;
       const scale =
           overlay.width / Math.max(1, overlay.getBoundingClientRect().width),
-        wall = active();
-      if (wall && !gesture && controls.querySelector(".ap-refine").open) {
+        wall = selectedWall();
+      if (wall && !gesture && !points.length) {
         const edge = oc.createImageData(overlay.width, overlay.height),
           w = overlay.width,
           mask = wall.mask;
-        for (let p = 0; p < mask.length; p++)
+        for (let p = 0; p < mask.length; p++) {
+          if (pendingWall && mask[p]) {
+            edge.data[p * 4] = 111;
+            edge.data[p * 4 + 1] = 68;
+            edge.data[p * 4 + 2] = 153;
+            edge.data[p * 4 + 3] = Math.round(mask[p] * 0.18);
+          }
           if (
             mask[p] &&
             (p < w ||
@@ -718,11 +1133,12 @@
               !mask[p + w])
           ) {
             const i = p * 4;
-            edge.data[i] = 255;
-            edge.data[i + 1] = 255;
-            edge.data[i + 2] = 255;
-            edge.data[i + 3] = 190;
+            edge.data[i] = 115;
+            edge.data[i + 1] = 54;
+            edge.data[i + 2] = 161;
+            edge.data[i + 3] = 255;
           }
+        }
         oc.putImageData(edge, 0, 0);
       }
       oc.lineWidth = Math.max(1, 2 * scale);
@@ -784,19 +1200,21 @@
         : {
             id: nextId,
             number: nextId++,
-            label: `Wall ${nextId - 1}`,
+            label: pendingWall?.label || `Wall ${nextId - 1}`,
+            regionKey: pendingWall?.regionKey || null,
             mask,
             hex: chosen.hex,
             name: chosen.name,
           };
     }
-    function commitMask(mask, message, selection = null) {
+    function commitMask(mask, message) {
       if (!original) return;
       if (!mask.some((value) => value >= 128)) {
         if (active()) {
           remember();
           walls = walls.filter((wall) => wall.id !== activeId);
           activeId = walls.at(-1)?.id ?? null;
+          pendingWall = null;
           points = [];
           if (!activeId) mode = "tap";
           render();
@@ -817,10 +1235,6 @@
         previous.hex === chosen.hex &&
         mask.every((value, index) => value === previous.mask[index])
       ) {
-        if (selection)
-          walls = walls.map((item) =>
-            item.id === previous.id ? { ...item, ...selection } : item,
-          );
         points = [];
         context.putImageData(
           new ImageData(current.data, current.width, current.height),
@@ -831,35 +1245,62 @@
         return report("This part of the wall is already up to date.");
       }
       remember();
-      const wall = {
-        ...makeWall(mask),
-        seed: selection?.seed ?? null,
-        tolerance: selection?.tolerance ?? 24,
-      };
+      const wall = makeWall(mask);
       walls = [...walls.filter((item) => item.id !== wall.id), wall];
       activeId = wall.id;
+      pendingWall = null;
       points = [];
       render();
       refresh();
       notify();
       report(
-        message || "Wall painted. Pick any shade to see it here instantly.",
+        message ||
+          "Selected wall painted. Choose another colour and Paint selected wall to try it.",
       );
     }
     function finishOutline() {
       if (!original || points.length < 3) return;
       try {
         const shape = polygonMask(original.width, original.height, points);
-        const wall = active();
-        commitMask(
-          mode === "cutout" && wall ? subtractMask(wall.mask, shape) : shape,
-          mode === "cutout"
-            ? "Opening protected. You can refine its edges with the eraser."
-            : "Wall painted. Try shades from the palette; this wall updates instantly.",
-        );
+        const wall = selectedWall();
+        if (mode === "cutout" && wall) {
+          if (pendingWall) {
+            pendingWall = {
+              ...pendingWall,
+              mask: subtractMask(pendingWall.mask, shape),
+            };
+            points = [];
+            report(
+              "Opening protected. Choose a colour and Paint selected wall.",
+            );
+          } else
+            commitMask(
+              subtractMask(wall.mask, shape),
+              "Opening protected. Paint stays outside the opening.",
+            );
+          mode = "tap";
+          refresh();
+        } else
+          selectWall({ mask: shape, label: `Wall ${nextId}`, regionKey: null });
       } catch (error) {
         report(error.message);
       }
+    }
+    /* Selecting a surface never paints it. Paint always uses this fixed mask,
+     * rather than recomputing a flood fill through other same-colour walls.
+     */
+    function selectWall(region, wall = null) {
+      cancelGesture();
+      begin();
+      activeId = wall?.id ?? null;
+      pendingWall = wall ? null : region;
+      points = [];
+      mode = "tap";
+      refresh();
+      notify();
+      report(
+        `${selectedWall().label} selected. Choose a colour, then Paint selected wall.`,
+      );
     }
     function tapPoint(x, y) {
       if (!enabled || !original) return;
@@ -872,24 +1313,25 @@
           .reverse()
           .find((wall) => wall.mask[position] > 127);
         if (existing) {
-          activeId = existing.id;
-          commitMask(
-            existing.mask,
-            "Colour applied. Choose another colour and tap any wall to try it.",
-            { seed: existing.seed, tolerance: existing.tolerance },
+          selectWall(null, existing);
+          return;
+        }
+        const region = regions.find((region) => region.mask[position] > 127);
+        if (region) {
+          selectWall(
+            region,
+            walls.find((wall) => wall.regionKey === region.regionKey),
           );
           return;
         }
-        if (walls.length >= 8)
+        if (regions.length)
           return report(
-            "Choose an existing wall to edit. This photo already has eight walls.",
+            "Choose a wall button above, or use Outline my wall for a different surface.",
           );
         activeId = null;
-        commitMask(
-          connectedMask(original, x, y, +find("[data-spread]").value),
-          "Colour applied. Try another colour, or tap a different wall.",
-          { seed: [x, y], tolerance: +find("[data-spread]").value },
-        );
+        pendingWall = null;
+        mode = "outline";
+        tapPoint(x, y);
       } else if (mode === "outline" || mode === "cutout") {
         if (points.length >= MAX_POINTS)
           return report("Close this outline before adding more corners.");
@@ -913,8 +1355,8 @@
         refresh();
         report(
           mode === "cutout"
-            ? "Tap around the opening, then Close outline to remove paint there."
-            : "Tap wall corners, then Close outline. Your colour appears immediately.",
+            ? "Tap around the opening, then Protect opening to keep it unpainted."
+            : "Tap around just this wall, then Finish selection. Nothing is painted until you confirm.",
         );
       }
     }
@@ -1001,18 +1443,30 @@
         return;
       }
       if (button.dataset.wall) {
-        cancelGesture();
-        activeId = Number(button.dataset.wall);
-        points = [];
-        syncShade();
-        refresh();
-        notify();
-        report(`${active().label} selected. Any shade you pick applies here.`);
+        const wall = walls.find(
+          (wall) => wall.id === Number(button.dataset.wall),
+        );
+        if (wall) selectWall(null, wall);
+        return;
+      }
+      if (button.dataset.region) {
+        const region = regions.find(
+          (region) => region.regionKey === button.dataset.region,
+        );
+        if (region)
+          selectWall(
+            region,
+            walls.find((wall) => wall.regionKey === region.regionKey),
+          );
         return;
       }
       if (button.dataset.tool) {
         cancelGesture();
         mode = button.dataset.tool;
+        if (mode === "outline") {
+          activeId = null;
+          pendingWall = null;
+        }
         points = [];
         cursor = null;
         begin();
@@ -1020,19 +1474,32 @@
         report(
           {
             brush:
-              "Drag over the wall to paint. Colours update as you choose shades.",
+              "Drag over the selected wall to adjust its paint. Use Paint selected wall after choosing a new shade.",
             erase:
               "Drag over windows, doors or furniture to restore the photo there.",
-            tap: "Tap one wall to paint its connected area. Refine with brush or eraser.",
+            tap: "Select one wall, then choose a colour and Paint selected wall.",
             pan: "Drag the photo to move around. Use zoom for small details.",
-            outline: "Tap around the wall, then Close outline to fill it.",
-            cutout:
-              "Tap around a window or door, then Close outline to protect it.",
+            outline:
+              "Tap around ONE wall, then Finish selection. You can add more than four corners.",
+            cutout: "Tap around a window or door, then Protect opening.",
           }[mode],
         );
         return;
       }
       switch (button.dataset.action) {
+        case "paint": {
+          const selection = selectedWall();
+          if (!selection || points.length) break;
+          cancelGesture();
+          begin();
+          commitMask(
+            selection.mask,
+            `${selection.label} painted. Other walls keep their colours.`,
+          );
+          mode = "tap";
+          refresh();
+          break;
+        }
         case "close-palette":
           toolbar.querySelector(".ap-palette").open = false;
           toolbar.querySelector(".ap-palette summary").focus();
@@ -1046,18 +1513,20 @@
           break;
         case "cancel":
           points = [];
+          mode = "tap";
           refresh();
           report("Outline cancelled. Your painted walls are unchanged.");
           break;
         case "add":
           cancelGesture();
           activeId = null;
+          pendingWall = null;
           points = [];
-          mode = "tap";
+          mode = "outline";
           refresh();
           notify();
           report(
-            "Brush another wall. It will get its own colour and wall card.",
+            "Outline another wall. Its colour will stay separate from the walls already painted.",
           );
           break;
         case "delete":
@@ -1065,6 +1534,7 @@
             remember();
             walls = walls.filter((wall) => wall.id !== activeId);
             activeId = walls.at(-1)?.id ?? null;
+            pendingWall = null;
             render();
             syncShade();
             refresh();
@@ -1096,24 +1566,6 @@
           showOriginal(!holding);
           refresh();
           break;
-        case "less":
-        case "more": {
-          const wall = active();
-          if (!wall?.seed) break;
-          const tolerance = clamp(
-            (wall.tolerance || 24) +
-              (button.dataset.action === "more" ? 6 : -6),
-            8,
-            50,
-          );
-          find("[data-spread]").value = String(tolerance);
-          commitMask(
-            connectedMask(original, ...wall.seed, tolerance),
-            "Selection adjusted. Undo restores its previous edges.",
-            { seed: wall.seed, tolerance },
-          );
-          break;
-        }
         case "save":
           savePreview();
           break;
@@ -1122,8 +1574,7 @@
     listen(toolbar, "click", doAction);
     if (controls !== toolbar) listen(controls, "click", doAction);
     listen(find("[data-brush]"), "input", (event) => {
-      toolbar.querySelector(".ap-brush-size output").textContent =
-        event.target.value + " px";
+      find(".ap-brush-size output").textContent = event.target.value + " px";
       draw();
     });
     listen(
@@ -1148,14 +1599,17 @@
         picker.open = false;
     });
     listen(controls.querySelector(".ap-refine"), "toggle", () => {
-      if (!controls.querySelector(".ap-refine").open) {
+      if (
+        !controls.querySelector(".ap-refine").open &&
+        ["brush", "erase", "pan", "cutout"].includes(mode)
+      ) {
         cancelGesture();
         mode = "tap";
         points = [];
         cursor = null;
         changeZoom(1);
         refresh();
-        report("Choose a colour, then tap the wall.");
+        report("Select one wall, choose a colour, then Paint selected wall.");
       }
     });
     const nameInput = controls.querySelector('[aria-label="Wall name"]');
@@ -1289,7 +1743,7 @@
             saved.mask,
             saved.erase
               ? "Paint removed from that part of the wall. Try a smaller eraser for fine edges."
-              : "Wall painted. Choose any shade; your wall updates instantly.",
+              : "Wall adjusted. Choose a shade and Paint selected wall to recolour it.",
           );
         else if (active()) {
           remember();
@@ -1463,7 +1917,7 @@
       }, "image/png");
     }
     const api = {
-      setImage(image) {
+      setImage(image, { roomId = null } = {}) {
         const count = size(image.width, image.height);
         if (image.data.length !== count * 4)
           throw Error("This photo could not be read.");
@@ -1483,19 +1937,26 @@
         enabled = true;
         toolbar.hidden = controls.hidden = false;
         walls = [];
+        regions = presetWallRegions(image.width, image.height, roomId);
+        pendingWall = null;
         activeId = null;
         nextId = 1;
         history = [];
         future = [];
         points = [];
-        mode = "tap";
+        mode = regions.length ? "tap" : "outline";
+        holding = comparing = false;
         zoom = 1;
         cursor = null;
         viewport.scrollLeft = viewport.scrollTop = 0;
         render();
         refresh();
         notify();
-        report("Choose a colour above, then tap a wall in the photo.");
+        report(
+          regions.length
+            ? "Choose one wall in the sample photo, then choose a colour and Paint selected wall."
+            : "Your photo is ready. Tap the corners around ONE wall, then Finish selection.",
+        );
       },
       reset() {
         if (!original || !enabled) return;
@@ -1506,8 +1967,9 @@
           activeId = null;
         }
         points = [];
+        pendingWall = null;
         cursor = null;
-        mode = "tap";
+        mode = regions.length ? "tap" : "outline";
         begin();
         render();
         refresh();
@@ -1521,7 +1983,9 @@
         const saved = history.pop();
         walls = saved.walls;
         activeId = saved.activeId;
+        pendingWall = saved.pendingWall;
         points = [];
+        mode = selectedWall() || regions.length ? "tap" : "outline";
         begin();
         render();
         syncShade();
@@ -1536,7 +2000,9 @@
         const saved = future.pop();
         walls = saved.walls;
         activeId = saved.activeId;
+        pendingWall = saved.pendingWall;
         points = [];
+        mode = selectedWall() || regions.length ? "tap" : "outline";
         begin();
         render();
         syncShade();
@@ -1563,7 +2029,11 @@
       shadeChanged() {
         updateShadeChip();
         if (!original || !enabled) return;
-        report(`Tap a wall to apply ${shadeValue().name}.`);
+        report(
+          selectedWall()
+            ? `${shadeValue().name} chosen. Press Paint selected wall to apply it only here.`
+            : "Colour chosen. Select one wall before painting.",
+        );
       },
       destroy() {
         cancelGesture();
@@ -1584,6 +2054,8 @@
         stage.style.removeProperty("--ap-fit-width");
         original = current = null;
         walls = [];
+        regions = [];
+        pendingWall = null;
         history = [];
         future = [];
       },
@@ -1593,7 +2065,7 @@
     return api;
   }
   globalThis.ArevaPaintStudio = Object.freeze({
-    version: 3,
+    version: 4,
     polygonMask,
     subtractMask,
     connectedMask,
@@ -1601,6 +2073,7 @@
     validPolygon,
     brushMask,
     composeImage,
+    presetWallRegions,
     createEditor,
   });
 })();
