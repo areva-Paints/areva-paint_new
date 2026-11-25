@@ -138,7 +138,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     if (!canvas || !original || !painterRef.current) return;
     const scale = Math.min(
       1,
-      960 / Math.max(image.naturalWidth, image.naturalHeight),
+      1200 / Math.max(image.naturalWidth, image.naturalHeight),
     );
     canvas.width = original.width = Math.max(
       1,
@@ -227,6 +227,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       if (generation !== imageGeneration.current) return;
       showPhoto(image);
       setIsCustomPhoto(true);
+      viewportRef.current?.scrollIntoView({
+        block: "start",
+        behavior: "instant",
+      });
     } catch (error) {
       if (generation === imageGeneration.current) {
         painterRef.current?.setEnabled(true);
@@ -333,16 +337,35 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
             </h2>
             <p className="text-stone-600 text-base mt-2">
               Switch between architectural presets or upload a photo of your own
-              room. Select just one wall, choose a colour and press Paint
-              selected wall. Keep the original lighting and texture, then save
-              your favourite result. Export the preview or request a dealer
-              quote.
+              room. Drag an area over a wall, adjust its corners, or brush over
+              columns and trim. Choose a colour and press Paint selected area.
+              Keep the original lighting and texture, then save your favourite
+              result. Export the preview or request a dealer quote.
             </p>
           </div>
         </div>
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <ColourCollectionHeading total={COLOR_SHADES.length} />
+        <div ref={viewportRef} className="ap-viewport ap-preview-first">
+          {/* Interactive Canvas Container */}
+          <div className="ap-photo-stage relative rounded-2xl overflow-hidden bg-stone-950 border border-stone-300 shadow-xl select-none group">
+            {/* Painted Canvas */}
+            <canvas
+              ref={canvasRef}
+              aria-label="Photo paint preview"
+              className="relative z-10 w-full h-auto block mx-auto"
+            />
+
+            {/* Underlying Original Canvas (For Before/After Comparison) */}
+            <canvas
+              ref={originalCanvasRef}
+              className="w-full h-full absolute inset-0 z-0 block pointer-events-none"
+              aria-hidden="true"
+            />
+          </div>
+        </div>
+
         {/* Studio Workspace: Split Grid */}
         <div className="colour-studio-grid">
           {/* Room preview and painting controls */}
@@ -380,6 +403,10 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                       onClick={() => {
                         setIsCustomPhoto(false);
                         setActivePreset(preset);
+                        viewportRef.current?.scrollIntoView({
+                          block: "start",
+                          behavior: "instant",
+                        });
                       }}
                     >
                       <img src={preset.imageUrl} alt="" loading="lazy" />
@@ -420,24 +447,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               )}
             </div>
             <div ref={toolbarRef} />
-            <div ref={viewportRef} className="ap-viewport">
-              {/* Interactive Canvas Container */}
-              <div className="ap-photo-stage relative rounded-2xl overflow-hidden bg-stone-950 border border-stone-300 shadow-xl select-none group">
-                {/* Painted Canvas */}
-                <canvas
-                  ref={canvasRef}
-                  aria-label="Photo paint preview"
-                  className="relative z-10 w-full h-auto block mx-auto"
-                />
-
-                {/* Underlying Original Canvas (For Before/After Comparison) */}
-                <canvas
-                  ref={originalCanvasRef}
-                  className="w-full h-full absolute inset-0 z-0 block pointer-events-none"
-                  aria-hidden="true"
-                />
-              </div>
-            </div>
             <div ref={toolsRef} />
             <p
               className="ap-external-status text-sm text-purple-900"

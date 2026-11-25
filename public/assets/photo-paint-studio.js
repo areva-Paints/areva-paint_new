@@ -119,6 +119,45 @@
     return mask.map((value, i) => Math.round(value * (1 - cut[i] / 255)));
   };
 
+  /* A drag makes a wall-sized box; corner handles turn it into a perspective
+   * quadrilateral. All coordinates stay in the photo, independent of zoom.
+   */
+  function boxCorners(width, height, from, to) {
+    size(width, height);
+    if (![...from, ...to].every(Number.isFinite))
+      throw Error("Drag inside the photo.");
+    const left = clamp(Math.min(from[0], to[0]), 0, width),
+      right = clamp(Math.max(from[0], to[0]), 0, width),
+      top = clamp(Math.min(from[1], to[1]), 0, height),
+      bottom = clamp(Math.max(from[1], to[1]), 0, height);
+    if (right - left < 2 || bottom - top < 2)
+      throw Error("Drag across the area you want to paint.");
+    return [
+      [left, top],
+      [right, top],
+      [right, bottom],
+      [left, bottom],
+    ];
+  }
+  function moveAreaCorner(width, height, corners, index, point) {
+    size(width, height);
+    if (
+      corners.length !== 4 ||
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index > 3 ||
+      !point.every(Number.isFinite)
+    )
+      throw Error("Choose a corner of the selected area.");
+    const next = corners.map((p) => [...p]);
+    next[index] = [clamp(point[0], 0, width), clamp(point[1], 0, height)];
+    if (!validPolygon(next))
+      throw Error(
+        "Keep the corner handles around the same surface without crossing them.",
+      );
+    return next;
+  }
+
   /* Sample photos have explicit architectural boundaries. Coordinates use a
    * 0–1000 photo grid, so both studios share the same walls at every resolution.
    * Furniture, openings, frames and trim are cut out before any paint is applied.
@@ -703,8 +742,8 @@
     return { width: original.width, height: original.height, data };
   }
 
-  /* Select a bounded wall first, then explicitly paint that selection. Sample
-   * photos use known wall regions; uploads use the customer's own corner outline.
+  /* Select an area before painting. Uploaded surfaces use draggable perspective
+   * boxes or brushed masks; samples also offer their known architectural walls.
    */
   function createEditor({
     canvas,
@@ -732,43 +771,41 @@
     overlay.hidden = true;
     overlay.setAttribute(
       "aria-label",
-      "Select one wall. In your own photo, tap around its corners and finish the selection.",
+      "Drag across a surface to select it. Drag the corner handles to fit the wall, or brush over columns and trim.",
     );
     overlay.setAttribute(
       "aria-keyshortcuts",
       "ArrowUp ArrowDown ArrowLeft ArrowRight Enter Escape Control+z Control+y",
     );
     stage.append(overlay);
+    const loupe = document.createElement("canvas"),
+      lc = loupe.getContext("2d");
+    loupe.className = "ap-loupe";
+    loupe.width = loupe.height = 180;
+    loupe.hidden = true;
+    loupe.setAttribute("aria-hidden", "true");
+    viewport.append(loupe);
     toolbar.classList.add("ap-toolbar");
     controls.classList.add("ap-tools");
     viewport.classList.add("ap-viewport");
     const icon = (path) =>
       `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
-    const brushIcon = icon(
-      '<path d="m14 3 7 7-9 9-7-7zM5 12l-2 9 9-2M14 3l-4 4"/>',
-    );
-    const eraserIcon = icon(
-      '<path d="m15 3 6 6-11 12H5l-3-4L15 3zM9 9l7 7M10 21h11"/>',
-    );
-    toolbar.innerHTML = `<div class="ap-select-heading"><p>2. Select one wall</p><span class="ap-selected-name" role="status">No wall selected</span></div>
+    toolbar.innerHTML = `<div class="ap-select-heading"><p>Select a wall, column or trim</p><span class="ap-selected-name" role="status">No area selected</span></div>
       <div class="ap-wall-choices" role="group" aria-label="Select a wall"></div>
-      <div class="ap-selection-actions"><button type="button" data-tool="outline">Outline my wall</button><div class="ap-outline-actions" hidden><button type="button" data-action="finish">Finish selection</button><button type="button" data-action="back">Undo corner</button><button type="button" data-action="cancel">Cancel</button><span class="ap-points"></span></div></div>
-      <p class="ap-selection-help">Tap a wall in the sample photo, or select its name above.</p>
-      <div class="ap-heading"><p>3. Choose a colour</p><div class="ap-shade"><i></i><div><strong></strong><span hidden></span></div></div></div>
-      <div class="ap-colour-options"><div class="ap-quick-swatches" role="group" aria-label="Quick shades"></div><details class="ap-palette"><summary>More colours</summary><div class="ap-palette-panel"><label>Find a shade<input type="search" aria-label="Find a paint shade" placeholder="Name or colour code" autocomplete="off"></label><div class="ap-palette-results" role="group" aria-label="Paint shades"></div><p class="ap-palette-count" role="status"></p><button type="button" data-action="close-palette">Close colours</button></div></details></div>`;
-    toolbar.insertAdjacentHTML(
-      "beforeend",
-      '<button type="button" class="ap-paint" data-action="paint">Paint selected wall</button>',
-    );
+      <div class="ap-area-tools" role="group" aria-label="Area selection tools"><button type="button" data-tool="area">Drag an area</button><button type="button" data-tool="mark">Brush an area</button><button type="button" data-tool="unmark">Remove from area</button><button type="button" data-tool="pan">Move photo</button></div>
+      <div class="ap-selection-actions"><button type="button" data-action="new-area">+ New area</button><div class="ap-zoom" role="group" aria-label="Photo zoom"><button type="button" data-action="out" aria-label="Zoom out">−</button><button type="button" data-action="fit" aria-label="Fit photo">100%</button><button type="button" data-action="in" aria-label="Zoom in">+</button></div><label class="ap-brush-size" hidden>Brush size <input data-brush type="range" min="4" max="80" value="20" aria-label="Brush size"><output>20 px</output></label></div>
+      <div class="ap-outline-actions" hidden><button type="button" data-action="finish">Finish outline</button><button type="button" data-action="back">Undo corner</button><button type="button" data-action="cancel">Cancel</button><span class="ap-points"></span></div>
+      <p class="ap-selection-help">Drag across a surface. Adjust the four corner handles to match its edges.</p>
+      <div class="ap-heading"><p>Choose a colour</p><div class="ap-shade"><i></i><div><strong></strong><span hidden></span></div></div></div>
+      <div class="ap-colour-options"><div class="ap-quick-swatches" role="group" aria-label="Quick shades"></div><details class="ap-palette"><summary>More colours</summary><div class="ap-palette-panel"><label>Find a shade<input type="search" aria-label="Find a paint shade" placeholder="Name or colour code" autocomplete="off"></label><div class="ap-palette-results" role="group" aria-label="Paint shades"></div><p class="ap-palette-count" role="status"></p><button type="button" data-action="close-palette">Close colours</button></div></details></div>
+      <button type="button" class="ap-paint" data-action="paint">Paint selected area</button>`;
     controls.innerHTML = `<div class="ap-footer"><div class="ap-history" role="group" aria-label="Paint history"><button type="button" data-action="undo" aria-label="Undo">↶ Undo</button><button type="button" data-action="compare" aria-pressed="false">Before / After</button></div><button type="button" data-action="save" class="ap-save">${icon('<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>')}Save image</button></div>
       <p class="ap-feedback" role="status"></p>
-      <details class="ap-refine"><summary>Refine a wall <span>Optional</span></summary><div class="ap-refine-body">
-        <p class="ap-refine-hint">Only needed if a wall edge needs correcting.</p>
-        <div class="ap-main-tools" role="group" aria-label="Correction tools"><button type="button" data-tool="tap" aria-pressed="true">Select a wall</button><button type="button" data-tool="brush" aria-pressed="false">${brushIcon}Add paint</button><button type="button" data-tool="erase" aria-pressed="false">${eraserIcon}Remove paint</button><button type="button" data-tool="cutout" aria-pressed="false">Protect window / door</button></div>
-        <div class="ap-settings"><label class="ap-brush-size" hidden>Brush size <input data-brush type="range" min="6" max="100" value="36" aria-label="Brush size"><output>36 px</output></label></div>
-        <details class="ap-more"><summary>More tools</summary>
-          <div class="ap-settings"><div class="ap-zoom" role="group" aria-label="Photo zoom"><button type="button" data-action="out" aria-label="Zoom out">−</button><button type="button" data-action="fit" aria-label="Fit photo">100%</button><button type="button" data-action="in" aria-label="Zoom in">+</button></div><button type="button" data-tool="pan" aria-pressed="false">Move photo</button><button type="button" data-action="redo" aria-label="Redo">↷ Redo</button><button type="button" data-action="reset">Reset photo</button><button type="button" data-action="original" hidden>Hold original</button></div>
-          <div class="ap-wall-heading"><h4>Painted walls</h4><button type="button" data-action="add" aria-label="Add wall" class="ap-add">+ Add wall</button></div><div class="ap-walls" role="group" aria-label="Painted walls"></div><p class="ap-empty" hidden>Tap a wall in the photo to begin.</p><div class="ap-wall-edit" hidden><label>Wall name <input type="text" maxlength="32" aria-label="Wall name" placeholder="e.g. Front wall"></label><button type="button" data-action="delete">Remove wall</button></div>
+      <details class="ap-refine"><summary>More selection tools</summary><div class="ap-refine-body">
+        <div class="ap-main-tools"><button type="button" data-tool="outline">Outline with corners</button><button type="button" data-tool="cutout">Protect window / door</button><button type="button" data-tool="tap">Select painted area</button></div>
+        <details class="ap-more"><summary>Area names and history</summary>
+          <div class="ap-settings"><button type="button" data-action="redo" aria-label="Redo">↷ Redo</button><button type="button" data-action="reset">Reset photo</button><button type="button" data-action="original" hidden>Hold original</button></div>
+          <div class="ap-wall-heading"><h4>Painted areas</h4><button type="button" data-action="add" aria-label="Add wall" class="ap-add">+ Add area</button></div><div class="ap-walls" role="group" aria-label="Painted areas"></div><p class="ap-empty" hidden>Choose part of the photo to begin.</p><div class="ap-wall-edit" hidden><label>Area name <input type="text" maxlength="32" aria-label="Wall name" placeholder="e.g. Balcony column"></label><button type="button" data-action="delete">Remove area</button></div>
         </details></div></details>
       <p class="ap-note">Save your image before leaving. Your photo stays on this device.</p>`;
     const normalizeSwatches = (values) =>
@@ -797,7 +834,7 @@
       nextId = 1,
       history = [],
       future = [];
-    let mode = "tap",
+    let mode = "area",
       points = [],
       cursor = null,
       zoom = 1,
@@ -839,8 +876,8 @@
       }
     };
     const snapshot = () => ({ walls: [...walls], activeId, pendingWall });
-    const remember = () => {
-      history.push(snapshot());
+    const remember = (saved = snapshot()) => {
+      history.push(saved);
       if (history.length > 8) history.shift();
       future = [];
     };
@@ -972,9 +1009,10 @@
         (button) => (button.disabled = !ready || !wall),
       );
       find('[data-tool="cutout"]').disabled = !ready || !selection;
+      find('[data-tool="unmark"]').disabled = !ready || !selection;
       byAction("finish").disabled = !ready || points.length < 3;
       byAction("finish").textContent =
-        mode === "cutout" ? "Protect opening" : "Finish selection";
+        mode === "cutout" ? "Protect opening" : "Finish outline";
       byAction("back").disabled = !ready || !points.length;
       byAction("cancel").disabled = !ready || !points.length;
       byAction("undo").disabled = !ready || !history.length;
@@ -987,6 +1025,8 @@
       byAction("paint").disabled =
         !ready ||
         !selection ||
+        !selection.mask.some((value) => value >= 128) ||
+        (!wall && walls.length >= 8) ||
         points.length > 0 ||
         ["outline", "cutout"].includes(mode);
       byAction("compare").setAttribute("aria-pressed", String(holding));
@@ -996,24 +1036,37 @@
       byAction("in").disabled = !ready || zoom >= 3;
       byAction("out").disabled = !ready || zoom <= 1;
       byAction("fit").textContent = Math.round(zoom * 100) + "%";
-      find(".ap-brush-size").hidden = !["brush", "erase"].includes(mode);
+      find(".ap-brush-size").hidden = ![
+        "brush",
+        "erase",
+        "mark",
+        "unmark",
+      ].includes(mode);
       find(".ap-outline-actions").hidden = !["outline", "cutout"].includes(
         mode,
       );
       find(".ap-selected-name").textContent = selection
         ? `${selection.label} selected`
-        : "No wall selected";
+        : "No area selected";
       find(".ap-selection-help").textContent = ["outline", "cutout"].includes(
         mode,
       )
         ? mode === "cutout"
           ? "Tap around a window or door, then Protect opening."
-          : `Tap around ONE wall, then Finish selection. ${points.length ? points.length + " corners added." : "Start at a corner."}`
-        : selection
-          ? "Only the outlined wall will be painted. Choose a colour, then Paint selected wall."
-          : regions.length
-            ? "Tap a wall in the sample photo, or select its name above."
-            : "Use Outline my wall to select one surface in your photo.";
+          : `Tap around one surface, then Finish outline. ${points.length ? points.length + " corners added." : "Start at a corner."}`
+        : mode === "mark"
+          ? "Brush over the wall, column or trim you want to paint. Adjust brush size for narrow features."
+          : mode === "unmark"
+            ? "Brush over windows, doors or mistakes to exclude them from this area."
+            : mode === "pan"
+              ? "Drag the photo to reach details. Select Drag an area or Brush an area to continue."
+              : selection
+                ? selection.corners
+                  ? "Drag the corner dots to follow the surface edges. Choose a colour, then Paint selected area."
+                  : "Only the marked area will receive paint. Use New area for another surface or colour."
+                : regions.length
+                  ? "Tap a sample wall, or drag across any surface to make your own area."
+                  : "Drag across one wall, then adjust its corner dots. Use Brush an area for columns and narrow trim.";
       const choices = find(".ap-wall-choices"),
         focusedChoice = choices.contains(document.activeElement)
           ? document.activeElement.dataset.region ||
@@ -1085,7 +1138,14 @@
       stage.style.marginInline = zoom === 1 ? "auto" : "0";
       stage.style.maxWidth = "none";
       overlay.hidden = !ready;
-      overlay.style.touchAction = ["brush", "erase", "pan"].includes(mode)
+      overlay.style.touchAction = [
+        "brush",
+        "erase",
+        "mark",
+        "unmark",
+        "area",
+        "pan",
+      ].includes(mode)
         ? "none"
         : "manipulation";
       overlay.dataset.mode = mode;
@@ -1105,17 +1165,20 @@
         );
     }
     function draw() {
+      loupe.hidden = true;
       oc.clearRect(0, 0, overlay.width, overlay.height);
       if (!original || comparing || holding) return;
       const scale =
           overlay.width / Math.max(1, overlay.getBoundingClientRect().width),
-        wall = selectedWall();
-      if (wall && !gesture && !points.length) {
+        wall = gesture?.selectionStroke
+          ? { ...gesture.base, mask: gesture.mask }
+          : selectedWall();
+      if (wall && (!gesture || gesture.selectionStroke) && !points.length) {
         const edge = oc.createImageData(overlay.width, overlay.height),
           w = overlay.width,
           mask = wall.mask;
         for (let p = 0; p < mask.length; p++) {
-          if (pendingWall && mask[p]) {
+          if ((pendingWall || gesture?.selectionStroke) && mask[p]) {
             edge.data[p * 4] = 111;
             edge.data[p * 4 + 1] = 68;
             edge.data[p * 4 + 2] = 153;
@@ -1145,6 +1208,24 @@
       oc.strokeStyle =
         mode === "erase" || mode === "cutout" ? "#e36948" : "#703995";
       oc.fillStyle = "#fff";
+      const corners = gesture?.corners || wall?.corners;
+      if (corners && mode === "area") {
+        oc.beginPath();
+        corners.forEach(([x, y], i) => (i ? oc.lineTo(x, y) : oc.moveTo(x, y)));
+        oc.closePath();
+        oc.lineWidth = 4 * scale;
+        oc.strokeStyle = "#fff";
+        oc.stroke();
+        oc.lineWidth = 1.5 * scale;
+        oc.strokeStyle = "#703995";
+        oc.stroke();
+        for (const [x, y] of corners) {
+          oc.beginPath();
+          oc.arc(x, y, 7 * scale, 0, Math.PI * 2);
+          oc.fill();
+          oc.stroke();
+        }
+      }
       if (points.length) {
         oc.beginPath();
         points.forEach(([x, y], i) => (i ? oc.lineTo(x, y) : oc.moveTo(x, y)));
@@ -1160,7 +1241,7 @@
           oc.fillStyle = "#fff";
         });
       }
-      if (cursor && ["brush", "erase"].includes(mode)) {
+      if (cursor && ["brush", "erase", "mark", "unmark"].includes(mode)) {
         const radius = (+find("[data-brush]").value * scale) / 2;
         oc.lineWidth = 3 * scale;
         oc.strokeStyle = "#fff";
@@ -1168,7 +1249,9 @@
         oc.arc(...cursor, radius, 0, Math.PI * 2);
         oc.stroke();
         oc.lineWidth = 1.3 * scale;
-        oc.strokeStyle = mode === "erase" ? "#b83e29" : "#542474";
+        oc.strokeStyle = ["erase", "unmark"].includes(mode)
+          ? "#b83e29"
+          : "#542474";
         oc.stroke();
       } else if (cursor && mode !== "tap") {
         oc.beginPath();
@@ -1177,6 +1260,46 @@
         oc.moveTo(cursor[0], cursor[1] - 7 * scale);
         oc.lineTo(cursor[0], cursor[1] + 7 * scale);
         oc.stroke();
+      }
+      loupe.hidden =
+        !gesture ||
+        !(gesture.kind === "corner" || ["mark", "unmark"].includes(mode));
+      if (!loupe.hidden && cursor) {
+        const span = 70 * scale;
+        lc.fillStyle = "#fff";
+        lc.fillRect(0, 0, 180, 180);
+        lc.drawImage(
+          canvas,
+          cursor[0] - span / 2,
+          cursor[1] - span / 2,
+          span,
+          span,
+          0,
+          0,
+          180,
+          180,
+        );
+        lc.beginPath();
+        lc.moveTo(70, 90);
+        lc.lineTo(110, 90);
+        lc.moveTo(90, 70);
+        lc.lineTo(90, 110);
+        lc.strokeStyle = "#fff";
+        lc.lineWidth = 5;
+        lc.stroke();
+        lc.strokeStyle = "#703995";
+        lc.lineWidth = 2;
+        lc.stroke();
+        /* Counteract the scroll offset so precision stays visible after zoom/pan. */
+        const photoRect = overlay.getBoundingClientRect(),
+          viewRect = viewport.getBoundingClientRect();
+        const pointerX =
+          photoRect.left -
+          viewRect.left +
+          (cursor[0] * photoRect.width) / overlay.width;
+        loupe.style.left = `${viewport.scrollLeft + (pointerX > viewport.clientWidth / 2 ? 12 : Math.max(12, viewport.clientWidth - 108))}px`;
+        loupe.style.top = `${viewport.scrollTop + Math.min(12, Math.max(0, viewport.clientHeight - 100))}px`;
+        loupe.style.right = "auto";
       }
     }
     function render() {
@@ -1196,12 +1319,20 @@
     function makeWall(mask, existing = active()) {
       const chosen = shadeValue();
       return existing
-        ? { ...existing, mask, hex: chosen.hex, name: chosen.name }
+        ? {
+            ...existing,
+            ...(pendingWall || {}),
+            mask,
+            hex: chosen.hex,
+            name: chosen.name,
+          }
         : {
             id: nextId,
             number: nextId++,
-            label: pendingWall?.label || `Wall ${nextId - 1}`,
+            label: pendingWall?.label || `Area ${nextId - 1}`,
             regionKey: pendingWall?.regionKey || null,
+            corners: pendingWall?.corners || null,
+            cutoutMask: pendingWall?.cutoutMask || null,
             mask,
             hex: chosen.hex,
             name: chosen.name,
@@ -1216,7 +1347,7 @@
           activeId = walls.at(-1)?.id ?? null;
           pendingWall = null;
           points = [];
-          if (!activeId) mode = "tap";
+          if (!activeId) mode = "area";
           render();
           syncShade();
           refresh();
@@ -1255,7 +1386,7 @@
       notify();
       report(
         message ||
-          "Selected wall painted. Choose another colour and Paint selected wall to try it.",
+          "Selected wall painted. Choose another colour and Paint selected area to try it.",
       );
     }
     function finishOutline() {
@@ -1264,21 +1395,27 @@
         const shape = polygonMask(original.width, original.height, points);
         const wall = selectedWall();
         if (mode === "cutout" && wall) {
+          const cutoutMask = wall.cutoutMask
+            ? wall.cutoutMask.map((value, i) => Math.max(value, shape[i]))
+            : shape;
           if (pendingWall) {
             pendingWall = {
               ...pendingWall,
               mask: subtractMask(pendingWall.mask, shape),
+              cutoutMask,
             };
             points = [];
             report(
-              "Opening protected. Choose a colour and Paint selected wall.",
+              "Opening protected. Choose a colour and Paint selected area.",
             );
-          } else
+          } else {
+            pendingWall = { ...wall, cutoutMask };
             commitMask(
               subtractMask(wall.mask, shape),
               "Opening protected. Paint stays outside the opening.",
             );
-          mode = "tap";
+          }
+          mode = "area";
           refresh();
         } else
           selectWall({ mask: shape, label: `Wall ${nextId}`, regionKey: null });
@@ -1295,17 +1432,17 @@
       activeId = wall?.id ?? null;
       pendingWall = wall ? null : region;
       points = [];
-      mode = "tap";
+      mode = "area";
       refresh();
       notify();
       report(
-        `${selectedWall().label} selected. Choose a colour, then Paint selected wall.`,
+        `${selectedWall().label} selected. Adjust the area if needed, choose a colour, then Paint selected area.`,
       );
     }
     function tapPoint(x, y) {
       if (!enabled || !original) return;
       begin();
-      if (mode === "tap") {
+      if (mode === "tap" || mode === "area") {
         const position =
           clamp(Math.floor(y), 0, original.height - 1) * original.width +
           clamp(Math.floor(x), 0, original.width - 1);
@@ -1324,14 +1461,9 @@
           );
           return;
         }
-        if (regions.length)
-          return report(
-            "Choose a wall button above, or use Outline my wall for a different surface.",
-          );
-        activeId = null;
-        pendingWall = null;
-        mode = "outline";
-        tapPoint(x, y);
+        report(
+          "Drag across the surface you want, then move its corner handles to match the edges. Brush an area works for narrow features.",
+        );
       } else if (mode === "outline" || mode === "cutout") {
         if (points.length >= MAX_POINTS)
           return report("Close this outline before adding more corners.");
@@ -1356,7 +1488,7 @@
         report(
           mode === "cutout"
             ? "Tap around the opening, then Protect opening to keep it unpainted."
-            : "Tap around just this wall, then Finish selection. Nothing is painted until you confirm.",
+            : "Tap around just this wall, then Finish outline. Nothing is painted until you confirm.",
         );
       }
     }
@@ -1378,6 +1510,11 @@
     function renderWorking() {
       frame = 0;
       if (!gesture?.mask || !original) return;
+      if (gesture.selectionStroke) {
+        lastFrame = performance.now();
+        draw();
+        return;
+      }
       const data = paintImage(
         original,
         gesture.underlay.data,
@@ -1429,6 +1566,9 @@
           : `${Math.round(zoom * 100)}% zoom. Choose Move photo to reach another part of the wall.`,
       );
     }
+    function revealPhoto() {
+      viewport.scrollIntoView({ block: "start", behavior: "instant" });
+    }
     function doAction(event) {
       const button = event.target.closest("button");
       if (!button || button.disabled || !original || !enabled) return;
@@ -1473,17 +1613,22 @@
         refresh();
         report(
           {
+            area: "Drag across a wall, column or trim. Then adjust the four corner dots to follow its edges.",
+            mark: "Brush over only the surface you want to colour. Use a small brush for columns, ledges and trim.",
+            unmark:
+              "Brush over windows, doors and anything that must stay unpainted. Paint selected area applies your changes.",
             brush:
-              "Drag over the selected wall to adjust its paint. Use Paint selected wall after choosing a new shade.",
+              "Drag over the selected wall to adjust its paint. Use Paint selected area after choosing a new shade.",
             erase:
               "Drag over windows, doors or furniture to restore the photo there.",
-            tap: "Select one wall, then choose a colour and Paint selected wall.",
+            tap: "Select one wall, then choose a colour and Paint selected area.",
             pan: "Drag the photo to move around. Use zoom for small details.",
             outline:
-              "Tap around ONE wall, then Finish selection. You can add more than four corners.",
+              "Tap around ONE wall, then Finish outline. You can add more than four corners.",
             cutout: "Tap around a window or door, then Protect opening.",
           }[mode],
         );
+        revealPhoto();
         return;
       }
       switch (button.dataset.action) {
@@ -1494,10 +1639,11 @@
           begin();
           commitMask(
             selection.mask,
-            `${selection.label} painted. Other walls keep their colours.`,
+            `${selection.label} painted. Other surfaces keep their colours.`,
           );
-          mode = "tap";
+          mode = "area";
           refresh();
+          revealPhoto();
           break;
         }
         case "close-palette":
@@ -1513,21 +1659,23 @@
           break;
         case "cancel":
           points = [];
-          mode = "tap";
+          mode = "area";
           refresh();
           report("Outline cancelled. Your painted walls are unchanged.");
           break;
         case "add":
+        case "new-area":
           cancelGesture();
           activeId = null;
           pendingWall = null;
           points = [];
-          mode = "outline";
+          mode = "area";
           refresh();
           notify();
           report(
-            "Outline another wall. Its colour will stay separate from the walls already painted.",
+            "Drag across the next surface, or choose Brush an area for a column or trim. It can have its own colour.",
           );
+          revealPhoto();
           break;
         case "delete":
           if (active()) {
@@ -1555,12 +1703,15 @@
           break;
         case "in":
           changeZoom(zoom + 0.5);
+          revealPhoto();
           break;
         case "out":
           changeZoom(zoom - 0.5);
+          revealPhoto();
           break;
         case "fit":
           changeZoom(1);
+          revealPhoto();
           break;
         case "compare":
           showOriginal(!holding);
@@ -1604,12 +1755,12 @@
         ["brush", "erase", "pan", "cutout"].includes(mode)
       ) {
         cancelGesture();
-        mode = "tap";
+        mode = "area";
         points = [];
         cursor = null;
         changeZoom(1);
         refresh();
-        report("Select one wall, choose a colour, then Paint selected wall.");
+        report("Select one wall, choose a colour, then Paint selected area.");
       }
     });
     const nameInput = controls.querySelector('[aria-label="Wall name"]');
@@ -1646,7 +1797,63 @@
       begin();
       const point = imagePoint(event);
       cursor = point;
-      if (["brush", "erase"].includes(mode)) {
+      if (mode === "area") {
+        event.preventDefault();
+        const selection = selectedWall(),
+          scale =
+            overlay.width / Math.max(1, overlay.getBoundingClientRect().width);
+        const handles = selection?.corners || [];
+        let corner = -1,
+          distance = 18 * scale;
+        handles.forEach((p, i) => {
+          const d = Math.hypot(point[0] - p[0], point[1] - p[1]);
+          if (d < distance) {
+            corner = i;
+            distance = d;
+          }
+        });
+        gesture = {
+          id: event.pointerId,
+          kind: corner < 0 ? "box" : "corner",
+          before: snapshot(),
+          start: point,
+          startClient: [event.clientX, event.clientY],
+          corners: corner < 0 ? null : handles.map((p) => [...p]),
+          corner,
+          base: selection,
+        };
+        overlay.setPointerCapture(event.pointerId);
+      } else if (["mark", "unmark"].includes(mode)) {
+        const selection = selectedWall();
+        if (mode === "unmark" && !selection) return;
+        event.preventDefault();
+        gesture = {
+          id: event.pointerId,
+          selectionStroke: true,
+          before: snapshot(),
+          start: point,
+          last: point,
+          base: selection || { label: `Area ${nextId}`, regionKey: null },
+          mask: new Uint8Array(
+            selection?.mask || original.width * original.height,
+          ),
+          radius:
+            (+find("[data-brush]").value * overlay.width) /
+            Math.max(1, overlay.getBoundingClientRect().width) /
+            2,
+          erase: mode === "unmark",
+        };
+        strokeInto(
+          gesture.mask,
+          original.width,
+          original.height,
+          point,
+          point,
+          gesture.radius,
+          gesture.erase,
+        );
+        overlay.setPointerCapture(event.pointerId);
+      } else if (["brush", "erase"].includes(mode)) {
         if (mode === "erase" && !active()) return;
         event.preventDefault();
         const wall = active();
@@ -1699,7 +1906,30 @@
       if (!original || !enabled) return;
       const point = imagePoint(event);
       cursor = point;
-      if (gesture?.id === event.pointerId && gesture.mask) {
+      if (
+        gesture?.id === event.pointerId &&
+        ["box", "corner"].includes(gesture.kind)
+      ) {
+        try {
+          gesture.corners =
+            gesture.kind === "box"
+              ? boxCorners(
+                  original.width,
+                  original.height,
+                  gesture.start,
+                  point,
+                )
+              : moveAreaCorner(
+                  original.width,
+                  original.height,
+                  gesture.corners,
+                  gesture.corner,
+                  point,
+                );
+        } catch {
+          /* Keep the last valid shape when a handle crosses another edge. */
+        }
+      } else if (gesture?.id === event.pointerId && gesture.mask) {
         strokeInto(
           gesture.mask,
           original.width,
@@ -1711,6 +1941,7 @@
         );
         gesture.last = point;
         queueWorking();
+        if (gesture.selectionStroke) return;
       } else if (gesture?.id === event.pointerId && mode === "pan") {
         viewport.scrollLeft =
           gesture.scroll[0] + gesture.startClient[0] - event.clientX;
@@ -1728,7 +1959,82 @@
       gesture = null;
       if (overlay.hasPointerCapture?.(event.pointerId))
         overlay.releasePointerCapture(event.pointerId);
-      if (saved.mask) {
+      if (["box", "corner"].includes(saved.kind)) {
+        if (
+          saved.kind === "box" &&
+          Math.hypot(
+            event.clientX - saved.startClient[0],
+            event.clientY - saved.startClient[1],
+          ) < 8
+        ) {
+          tapPoint(...point);
+        } else {
+          try {
+            const corners =
+              saved.kind === "box"
+                ? boxCorners(
+                    original.width,
+                    original.height,
+                    saved.start,
+                    point,
+                  )
+                : moveAreaCorner(
+                    original.width,
+                    original.height,
+                    saved.corners,
+                    saved.corner,
+                    point,
+                  );
+            let mask = polygonMask(original.width, original.height, corners);
+            if (saved.kind === "corner" && saved.base?.cutoutMask)
+              mask = subtractMask(mask, saved.base.cutoutMask);
+            remember(saved.before);
+            if (saved.kind === "box") {
+              activeId = null;
+              pendingWall = {
+                label: `Area ${nextId}`,
+                regionKey: null,
+                mask,
+                corners,
+                cutoutMask: null,
+              };
+            } else pendingWall = { ...saved.base, mask, corners };
+            points = [];
+            refresh();
+            notify();
+            report(
+              "Area ready. Drag its corner dots to follow the edges, then choose a colour and Paint selected area.",
+            );
+          } catch (error) {
+            report(error.message);
+          }
+        }
+      } else if (saved.selectionStroke) {
+        strokeInto(
+          saved.mask,
+          original.width,
+          original.height,
+          saved.last,
+          point,
+          saved.radius,
+          saved.erase,
+        );
+        remember(saved.before);
+        pendingWall = {
+          ...saved.base,
+          mask: saved.mask,
+          corners: null,
+          cutoutMask: null,
+        };
+        points = [];
+        refresh();
+        notify();
+        report(
+          saved.erase
+            ? "Area trimmed. Windows, doors and unmarked surfaces stay out of your selection."
+            : "Area marked. Keep brushing to include the surface, then choose a colour and Paint selected area.",
+        );
+      } else if (saved.mask) {
         strokeInto(
           saved.mask,
           original.width,
@@ -1743,7 +2049,7 @@
             saved.mask,
             saved.erase
               ? "Paint removed from that part of the wall. Try a smaller eraser for fine edges."
-              : "Wall adjusted. Choose a shade and Paint selected wall to recolour it.",
+              : "Wall adjusted. Choose a shade and Paint selected area to recolour it.",
           );
         else if (active()) {
           remember();
@@ -1929,7 +2235,7 @@
         };
         stage.style.setProperty(
           "--ap-fit-width",
-          `${(image.width / image.height) * 60}dvh`,
+          `${(image.width / image.height) * 64}dvh`,
         );
         controls.querySelector(".ap-refine").open = false;
         overlay.width = image.width;
@@ -1944,7 +2250,7 @@
         history = [];
         future = [];
         points = [];
-        mode = regions.length ? "tap" : "outline";
+        mode = "area";
         holding = comparing = false;
         zoom = 1;
         cursor = null;
@@ -1954,14 +2260,14 @@
         notify();
         report(
           regions.length
-            ? "Choose one wall in the sample photo, then choose a colour and Paint selected wall."
-            : "Your photo is ready. Tap the corners around ONE wall, then Finish selection.",
+            ? "Choose one wall in the sample photo, then choose a colour and Paint selected area."
+            : "Your photo is ready. Drag across one surface and adjust the corner dots, or brush over a column or trim.",
         );
       },
       reset() {
         if (!original || !enabled) return;
         cancelGesture();
-        if (walls.length) {
+        if (walls.length || pendingWall) {
           remember();
           walls = [];
           activeId = null;
@@ -1969,7 +2275,7 @@
         points = [];
         pendingWall = null;
         cursor = null;
-        mode = regions.length ? "tap" : "outline";
+        mode = "area";
         begin();
         render();
         refresh();
@@ -1985,7 +2291,7 @@
         activeId = saved.activeId;
         pendingWall = saved.pendingWall;
         points = [];
-        mode = selectedWall() || regions.length ? "tap" : "outline";
+        mode = "area";
         begin();
         render();
         syncShade();
@@ -2002,7 +2308,7 @@
         activeId = saved.activeId;
         pendingWall = saved.pendingWall;
         points = [];
-        mode = selectedWall() || regions.length ? "tap" : "outline";
+        mode = "area";
         begin();
         render();
         syncShade();
@@ -2031,7 +2337,7 @@
         if (!original || !enabled) return;
         report(
           selectedWall()
-            ? `${shadeValue().name} chosen. Press Paint selected wall to apply it only here.`
+            ? `${shadeValue().name} chosen. Press Paint selected area to apply it only here.`
             : "Colour chosen. Select one wall before painting.",
         );
       },
@@ -2045,6 +2351,7 @@
         });
         objectUrls.clear();
         overlay.remove();
+        loupe.remove();
         toolbar.replaceChildren();
         controls.replaceChildren();
         if (ownsToolbar) toolbar.remove();
@@ -2065,7 +2372,7 @@
     return api;
   }
   globalThis.ArevaPaintStudio = Object.freeze({
-    version: 4,
+    version: 5,
     polygonMask,
     subtractMask,
     connectedMask,
@@ -2073,6 +2380,8 @@
     validPolygon,
     brushMask,
     composeImage,
+    boxCorners,
+    moveAreaCorner,
     presetWallRegions,
     createEditor,
   });

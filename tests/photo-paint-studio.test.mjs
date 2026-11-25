@@ -14,6 +14,8 @@ const {
   brushMask,
   composeImage,
   presetWallRegions,
+  boxCorners,
+  moveAreaCorner,
 } = globalThis.ArevaPaintStudio;
 const image = (width, height, pixel) => ({
   width,
@@ -27,6 +29,115 @@ const image = (width, height, pixel) => ({
 });
 const rgb = (data, width, x, y) =>
   Array.from(data.slice((y * width + x) * 4, (y * width + x) * 4 + 3));
+
+test("a drag selects a bounded area in either direction and adjustable corners follow perspective", () => {
+  const from = [95, 75],
+    to = [10, 15];
+  const corners = boxCorners(100, 80, from, to);
+  assert.deepEqual(corners, [
+    [10, 15],
+    [95, 15],
+    [95, 75],
+    [10, 75],
+  ]);
+  assert.deepEqual(boxCorners(100, 80, [-20, -30], [130, 100]), [
+    [0, 0],
+    [100, 0],
+    [100, 80],
+    [0, 80],
+  ]);
+  assert.deepEqual(from, [95, 75]);
+  const changed = moveAreaCorner(100, 80, corners, 0, [30, 30]);
+  assert.deepEqual(
+    corners[0],
+    [10, 15],
+    "Dragging a handle must not mutate a saved selection",
+  );
+  const mask = polygonMask(100, 80, changed);
+  assert.equal(
+    mask[20 * 100 + 15],
+    0,
+    "The corner adjustment removes the neighbouring plane",
+  );
+  assert.equal(
+    mask[50 * 100 + 50],
+    255,
+    "The middle of the chosen surface remains selected",
+  );
+  assert.throws(() => boxCorners(100, 80, [1, 1], [1, 60]));
+  assert.throws(() => boxCorners(100, 80, [NaN, 1], [40, 60]));
+  assert.throws(
+    () => moveAreaCorner(100, 80, corners, 0, [100, 50]),
+    /crossing/,
+  );
+});
+
+test("rough concrete, a protected opening and a narrow column stay within explicit selections", () => {
+  const original = image(180, 140, (x, y) => {
+    const value = 170 - y * 0.45 + (((x * 31 + y * 17) % 23) - 11);
+    return [value, value, value];
+  });
+  const corners = moveAreaCorner(
+    180,
+    140,
+    boxCorners(180, 140, [20, 20], [100, 120]),
+    0,
+    [40, 30],
+  );
+  const opening = polygonMask(180, 140, [
+    [60, 55],
+    [80, 55],
+    [80, 90],
+    [60, 90],
+  ]);
+  const mask = subtractMask(polygonMask(180, 140, corners), opening);
+  const wall = composeImage(original, [{ mask, hex: "#bf9c83" }]);
+  let changed = 0;
+  for (let p = 0; p < mask.length; p++) {
+    if (mask[p] === 255) {
+      assert.notDeepEqual(
+        wall.data.slice(p * 4, p * 4 + 3),
+        original.data.slice(p * 4, p * 4 + 3),
+      );
+      changed++;
+    }
+    if (mask[p] === 0)
+      assert.deepEqual(
+        wall.data.slice(p * 4, p * 4 + 4),
+        original.data.slice(p * 4, p * 4 + 4),
+      );
+  }
+  assert.ok(
+    changed > 4000,
+    "Textured pixels inside the wall must not develop selection gaps",
+  );
+  const column = brushMask(
+    180,
+    140,
+    new Uint8Array(180 * 140),
+    [
+      [140, 20],
+      [140, 120],
+    ],
+    4,
+  );
+  const withColumn = composeImage(original, [
+    { mask, hex: "#bf9c83" },
+    { mask: column, hex: "#646f87" },
+  ]);
+  assert.deepEqual(
+    rgb(withColumn.data, 180, 50, 60),
+    rgb(wall.data, 180, 50, 60),
+  );
+  assert.notDeepEqual(
+    rgb(withColumn.data, 180, 140, 60),
+    rgb(wall.data, 180, 140, 60),
+  );
+  assert.deepEqual(
+    rgb(withColumn.data, 180, 130, 60),
+    rgb(original.data, 180, 130, 60),
+  );
+});
 
 test("every room preset has distinct, bounded wall selections at both photo resolutions", () => {
   for (const id of [

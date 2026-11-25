@@ -266,6 +266,49 @@
   border: 1px solid #e6deed;
   border-top: 0;
 }
+.ap-viewport.ap-preview-first {
+  position: relative;
+  max-height: 65dvh;
+  margin-bottom: 20px;
+  border: 1px solid #e6deed;
+  border-radius: 16px;
+  scroll-margin-top: 140px;
+}
+.ap-viewport .ap-photo-stage {
+  border: 0;
+}
+.ap-loupe {
+  position: absolute;
+  top: 12px;
+  z-index: 30;
+  width: 96px;
+  height: 96px;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 20px #29133c55;
+  pointer-events: none;
+}
+.ap-loupe[hidden] {
+  display: none !important;
+}
+.ap-area-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0;
+}
+.ap-selection-actions .ap-brush-size {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+.ap-selection-actions input[type="range"] {
+  width: 110px;
+  padding: 0;
+  accent-color: #643788;
+}
 .ap-photo-stage {
   position: relative;
   isolation: isolate;
@@ -295,6 +338,9 @@ canvas.ap-selection {
 }
 .ap-selection[data-mode="brush"],
 .ap-selection[data-mode="erase"],
+.ap-selection[data-mode="area"],
+.ap-selection[data-mode="mark"],
+.ap-selection[data-mode="unmark"],
 .ap-selection[data-mode="outline"],
 .ap-selection[data-mode="cutout"] {
   cursor: crosshair;

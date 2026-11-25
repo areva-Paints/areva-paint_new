@@ -1,48 +1,50 @@
 # Paint your home — updated 25 November 2026
 
-## Customer workflow
+## Layout and customer workflow
 
-1. **Choose a room or upload your home.** Living room, Bedroom, Kitchen, Exterior and Office appear as visible photo cards. The first room loads by default. Upload is always available beside these choices; JPEG, PNG and WebP photos up to 20 MiB / 40 megapixels are supported. A new photo starts untouched.
-2. **Select one wall.** In a sample room, tap the wall in the photo or choose its named button, such as Sofa wall or Window wall. For an uploaded photo, tap corners around one wall and choose **Finish selection**. More than four corners are supported, and tapping the first corner also closes the outline. **Undo corner** and **Cancel** correct a draft. A purple boundary shows the selected surface without modifying the photo.
-3. **Choose a colour**, then press **Paint selected wall**. Colour selection and wall selection alone never paint. The button stays disabled until a valid wall has been selected. Only that mask receives paint; there is no automatic flood fill across the house.
-4. Select another sample wall, or use **Outline my wall** for a new surface. Each wall keeps its own shade. To recolour an existing wall, tap it or its wall button, choose a shade and press **Paint selected wall**. Up to eight painted walls are supported.
-5. Use **Undo** to reverse a change and **Before / After** to toggle the original photo. **Save image** downloads `Areva-Paints-My-Home.png` without selection marks or controls. Save before leaving: edits live in the current browser tab, not an account or server database.
+The photo comes first and spans the workspace. Room cards, upload buttons, selection tools and the full shade catalogue sit below it on both desktop and mobile. The public HTML renderer and React Studio use the same controller.
 
-Five quick suggestions and **More colours** use the actual CMS catalogue; the full colour library remains available. Live camera is separate under an optional camera disclosure. Capturing a frame opens the same still-photo selection workflow. Printing, custom colours or quotation controls remain in a separate optional section, depending on the studio.
+1. Choose a **Living room, Bedroom, Kitchen, Exterior or Office** photo below the preview, or **Upload your home photo**. The first sample loads by default. JPEG, PNG and WebP uploads up to 20 MiB / 40 megapixels are supported. Each new photo starts untouched.
+2. Use **Drag an area** across a surface. A drag creates a rectangular selection with four corner handles. Move the handles to match a sloping wall, beam or other perspective surface. A magnified view appears while adjusting corners. No separate Finish selection step is required.
+3. For narrow columns, ledges, bands or irregular surfaces, choose **Brush an area**. Set the brush size and drag over the surface; repeated strokes add to the same selection. The magnifier helps place small strokes. **Remove from area** brushes windows, doors, furniture or unwanted marks out of the selection.
+4. Choose a shade, then press **Paint selected area**. Selection, brushing and colour choice alone never commit paint. The button requires a nonempty, valid area. Only that mask receives pigment, including textured or shadowed concrete inside it.
+5. Use **+ New area** for another wall or feature with its own colour. Tap a painted area or its button to select it again. The photo supports eight painted areas; one brushed area may include several separate features that share a shade.
+6. **Undo / Redo** recover draft selections, handle adjustments, brush corrections and committed paint. **Before / After** toggles the untouched photo. **Save image** downloads `Areva-Paints-My-Home.png` from committed paint, without handles, selection tint, magnifier or controls. Save before leaving: work lives in the browser tab, not an account or server database.
 
-## Windows, doors and optional corrections
+Selecting an editing tool, changing zoom or painting brings the photo back into view. On touch screens, dragging in the photo deliberately edits an area; the document remains scrollable outside the photo. **Move photo** pans a zoomed image. Zoom and Fit photo are available directly below the image rather than in a hidden submenu.
 
-The sample-room wall masks exclude the defined openings, furniture, frames and trim. Uploaded photos use the customer's outline and do not automatically recognize windows or furniture.
+## Openings and additional precision tools
 
-For an uploaded wall containing an opening, open **Refine a wall → Protect window / door**, tap around the opening and choose **Protect opening**. This works before painting and on an already painted wall. An unpainted selection remains unpainted until **Paint selected wall** is pressed. Protected holes stay clear when recolouring.
+Uploaded photos use the customer's selected geometry. There is no automatic semantic recognition of windows, plants, neighbouring buildings or surface types. The explicit boundary prevents colour from travelling into other same-colour walls. Use **Remove from area** to keep objects unpainted.
 
-After painting, **Add paint** brushes in a missed area and **Remove paint** restores accidental paint. Brush size appears only while these tools are selected. These corrections deliberately allow the user to adjust the mask; they do not trigger house-wide selection. **More tools** provides zoom (100–300%), Move photo, Redo, Reset photo, wall naming and removal. Reset is undoable.
+**More selection tools → Protect window / door** also supports a precise polygon cutout. Tap around an opening and choose **Protect opening**. This works before or after painting, and cutouts are retained when dragging the enclosing area's corner handles. **Outline with corners** is available for shapes requiring more than four corners. Tap the first corner to close it or use **Finish outline**. Undo corner and Cancel correct a draft; crossing or degenerate outlines are refused.
 
-Corner tools allow normal touch scrolling without adding corners during a drag. With the photo focused, arrow keys move the cursor and Enter adds a corner or selects a wall. Ctrl/Cmd+Z and Ctrl/Cmd+Y undo/redo. Backspace removes a corner and Escape cancels a draft. Uploading another photo clears old walls, selections and history. Fitted images preserve their aspect ratio, including portrait photos.
+Sample photos also offer named architectural wall masks with defined furniture, window and trim exclusions. Dragging or brushing remains available for different features. Sample geometry uses a 0–1000 coordinate grid relative to the exact photo; replacing an image requires reviewing its masks.
 
-## Boundaries, rendering and local storage
+With the image focused, arrow keys move the cursor and Enter selects an area or adds a corner in Outline mode. Backspace removes a draft corner and Escape cancels a gesture. Ctrl/Cmd+Z and Ctrl/Cmd+Y undo/redo. Area naming, removal and Reset photo remain under **Area names and history**. Reset is undoable.
 
-Each sample photo has at least two named wall regions defined in `public/assets/photo-paint-studio.js`. Geometry uses a 0–1000 coordinate grid relative to that exact image and is scaled to the decoded photo. Cutout polygons exclude defined furniture, openings and trim. The masks are disjoint: selecting another wall cannot silently repaint the first. If a sample image is replaced, its wall geometry must be reviewed at the same time.
+## Rendering and privacy
 
-Uploaded photos receive no sample geometry. Customers define a polygon for the desired wall, so even touching surfaces of the same colour do not merge. Invalid/crossing outlines are refused. The previous connected-colour helper remains covered by rendering tests, but is not used to select a new wall in this workflow. This is explicit photo editing, not automatic building recognition.
+Draggable quadrilaterals and brushed masks use image coordinates, so touch input, zoom and rendering refer to the same pixels. Handle movements are clipped to the photo and cannot create crossing shapes. Cancelled gestures restore the previous committed selection. Masks and saved history remain immutable after an edit; an eight-step history shares unchanged masks to bound memory.
 
-Paint replaces pigment in linear light using the untouched photo's luminance and a robust reference for each wall. Shadows and texture remain, and repeated shade trials recompose from the original rather than accumulating tint. Erasing reveals lower walls or the original correctly. Use a physical shade card to confirm a final paint choice.
+Both studios decode to a longest side of **1,200 pixels**, within the shared 1.5-million-pixel working limit. Portrait and landscape photos retain their aspect ratio. The local magnifier samples the displayed photo and never appears in a saved PNG.
 
-Masks are immutable after each committed change. An eight-step undo/redo history shares unchanged masks to bound memory. Working photos are resized to a longest side of 900 pixels in the public HTML studio and 960 in React Studio. Both use the same controller and image coordinates. Photos, masks and names stay in browser memory. Only sample photos and public catalogue/assets are fetched. Stale image responses cannot overwrite a newer room or upload.
+Paint replaces pigment in linear light using the untouched source luminance and a robust reference per area. Rough texture and shadows remain; shade trials recompose from the original rather than accumulating tint. The older connected-colour helper remains tested but is not used for new uploaded-area selections. Use a physical shade card to confirm a final colour.
+
+Photos, masks and names remain in browser memory. Only sample photos and public catalogue/assets are fetched. Uploads clear earlier areas/history, and stale room responses cannot overwrite a newer photo. No backend endpoint, database table/migration, API key, model download or dependency was added. Live camera is separate; a captured still uses the same local area tools.
 
 ## Code and deployment
 
-- `public/assets/photo-paint-studio.js`: preset wall geometry, explicit selection, paint composition, cutouts, history, colour picker, comparison, corrections and PNG export.
-- `public/assets/photo-paint-studio.css`: visible room-photo cards, wall choices, outline guidance, colour controls, fitted image and optional refinements.
-- `src/visualizer/photo-painter.ts`: typed versioned loader, image options and local decoding with URL cleanup.
-- `src/components/ColorVisualizer.tsx` and the preserved public HTML: room selection, upload, catalogue and export integration.
+- `public/assets/photo-paint-studio.js`: geometry, draggable handles, draft brush/eraser selections, cutouts, magnifier, history, pigment composition and PNG export.
+- `public/assets/photo-paint-studio.css`: photo-first layout, controls below the image, selection feedback and touch-friendly precision controls.
+- `src/visualizer/photo-painter.ts`: typed versioned loader and local image decoding.
+- `src/components/ColorVisualizer.tsx` and the preserved HTML: photo, room, upload and catalogue integration.
+- `src/admin/legacy-page.ts`: preserves dynamic catalogue insertion after moving the image before the options grid.
 
-The script and legacy stylesheet URLs use `?v=4`; React requires controller version 4. This prevents the prior automatic tap-to-paint interaction from being reused from cache. Known room IDs must be passed to `setImage(image, { roomId })` only when that exact preset photo was decoded. Uploads, camera frames and vector fallbacks omit the ID and use manual outlines.
-
-No backend endpoint, database table/migration, API key or dependency was added. No customer photo is uploaded to the server by this painter.
+The standalone script and legacy stylesheet URLs use `?v=5`; React requires controller version 5 to avoid reusing the previous interaction from cache. Known sample IDs are passed to `setImage(image, { roomId })` only for those photos. Uploads, camera frames and vector fallbacks omit the ID.
 
 ## Verification
 
-The 16 tests in `tests/photo-paint-studio.test.mjs` include valid/disjoint masks for every room at both studio resolutions, protected furnishings, independent wall colours, pixel boundaries, brush/eraser composition, shadow rendering and source immutability.
+The 18 photo tests cover bounded/reversed drags, immutable corner adjustment, crossing refusal, rough concrete, protected openings, narrow columns, sample masks, independent areas, brush/eraser composition, source immutability and shadow rendering.
 
-Browser checks cover both studios with all five real room photos and a customer-photo fixture whose identical-colour walls touch. Checks include selection before painting, disabled/unconfirmed painting, protected windows before paint, independent colours, recolouring, Undo, Before/After, brush-size corrections, clean PNG downloads, touch input and layouts from 320 to 1,440 pixels. Type checking, production build and the wider application/prepared-SQL regressions also apply.
+Browser checks cover both studios, all five room photos, a custom textured exterior fixture with touching planes and separate architectural features, and a real exterior uploaded as a customer photo. Checks include the photo above all options, perspective-handle editing, opening protection surviving handle moves, touch brushing on a column/diagonal trim, draft Undo/Redo, independent colours, original comparison, clean PNG export and 320–1,440-pixel layouts. Type checking, production build and the full application/prepared-SQL suite also apply.
