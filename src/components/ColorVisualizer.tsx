@@ -54,7 +54,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
 
   const [activePreset, setActivePreset] = useState<RoomPreset>(ROOM_PRESETS[0]);
   const [isCustomPhoto, setIsCustomPhoto] = useState(false);
-  const [sliderPosition, setSliderPosition] = useState<number>(100); // 100 = full painted, 0 = full original
   const [savedColors, setSavedColors] = useState<string[]>(() => {
     try {
       const saved: unknown = JSON.parse(
@@ -77,7 +76,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
     Array<{ name: string; hex: string }>
   >([]);
 
-  const [isHoldingOriginal, setIsHoldingOriginal] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string>(
     "Loading photo tools…",
   );
@@ -118,10 +116,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
           onChange: ({ colors }) => {
             setAppliedColors(colors);
           },
-          onBeforeSelect: () => {
-            setSliderPosition(100);
-            setIsHoldingOriginal(false);
-          },
+          onBeforeSelect: () => {},
         });
         setPainterReady(true);
       })
@@ -203,11 +198,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   useEffect(() => {
     painterRef.current?.setSwatches(COLOR_SHADES);
   }, [COLOR_SHADES, painterReady]);
-  useEffect(() => {
-    painterRef.current?.setComparison(
-      sliderPosition < 100 || isHoldingOriginal,
-    );
-  }, [sliderPosition, isHoldingOriginal]);
 
   /* Decode a bounded supported photo locally; uploads never leave the browser. */
   const handlePhotoUpload = async (
@@ -341,8 +331,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
             </h2>
             <p className="text-stone-600 text-base mt-2">
               Switch between architectural presets or upload a photo of your own
-              room. Brush a wall, erase around windows and doors, and try any
-              shade instantly while keeping light, shadows and surface texture.
+              room. Choose a colour and tap the wall to try it. Keep the
+              original lighting and texture, then save your favourite result.
               Export the preview or request a dealer quote.
             </p>
           </div>
@@ -354,72 +344,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         <div className="colour-studio-grid">
           {/* Room preview and painting controls */}
           <div className="colour-room-panel space-y-4">
-            <p className="colour-painting-label">
-              Painting with:{" "}
-              <strong>
-                {currentShade.name} ({currentShade.code})
-              </strong>
-            </p>
-
-            {/* Room Selector Chips */}
-            <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
-              <div className="flex items-center gap-2 shrink-0">
-                {ROOM_PRESETS.map((preset) => {
-                  const isCurrent =
-                    !isCustomPhoto && activePreset.id === preset.id;
-                  return (
-                    <button
-                      key={preset.id}
-                      onClick={() => {
-                        setIsCustomPhoto(false);
-                        setActivePreset(preset);
-                      }}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
-                        isCurrent
-                          ? "bg-stone-900 text-white shadow-sm"
-                          : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
-                      }`}
-                    >
-                      {preset.name}
-                    </button>
-                  );
-                })}
-
-                {onOpenLiveAR && (
-                  <button
-                    onClick={onOpenLiveAR}
-                    type="button"
-                    className="px-3.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all whitespace-nowrap bg-stone-950 text-white hover:bg-amber-800 shadow-md ring-2 ring-amber-400/40 active:scale-95 cursor-pointer"
-                    title="Open live camera feed with real-time 3D wall recoloring"
-                  >
-                    <Camera className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                    <span>Live Camera AR (Mobile & Webcam)</span>
-                  </button>
-                )}
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png, image/jpeg, image/webp"
-                  className="hidden"
-                  aria-label="Upload room photo"
-                  onChange={handlePhotoUpload}
-                />
-              </div>
-
-              {/* Status Note */}
-              <div className="hidden sm:flex items-center gap-1 text-[11px] text-stone-500 shrink-0">
-                <span>Active:</span>
-                <span className="font-bold text-stone-900">
-                  {currentShade.name}
-                </span>
-                <span
-                  className="w-3 h-3 rounded-full border border-black/20 ml-0.5 inline-block"
-                  style={{ backgroundColor: currentShade.hex }}
-                />
-              </div>
-            </div>
-
             <button
               type="button"
               className="ap-upload-home"
@@ -428,6 +352,67 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
               <Upload size={18} />
               Upload your home photo
             </button>
+            <details className="ap-scenes">
+              <summary>Or try a sample room</summary>
+              {/* Room Selector Chips */}
+              <div className="flex items-center justify-between gap-2 overflow-x-auto pb-1 no-scrollbar">
+                <div className="flex items-center gap-2 shrink-0">
+                  {ROOM_PRESETS.map((preset) => {
+                    const isCurrent =
+                      !isCustomPhoto && activePreset.id === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        onClick={() => {
+                          setIsCustomPhoto(false);
+                          setActivePreset(preset);
+                        }}
+                        className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
+                          isCurrent
+                            ? "bg-stone-900 text-white shadow-sm"
+                            : "bg-white text-stone-700 border border-stone-200 hover:bg-stone-50"
+                        }`}
+                      >
+                        {preset.name}
+                      </button>
+                    );
+                  })}
+
+                  {onOpenLiveAR && (
+                    <button
+                      onClick={onOpenLiveAR}
+                      type="button"
+                      className="px-3.5 py-1.5 text-xs font-bold rounded-lg flex items-center gap-1.5 transition-all whitespace-nowrap bg-stone-950 text-white hover:bg-amber-800 shadow-md ring-2 ring-amber-400/40 active:scale-95 cursor-pointer"
+                      title="Open live camera feed with real-time 3D wall recoloring"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+                      <span>Live Camera AR (Mobile & Webcam)</span>
+                    </button>
+                  )}
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    className="hidden"
+                    aria-label="Upload room photo"
+                    onChange={handlePhotoUpload}
+                  />
+                </div>
+
+                {/* Status Note */}
+                <div className="hidden sm:flex items-center gap-1 text-[11px] text-stone-500 shrink-0">
+                  <span>Active:</span>
+                  <span className="font-bold text-stone-900">
+                    {currentShade.name}
+                  </span>
+                  <span
+                    className="w-3 h-3 rounded-full border border-black/20 ml-0.5 inline-block"
+                    style={{ backgroundColor: currentShade.hex }}
+                  />
+                </div>
+              </div>
+            </details>
             <div ref={toolbarRef} />
             <div ref={viewportRef} className="ap-viewport">
               {/* Interactive Canvas Container */}
@@ -437,10 +422,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   ref={canvasRef}
                   aria-label="Photo paint preview"
                   className="relative z-10 w-full h-auto block mx-auto"
-                  style={{
-                    clipPath: `inset(0 ${100 - sliderPosition}% 0 0)`,
-                    filter: isHoldingOriginal ? "opacity(0)" : "opacity(1)",
-                  }}
                 />
 
                 {/* Underlying Original Canvas (For Before/After Comparison) */}
@@ -449,18 +430,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   className="w-full h-full absolute inset-0 z-0 block pointer-events-none"
                   aria-hidden="true"
                 />
-
-                {/* Split Line Indicator if Slider < 100 */}
-                {sliderPosition < 99 && sliderPosition > 1 && (
-                  <div
-                    className="absolute top-0 bottom-0 w-0.5 bg-white shadow-lg pointer-events-none z-10"
-                    style={{ left: `${sliderPosition}%` }}
-                  >
-                    <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-white text-stone-900 shadow-md flex items-center justify-center text-[10px] font-bold border border-stone-300">
-                      ⇄
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
             <div ref={toolsRef} />
@@ -470,27 +439,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
             >
               {statusMessage}
             </p>
-            {/* Canvas Toolbar & Comparison Slider */}
-            <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-xs space-y-3">
-              {/* Slider Row */}
-              <div className="flex items-center gap-4">
-                <span className="text-xs font-semibold text-stone-600 whitespace-nowrap">
-                  Original (Before)
-                </span>
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={sliderPosition}
-                  onChange={(e) => setSliderPosition(Number(e.target.value))}
-                  className="w-full accent-amber-600 cursor-pointer h-2 bg-stone-200 rounded-lg"
-                  aria-label="Before and after comparison slider"
-                />
-                <span className="text-xs font-semibold text-amber-700 whitespace-nowrap">
-                  Painted (After)
-                </span>
-              </div>
-
+            <details className="ap-extras">
+              <summary>Print or request a quote</summary>
               {/* Tool Buttons */}
               <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-100">
                 <div className="flex flex-wrap items-center gap-2">
@@ -512,7 +462,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                   </button>
                 </div>
               </div>
-            </div>
+            </details>
           </div>
 
           {/* Palette filters and shade library */}

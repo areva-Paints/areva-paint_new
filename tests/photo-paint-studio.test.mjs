@@ -381,3 +381,65 @@ test("quick selection is connected and does not cross a strong contrasting objec
   );
   assert.throws(() => connectedMask(original, NaN, 3));
 });
+
+test("one wall tap follows neutral shadows instead of leaving the darker half unpainted", () => {
+  const original = image(90, 60, (x, y) => {
+    const light = 220 - y * 2.25 + ((x + y) % 2 ? 6 : -6);
+    return [light, light, light];
+  });
+  const mask = connectedMask(original, 20, 5);
+  assert.ok(
+    mask.every((value) => value === 255),
+    "A continuous wall should include its shaded lower area",
+  );
+  assert.deepEqual(
+    original.data.slice(0, 4),
+    new Uint8ClampedArray([214, 214, 214, 255]),
+  );
+});
+
+test("wall texture does not create speckled gaps while openings and separate walls stay protected", () => {
+  const original = image(100, 70, (x, y) => {
+    if (x >= 76 && x < 80) return [35, 110, 200];
+    if (x >= 30 && x < 50 && y >= 20 && y < 50) return [30, 30, 30];
+    const value = 205 - y * 1.3 + ((x + y) % 2 ? 17 : -17);
+    return [value, value, value];
+  });
+  const mask = connectedMask(original, 15, 10);
+  let wall = 0,
+    selected = 0;
+  for (let y = 0; y < 70; y++)
+    for (let x = 0; x < 76; x++) {
+      if (x >= 30 && x < 50 && y >= 20 && y < 50) continue;
+      wall++;
+      if (mask[y * 100 + x]) selected++;
+    }
+  assert.ok(
+    selected / wall > 0.97,
+    "Textured wall coverage should remain continuous",
+  );
+  for (const [x, y] of [
+    [35, 30],
+    [45, 40],
+    [77, 20],
+    [90, 40],
+  ])
+    assert.equal(mask[y * 100 + x], 0);
+});
+
+test("selection does not travel through a warmer floor into another wall", () => {
+  const original = image(100, 70, (x, y) => {
+    if (y >= 50) return [183, 160, 139];
+    if (y < 10 || x < 10 || (x >= 65 && x < 68)) return [118, 179, 223];
+    const ratio = (y - 10) / 40;
+    return [238 - ratio * 102, 227 - ratio * 97, 205 - ratio * 86];
+  });
+  const mask = connectedMask(original, 20, 15);
+  assert.equal(mask[40 * 100 + 20], 255, "Shaded wall remains selected");
+  assert.equal(mask[60 * 100 + 30], 0, "Floor is not a bridge between walls");
+  assert.equal(
+    mask[30 * 100 + 85],
+    0,
+    "Neighbouring wall keeps its own colour",
+  );
+});
