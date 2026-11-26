@@ -80,12 +80,15 @@ export function securityHeaders(production: boolean): RequestHandler {
     // event-handler attributes or arbitrary injected <script> elements.
     const nonce = crypto.randomBytes(18).toString("base64");
     res.locals.scriptNonce = nonce;
+    // Only the dedicated, public wall-selection worker compiles the pinned WASM runtime.
+    // Page documents (including admin/auth/warranty) keep their strict script policy.
+    const wallPreview = req.method === "GET" && req.path === "/assets/wall-selector-worker.js";
     if (production)
       res.setHeader(
         "Content-Security-Policy",
         [
           "default-src 'self'",
-          `script-src 'self' 'nonce-${nonce}'`,
+          `script-src 'self' 'nonce-${nonce}'${wallPreview ? " 'wasm-unsafe-eval'" : ""}`,
           "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
           "font-src 'self' https://fonts.gstatic.com data:",
           "img-src 'self' data: blob: https:",

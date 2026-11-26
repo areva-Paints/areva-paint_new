@@ -1,0 +1,14 @@
+{
+  "model": "Xenova/slimsam-77-uniform",
+  "modelRevision": "5850ab45f587c112167512ffef949107115e26a0",
+  "modelLicense": "Apache-2.0",
+  "runtime": "onnxruntime-web@1.22.0",
+  "runtimeLicense": "MIT",
+  "files": {
+    "wall-model/v1/encoder.onnx": "cce23c7b2e5d4f330932738fb67ba518e04b0d99ccdd1cccd22a7da4e01f2971",
+    "wall-model/v1/decoder.onnx": "cb90b279f549d2cab7fd6e20c38522438c65d84bdcca3d2a764cff7d857fdce2",
+    "vendor/onnx/ort.wasm.min.js": "65e09376df69107e881b5c34d2d37aed333a366b6d941073ec518168e269b87d",
+    "vendor/onnx/ort-wasm-simd-threaded.mjs": "30dd851d9c00622940500f71ddd2ff8820c5cb65270816080175b958705385a8",
+    "vendor/onnx/ort-wasm-simd-threaded.wasm": "71aef04959c5c1b6de461b6538e2058e306610034a85aad2742d0c7fd4533fe4"
+  }
+}

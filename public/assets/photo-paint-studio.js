@@ -742,8 +742,341 @@
     return { width: original.width, height: original.height, data };
   }
 
-  /* Select an area before painting. Uploaded surfaces use draggable perspective
-   * boxes or brushed masks; samples also offer their known architectural walls.
+  /* Prepare an immutable white foundation, then replace pigment only on a
+   * selected prepared surface. Before always refers to the untouched upload.
+   */
+  function whiteWallBase(original, surfaces) {
+    const count = size(original.width, original.height);
+    if (!Array.isArray(surfaces) || surfaces.length > 16)
+      throw Error("Prepare up to sixteen wall surfaces.");
+    const mask = new Uint8Array(count);
+    for (const surface of surfaces) {
+      if (surface.mask.length !== count)
+        throw Error("Wall sizes do not match.");
+      for (let p = 0; p < count; p++)
+        mask[p] = Math.max(mask[p], surface.mask[p]);
+    }
+    return {
+      width: original.width,
+      height: original.height,
+      data: paintImage(original, original.data, mask, "#ffffff"),
+    };
+  }
+  function renderWhitePreview(base, surfaces) {
+    let data = new Uint8ClampedArray(base.data);
+    for (const surface of surfaces)
+      if (surface.hex) data = paintImage(base, data, surface.mask, surface.hex);
+    return { width: base.width, height: base.height, data };
+  }
+  /* Decode the model's padded 256px logits into original-photo coordinates.
+   * Prefer its finest confident surface containing the customer's tap, and use
+   * source edges/colour to keep openings and unrelated objects out of the wall.
+   */
+  /* Close single-pixel detection gaps and fill small enclosed pinholes, leaving
+   * large openings intact. Source colour/edge protection is applied afterwards.
+   */
+  function cleanWallMask(mask, width, height) {
+    size(width, height);
+    let current = new Uint8Array(mask);
+    for (const dilate of [true, false]) {
+      const next = new Uint8Array(current.length);
+      for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) {
+          let value = dilate ? 0 : 255;
+          for (let dy = -1; dy <= 1; dy++)
+            for (let dx = -1; dx <= 1; dx++) {
+              const xx = clamp(x + dx, 0, width - 1),
+                yy = clamp(y + dy, 0, height - 1);
+              value = dilate
+                ? Math.max(value, current[yy * width + xx])
+                : Math.min(value, current[yy * width + xx]);
+            }
+          next[y * width + x] = value;
+        }
+      current = next;
+    }
+    const visited = new Uint8Array(current.length),
+      queue = new Int32Array(current.length),
+      limit = Math.max(24, current.filter((v) => v >= 128).length * 0.005);
+    for (let seed = 0; seed < current.length; seed++) {
+      if (current[seed] || visited[seed]) continue;
+      let head = 0,
+        tail = 1,
+        border = false;
+      queue[0] = seed;
+      visited[seed] = 1;
+      while (head < tail) {
+        const p = queue[head++],
+          x = p % width,
+          y = Math.floor(p / width);
+        if (!x || x === width - 1 || !y || y === height - 1) border = true;
+        for (const n of [
+          x ? p - 1 : -1,
+          x < width - 1 ? p + 1 : -1,
+          y ? p - width : -1,
+          y < height - 1 ? p + width : -1,
+        ])
+          if (n >= 0 && !current[n] && !visited[n]) {
+            visited[n] = 1;
+            queue[tail++] = n;
+          }
+      }
+      if (!border && tail <= limit)
+        for (let i = 0; i < tail; i++) current[queue[i]] = 255;
+    }
+    return current;
+  }
+  /* Keep the seed's connected surface. Sustained vertical source edges separate
+   * adjoining facade planes; short texture marks do not become wall boundaries.
+   */
+  function refineWallBoundary(original, mask, point) {
+    const { width, height } = original,
+      count = size(width, height),
+      smooth = selectionImage(original);
+    const hits = new Uint8Array(count),
+      wide = new Uint8Array(count),
+      barrier = new Uint8Array(count);
+    const grey = (p) =>
+      (smooth[p * 4] + smooth[p * 4 + 1] + smooth[p * 4 + 2]) / 3;
+    for (let y = 2; y < height - 2; y++)
+      for (let x = 2; x < width - 2; x++) {
+        const p = y * width + x,
+          gx = Math.abs(grey(p + 2) - grey(p - 2)),
+          gy = Math.abs(grey(p + width * 2) - grey(p - width * 2));
+        if (gx >= 5 && gx > gy * 1.5) hits[p] = 1;
+      }
+    for (let y = 0; y < height; y++)
+      for (let x = 1; x < width - 1; x++)
+        wide[y * width + x] = Math.max(
+          hits[y * width + x - 1],
+          hits[y * width + x],
+          hits[y * width + x + 1],
+        );
+    const radius = Math.max(10, Math.round(height * 0.018)),
+      span = radius * 2 + 1;
+    for (let x = 0; x < width; x++) {
+      let sum = 0;
+      for (let yy = 0; yy <= radius && yy < height; yy++)
+        sum += wide[yy * width + x];
+      for (let y = 0; y < height; y++) {
+        if (y > 0) {
+          if (y + radius < height) sum += wide[(y + radius) * width + x];
+          if (y - radius - 1 >= 0) sum -= wide[(y - radius - 1) * width + x];
+        }
+        if (sum >= span * 0.78) barrier[y * width + x] = 1;
+      }
+    }
+    const seed =
+      clamp(Math.floor(point[1]), 0, height - 1) * width +
+      clamp(Math.floor(point[0]), 0, width - 1);
+    function connected(useBarrier) {
+      const out = new Uint8Array(count),
+        queue = new Int32Array(count);
+      let head = 0,
+        tail = 1;
+      queue[0] = seed;
+      out[seed] = 255;
+      while (head < tail) {
+        const p = queue[head++],
+          x = p % width;
+        for (const n of [
+          x ? p - 1 : -1,
+          x < width - 1 ? p + 1 : -1,
+          p >= width ? p - width : -1,
+          p < count - width ? p + width : -1,
+        ])
+          if (n >= 0 && mask[n] && !out[n] && (!useBarrier || !barrier[n])) {
+            out[n] = mask[n];
+            queue[tail++] = n;
+          }
+      }
+      return { out, area: tail };
+    }
+    const plain = connected(false);
+    let minY = height,
+      maxY = 0;
+    for (let p = 0; p < count; p++)
+      if (plain.out[p]) {
+        minY = Math.min(minY, Math.floor(p / width));
+        maxY = Math.max(maxY, Math.floor(p / width));
+      }
+    const planes = new Uint8Array(count),
+      support = Math.max(20, (maxY - minY) * 0.55);
+    for (let x = 8; x < width - 8; x++) {
+      let total = 0;
+      for (let y = minY; y <= maxY; y++) {
+        const p = y * width + x;
+        if (barrier[p] && plain.out[p - 8] && plain.out[p + 8]) total++;
+      }
+      if (total >= support)
+        for (let y = minY; y <= maxY; y++) planes[y * width + x] = 1;
+    }
+    barrier.set(planes);
+    if (barrier[seed]) return plain.out;
+    const bounded = connected(true);
+    return bounded.area >= plain.area * 0.12 ? bounded.out : plain.out;
+  }
+  function modelWallMask(original, logits, scores, resized, point) {
+    const { width, height } = original,
+      count = size(width, height);
+    if (
+      logits.length !== 3 * 256 * 256 ||
+      scores.length !== 3 ||
+      !point.every(Number.isFinite)
+    )
+      throw Error("Wall selection could not be read.");
+    const px = clamp(Math.floor(point[0]), 0, width - 1),
+      py = clamp(Math.floor(point[1]), 0, height - 1);
+    let best = null,
+      bestArea = Infinity;
+    for (let k = 0; k < 3; k++) {
+      if (scores[k] < 0.55) continue;
+      const mask = new Uint8Array(count);
+      let area = 0;
+      for (let y = 0; y < height; y++)
+        for (let x = 0; x < width; x++) {
+          const fx = clamp(((x + 0.5) * resized[0]) / width / 4 - 0.5, 0, 255),
+            fy = clamp(((y + 0.5) * resized[1]) / height / 4 - 0.5, 0, 255);
+          const ax = Math.floor(fx),
+            ay = Math.floor(fy),
+            bx = Math.min(255, ax + 1),
+            by = Math.min(255, ay + 1),
+            dx = fx - ax,
+            dy = fy - ay,
+            o = k * 65536;
+          const v =
+            (logits[o + ay * 256 + ax] * (1 - dx) +
+              logits[o + ay * 256 + bx] * dx) *
+              (1 - dy) +
+            (logits[o + by * 256 + ax] * (1 - dx) +
+              logits[o + by * 256 + bx] * dx) *
+              dy;
+          if (v > 0) {
+            mask[y * width + x] = 255;
+            area++;
+          }
+        }
+      if (
+        mask[py * width + px] &&
+        area > count * 0.001 &&
+        area < count * 0.6 &&
+        area < bestArea
+      ) {
+        best = mask;
+        bestArea = area;
+      }
+    }
+    if (!best) throw Error("Tap nearer the centre of a wall to select it.");
+    best = cleanWallMask(best, width, height);
+    const source = original.data,
+      smooth = selectionImage(original),
+      seed = (py * width + px) * 4,
+      denom = Math.max(80, smooth[seed] + smooth[seed + 1] + smooth[seed + 2]);
+    const chroma = [
+      (smooth[seed] - smooth[seed + 1]) / denom,
+      (smooth[seed + 2] - smooth[seed + 1]) / denom,
+    ];
+    const histogram = new Uint32Array(256);
+    let total = 0;
+    for (let p = 0; p < count; p++)
+      if (best[p]) {
+        histogram[Math.round(luminance(source, p * 4) * 255)]++;
+        total++;
+      }
+    let cumulative = 0,
+      level = 0;
+    while (level < 255) {
+      cumulative += histogram[level];
+      if (cumulative >= total * 0.75) break;
+      level++;
+    }
+    for (let p = 0; p < count; p++)
+      if (best[p]) {
+        const i = p * 4,
+          sum = Math.max(80, source[i] + source[i + 1] + source[i + 2]);
+        const difference =
+          ((source[i] - source[i + 1]) / sum - chroma[0]) ** 2 +
+          ((source[i + 2] - source[i + 1]) / sum - chroma[1]) ** 2;
+        if (
+          difference > 0.09 ** 2 ||
+          luminance(source, i) < Math.max(0.001, (level / 255) * 0.06) ||
+          source[i + 3] < 128
+        )
+          best[p] = 0;
+      }
+    if (!best[py * width + px])
+      throw Error("Tap the wall surface rather than a window or opening.");
+    return refineWallBoundary(original, best, point);
+  }
+  /* Print the actual before/after buffers, even while Before is displayed.
+   * The same-origin print document contains images and text only, with no scripts.
+   */
+  async function printComparison(original, after, colours = []) {
+    const frame = document.createElement("iframe");
+    frame.title = "Areva Paints — before and after";
+    frame.className = "ap-print-frame";
+    frame.style.cssText =
+      "position:fixed;left:-10000px;top:0;width:1100px;height:800px;border:0";
+    document.body.append(frame);
+    const doc = frame.contentDocument;
+    doc.open();
+    doc.write(
+      "<!doctype html><html><head><title>Areva Paints — Before and After</title></head><body></body></html>",
+    );
+    doc.close();
+    const style = doc.createElement("style");
+    style.textContent =
+      "@page{size:A4 landscape;margin:12mm}body{font:14px Arial,sans-serif;color:#321149;margin:0}h1{font-size:24px}main{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0;break-inside:avoid}img{width:100%;height:auto}figcaption{font-weight:bold;margin:8px 0}p{color:#675a70;font-size:12px}";
+    doc.head.append(style);
+    const title = doc.createElement("h1");
+    title.textContent = "Areva Paints — Your home, your colours";
+    doc.body.append(title);
+    const row = doc.createElement("main");
+    doc.body.append(row);
+    const images = [];
+    for (const [label, data] of [
+      ["Before painting", original],
+      ["After painting", after],
+    ]) {
+      const c = document.createElement("canvas");
+      c.width = data.width;
+      c.height = data.height;
+      c.getContext("2d").putImageData(
+        new ImageData(
+          new Uint8ClampedArray(data.data),
+          data.width,
+          data.height,
+        ),
+        0,
+        0,
+      );
+      const figure = doc.createElement("figure"),
+        caption = doc.createElement("figcaption"),
+        img = doc.createElement("img");
+      caption.textContent = label;
+      img.alt = label;
+      img.src = c.toDataURL("image/jpeg", 0.94);
+      figure.append(caption, img);
+      row.append(figure);
+      images.push(img);
+    }
+    const note = doc.createElement("p");
+    note.textContent =
+      (colours.length
+        ? "Chosen colours: " + colours.map((c) => c.name).join(", ") + ". "
+        : "") +
+      "Digital preview. Confirm your final choice with a physical shade card.";
+    doc.body.append(note);
+    await Promise.all(images.map((img) => img.decode()));
+    frame.dataset.ready = "true";
+    frame.contentWindow.focus();
+    frame.contentWindow.print();
+    setTimeout(() => frame.remove(), 60000);
+    return frame;
+  }
+
+  /* A deliberately small workflow: white foundation, tap a wall, choose colour.
+   * No brush panels, editable area lists, zoom controls or hidden advanced tools.
    */
   function createEditor({
     canvas,
@@ -757,1622 +1090,657 @@
     onChange = () => {},
     onBeforeSelect = () => {},
   }) {
-    const context = canvas.getContext("2d", { willReadFrequently: true });
-    const stage = canvas.parentElement;
-    const ownsToolbar = !toolbar;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true }),
+      stage = canvas.parentElement,
+      ownsToolbar = !toolbar;
     if (!toolbar) {
       toolbar = document.createElement("div");
-      stage.before(toolbar);
+      viewport.after(toolbar);
     }
+    toolbar.classList.add("ap-toolbar");
+    controls.classList.add("ap-tools");
+    viewport.classList.add("ap-viewport");
+    toolbar.innerHTML =
+      '<div class="ap-steps" role="group" aria-label="Painting steps"><button type="button" data-phase="white">1. White base</button><button type="button" data-phase="colour">2. Choose colour</button></div><p class="ap-instruction"></p><button class="ap-prepare" type="button" data-action="prepare">Prepare white walls</button><div class="ap-colour-options" hidden><div class="ap-quick-swatches" role="group" aria-label="Choose a paint colour"></div><details class="ap-palette"><summary>More colours</summary><div class="ap-palette-panel"><label>Find a colour<input type="search" aria-label="Find a paint shade" placeholder="Colour name or code"></label><div class="ap-palette-results"></div><button type="button" data-action="close-colours">Close</button></div></details></div><p class="ap-shade-name"></p>';
+    controls.innerHTML =
+      '<div class="ap-footer"><div class="ap-view" role="group" aria-label="Photo comparison"><button type="button" data-action="before">Before</button><button type="button" data-action="after">After</button></div><button type="button" class="ap-print" data-action="print">Print before &amp; after</button></div><p class="ap-feedback" role="status" aria-live="polite"></p>';
     const overlay = document.createElement("canvas"),
       oc = overlay.getContext("2d");
     overlay.className = "ap-selection";
     overlay.tabIndex = 0;
-    overlay.hidden = true;
-    overlay.setAttribute(
-      "aria-label",
-      "Drag across a surface to select it. Drag the corner handles to fit the wall, or brush over columns and trim.",
-    );
-    overlay.setAttribute(
-      "aria-keyshortcuts",
-      "ArrowUp ArrowDown ArrowLeft ArrowRight Enter Escape Control+z Control+y",
-    );
+    overlay.setAttribute("aria-label", "Tap a wall to prepare or colour it.");
     stage.append(overlay);
-    const loupe = document.createElement("canvas"),
-      lc = loupe.getContext("2d");
-    loupe.className = "ap-loupe";
-    loupe.width = loupe.height = 180;
-    loupe.hidden = true;
-    loupe.setAttribute("aria-hidden", "true");
-    viewport.append(loupe);
-    toolbar.classList.add("ap-toolbar");
-    controls.classList.add("ap-tools");
-    viewport.classList.add("ap-viewport");
-    const icon = (path) =>
-      `<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${path}</svg>`;
-    toolbar.innerHTML = `<div class="ap-select-heading"><p>Select a wall, column or trim</p><span class="ap-selected-name" role="status">No area selected</span></div>
-      <div class="ap-wall-choices" role="group" aria-label="Select a wall"></div>
-      <div class="ap-area-tools" role="group" aria-label="Area selection tools"><button type="button" data-tool="area">Drag an area</button><button type="button" data-tool="mark">Brush an area</button><button type="button" data-tool="unmark">Remove from area</button><button type="button" data-tool="pan">Move photo</button></div>
-      <div class="ap-selection-actions"><button type="button" data-action="new-area">+ New area</button><div class="ap-zoom" role="group" aria-label="Photo zoom"><button type="button" data-action="out" aria-label="Zoom out">−</button><button type="button" data-action="fit" aria-label="Fit photo">100%</button><button type="button" data-action="in" aria-label="Zoom in">+</button></div><label class="ap-brush-size" hidden>Brush size <input data-brush type="range" min="4" max="80" value="20" aria-label="Brush size"><output>20 px</output></label></div>
-      <div class="ap-outline-actions" hidden><button type="button" data-action="finish">Finish outline</button><button type="button" data-action="back">Undo corner</button><button type="button" data-action="cancel">Cancel</button><span class="ap-points"></span></div>
-      <p class="ap-selection-help">Drag across a surface. Adjust the four corner handles to match its edges.</p>
-      <div class="ap-heading"><p>Choose a colour</p><div class="ap-shade"><i></i><div><strong></strong><span hidden></span></div></div></div>
-      <div class="ap-colour-options"><div class="ap-quick-swatches" role="group" aria-label="Quick shades"></div><details class="ap-palette"><summary>More colours</summary><div class="ap-palette-panel"><label>Find a shade<input type="search" aria-label="Find a paint shade" placeholder="Name or colour code" autocomplete="off"></label><div class="ap-palette-results" role="group" aria-label="Paint shades"></div><p class="ap-palette-count" role="status"></p><button type="button" data-action="close-palette">Close colours</button></div></details></div>
-      <button type="button" class="ap-paint" data-action="paint">Paint selected area</button>`;
-    controls.innerHTML = `<div class="ap-footer"><div class="ap-history" role="group" aria-label="Paint history"><button type="button" data-action="undo" aria-label="Undo">↶ Undo</button><button type="button" data-action="compare" aria-pressed="false">Before / After</button></div><button type="button" data-action="save" class="ap-save">${icon('<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>')}Save image</button></div>
-      <p class="ap-feedback" role="status"></p>
-      <details class="ap-refine"><summary>More selection tools</summary><div class="ap-refine-body">
-        <div class="ap-main-tools"><button type="button" data-tool="outline">Outline with corners</button><button type="button" data-tool="cutout">Protect window / door</button><button type="button" data-tool="tap">Select painted area</button></div>
-        <details class="ap-more"><summary>Area names and history</summary>
-          <div class="ap-settings"><button type="button" data-action="redo" aria-label="Redo">↷ Redo</button><button type="button" data-action="reset">Reset photo</button><button type="button" data-action="original" hidden>Hold original</button></div>
-          <div class="ap-wall-heading"><h4>Painted areas</h4><button type="button" data-action="add" aria-label="Add wall" class="ap-add">+ Add area</button></div><div class="ap-walls" role="group" aria-label="Painted areas"></div><p class="ap-empty" hidden>Choose part of the photo to begin.</p><div class="ap-wall-edit" hidden><label>Area name <input type="text" maxlength="32" aria-label="Wall name" placeholder="e.g. Balcony column"></label><button type="button" data-action="delete">Remove area</button></div>
-        </details></div></details>
-      <p class="ap-note">Save your image before leaving. Your photo stays on this device.</p>`;
-    const normalizeSwatches = (values) =>
-      Array.isArray(values)
-        ? values
-            .slice(0, 5000)
-            .filter(
-              (value) =>
-                value &&
-                typeof value.name === "string" &&
-                /^#[0-9a-f]{6}$/i.test(value.hex),
-            )
-            .map((value) => ({
-              hex: value.hex.toLowerCase(),
-              name: value.name,
-              code: typeof value.code === "string" ? value.code : "",
-            }))
-        : [];
-    let palette = normalizeSwatches(swatches);
+    const find = (s) => toolbar.querySelector(s) || controls.querySelector(s),
+      all = (s) => [
+        ...toolbar.querySelectorAll(s),
+        ...controls.querySelectorAll(s),
+      ];
     let original = null,
-      current = null,
-      walls = [],
+      base = null,
+      after = null,
+      surfaces = [],
       regions = [],
-      pendingWall = null,
-      activeId = null,
-      nextId = 1,
-      history = [],
-      future = [];
-    let mode = "area",
-      points = [],
-      cursor = null,
-      zoom = 1,
+      selected = null,
+      phase = "white",
+      view = "after",
       enabled = true,
-      comparing = false,
-      holding = false,
+      busy = false,
+      encoded = false,
       destroyed = false,
-      gesture = null,
-      frame = 0,
-      lastFrame = 0;
-    const removers = [],
-      objectUrls = new Map();
-    const all = (selector) => [
-      ...toolbar.querySelectorAll(selector),
-      ...controls.querySelectorAll(selector),
-    ];
-    const find = (selector) =>
-      toolbar.querySelector(selector) || controls.querySelector(selector);
-    const byAction = (name) => all(`[data-action="${name}"]`)[0];
-    const active = () => walls.find((wall) => wall.id === activeId);
-    const selectedWall = () => pendingWall || active();
-    const shadeValue = () => {
-      const value = shade();
-      return /^#[0-9a-f]{6}$/i.test(value.hex)
-        ? {
-            hex: value.hex.toLowerCase(),
-            name: String(value.name || value.hex),
-          }
-        : { hex: "#a89ba9", name: "Soft neutral" };
-    };
-    const listen = (el, event, handler) => {
-      el.addEventListener(event, handler);
-      removers.push(() => el.removeEventListener(event, handler));
+      generation = 0,
+      worker = null,
+      sequence = 0,
+      requestSequence = 0,
+      history = [],
+      palette = [],
+      resized = [1024, 1024],
+      gesture = null;
+    const requests = new Map(),
+      listeners = [];
+    const listen = (target, event, fn) => {
+      target.addEventListener(event, fn);
+      listeners.push(() => target.removeEventListener(event, fn));
     };
     const report = (message) => {
       if (!destroyed) {
-        controls.querySelector(".ap-feedback").textContent = message;
+        find(".ap-feedback").textContent = message;
         onStatus(message);
       }
     };
-    const snapshot = () => ({ walls: [...walls], activeId, pendingWall });
-    const remember = (saved = snapshot()) => {
-      history.push(saved);
+    const cloneState = () => ({ surfaces: [...surfaces], selected, phase });
+    const remember = () => {
+      history.push(cloneState());
       if (history.length > 8) history.shift();
-      future = [];
     };
-    const state = () => ({
-      canUndo: history.length > 0,
-      canRedo: future.length > 0,
-      colors: walls.map(({ hex, name }) => ({ hex, name })),
-      walls: walls.map(({ id, label, hex, name }) => ({
-        id,
-        label,
-        hex,
-        name,
-      })),
-      activeId,
-    });
-    function notify() {
-      onChange(state());
+    const notify = () =>
+      onChange({
+        canUndo: history.length > 0,
+        colors: surfaces
+          .filter((s) => s.hex)
+          .map((s) => ({ hex: s.hex, name: s.name })),
+      });
+    const selectedSurface = () => surfaces.find((s) => s.id === selected);
+    const photoPoint = (e) => {
+      const r = overlay.getBoundingClientRect();
+      return [
+        ((e.clientX - r.left) * overlay.width) / r.width,
+        ((e.clientY - r.top) * overlay.height) / r.height,
+      ];
+    };
+    const pixel = (p) =>
+      clamp(Math.floor(p[1]), 0, original.height - 1) * original.width +
+      clamp(Math.floor(p[0]), 0, original.width - 1);
+    function refresh() {
+      const ready = !!original && enabled;
+      all("button").forEach((b) => (b.disabled = !ready || busy));
+      all("[data-phase]").forEach((b) => {
+        b.setAttribute("aria-pressed", String(b.dataset.phase === phase));
+        if (b.dataset.phase === "colour")
+          b.disabled = !ready || busy || !surfaces.length;
+      });
+      const action = find('[data-action="prepare"]');
+      action.hidden =
+        phase === "colour" || (!busy && encoded && !surfaces.length);
+      action.textContent = busy
+        ? "Preparing your photo…"
+        : surfaces.length
+          ? "Next: choose a colour"
+          : "Prepare white walls";
+      find(".ap-colour-options").hidden = phase !== "colour";
+      all("[data-colour]").forEach((b) => {
+        b.disabled = !ready || busy || phase !== "colour" || !selectedSurface();
+        b.setAttribute(
+          "aria-pressed",
+          String(
+            !!selectedSurface() &&
+              (selectedSurface().hex || "#ffffff") ===
+                palette[+b.dataset.colour]?.hex,
+          ),
+        );
+      });
+      find(".ap-instruction").textContent =
+        phase === "white"
+          ? encoded
+            ? "Tap each wall to make it white. Tap a white wall again to remove it."
+            : "Start with a clean white base for your walls."
+          : selectedSurface()
+            ? "Choose a colour for this wall."
+            : "Tap a white wall in the photo, then choose its colour.";
+      all('[data-action="before"],[data-action="after"]').forEach((b) => {
+        b.disabled = !ready;
+        b.setAttribute("aria-pressed", String(view === b.dataset.action));
+      });
+      find('[data-action="print"]').disabled =
+        !ready || busy || !surfaces.length;
+      find(".ap-shade-name").textContent = selectedSurface()?.name || "";
+      overlay.hidden = !ready;
+      overlay.dataset.mode = phase;
+      toolbar.hidden = controls.hidden = !enabled;
+      draw();
+    }
+    function draw() {
+      oc.clearRect(0, 0, overlay.width, overlay.height);
+      if (!original || view === "before" || phase === "white") return;
+      const wall = selectedSurface();
+      if (!wall) return;
+      const edge = oc.createImageData(overlay.width, overlay.height),
+        w = overlay.width;
+      for (let p = 0; p < wall.mask.length; p++)
+        if (
+          wall.mask[p] &&
+          (p < w ||
+            p >= wall.mask.length - w ||
+            p % w === 0 ||
+            p % w === w - 1 ||
+            !wall.mask[p - 1] ||
+            !wall.mask[p + 1] ||
+            !wall.mask[p - w] ||
+            !wall.mask[p + w])
+        ) {
+          edge.data[p * 4] = 110;
+          edge.data[p * 4 + 1] = 62;
+          edge.data[p * 4 + 2] = 148;
+          edge.data[p * 4 + 3] = 230;
+        }
+      oc.putImageData(edge, 0, 0);
+    }
+    function render(rebuild = false) {
+      if (!original) return;
+      if (rebuild || !base) base = whiteWallBase(original, surfaces);
+      after = renderWhitePreview(base, surfaces);
+      const shown =
+        view === "before" ? original : phase === "white" ? base : after;
+      ctx.putImageData(
+        new ImageData(
+          new Uint8ClampedArray(shown.data),
+          shown.width,
+          shown.height,
+        ),
+        0,
+        0,
+      );
+      refresh();
+      notify();
+    }
+    function normalize(values) {
+      const items = Array.isArray(values)
+        ? values
+            .slice(0, 5000)
+            .filter(
+              (s) =>
+                s &&
+                typeof s.name === "string" &&
+                /^#[0-9a-f]{6}$/i.test(s.hex),
+            )
+            .map((s) => ({
+              hex: s.hex.toLowerCase(),
+              name: s.name,
+              code: s.code || "",
+            }))
+        : [];
+      return [
+        { hex: "#ffffff", name: "White base", code: "" },
+        ...items.filter((s) => s.hex !== "#ffffff"),
+      ];
     }
     function renderPalette() {
-      const quick = toolbar.querySelector(".ap-quick-swatches"),
-        results = toolbar.querySelector(".ap-palette-results"),
-        query = toolbar
-          .querySelector('[aria-label="Find a paint shade"]')
+      const quick = find(".ap-quick-swatches"),
+        results = find(".ap-palette-results"),
+        query = find('[aria-label="Find a paint shade"]')
           .value.trim()
           .toLowerCase();
       quick.replaceChildren();
       results.replaceChildren();
-      const seen = new Set();
-      const entries = palette.map((item, index) => ({ item, index }));
-      const light = entries
-        .filter(({ item }) => {
-          const rgb = [1, 3, 5].map((i) =>
-            parseInt(item.hex.slice(i, i + 2), 16),
-          );
+      const preferred = [
+        ...palette.filter((s) => {
+          const v = [1, 3, 5].map((i) => parseInt(s.hex.slice(i, i + 2), 16));
           return (
-            Math.max(...rgb) - Math.min(...rgb) < 75 &&
-            rgb.reduce((a, b) => a + b) / 3 > 175
+            Math.max(...v) - Math.min(...v) < 100 &&
+            v.reduce((a, b) => a + b) / 3 > 130
           );
-        })
-        .slice(0, 3);
-      const muted = entries
-        .filter(({ item }) => {
-          const rgb = [1, 3, 5].map((i) =>
-            parseInt(item.hex.slice(i, i + 2), 16),
-          );
-          const mean = rgb.reduce((a, b) => a + b) / 3;
-          return (
-            Math.max(...rgb) - Math.min(...rgb) < 100 &&
-            mean >= 85 &&
-            mean <= 175
-          );
-        })
-        .slice(0, 2);
-      [...light, ...muted, ...entries].forEach(({ item, index }) => {
-        if (seen.has(item.hex) || seen.size >= 5) return;
-        seen.add(item.hex);
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "ap-swatch";
-        button.dataset.shadeIndex = String(index);
-        button.style.background = item.hex;
-        button.title = item.name + (item.code ? " (" + item.code + ")" : "");
-        button.setAttribute("aria-label", "Try " + button.title);
-        button.setAttribute(
-          "aria-pressed",
-          String(item.hex === shadeValue().hex),
-        );
-        quick.append(button);
-      });
-      const matched = palette
-        .map((item, index) => ({ item, index }))
-        .filter(({ item }) =>
-          (item.name + " " + item.code + " " + item.hex)
-            .toLowerCase()
-            .includes(query),
-        );
-      matched.slice(0, 48).forEach(({ item, index }) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.shadeIndex = String(index);
-        button.setAttribute(
+        }),
+        ...palette,
+      ];
+      const used = new Set();
+      function button(item, compact) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.dataset.colour = String(palette.indexOf(item));
+        b.setAttribute(
           "aria-label",
-          "Use " + item.name + (item.code ? " (" + item.code + ")" : ""),
+          item.name + (item.code ? " (" + item.code + ")" : ""),
         );
-        button.setAttribute(
-          "aria-pressed",
-          String(item.hex === shadeValue().hex),
-        );
+        b.title = b.getAttribute("aria-label");
         const chip = document.createElement("i");
         chip.style.background = item.hex;
-        const text = document.createElement("span");
-        text.textContent = item.name;
-        const code = document.createElement("small");
-        code.textContent = item.code || item.hex;
-        button.append(chip, text, code);
-        results.append(button);
-      });
-      toolbar.querySelector(".ap-palette-count").textContent = matched.length
-        ? `${matched.length} shades${matched.length > 48 ? " · refine your search to see more" : ""}`
-        : "No shades found. Try a different name or code.";
-    }
-    function updateShadeChip() {
-      const chosen = shadeValue(),
-        chip = toolbar.querySelector(".ap-shade");
-      chip.querySelector("i").style.background = chosen.hex;
-      chip.querySelector("strong").textContent = chosen.name;
-      chip.querySelector("span").textContent = chosen.hex.toUpperCase();
-      toolbar
-        .querySelectorAll("[data-shade-index]")
-        .forEach((button) =>
-          button.setAttribute(
-            "aria-pressed",
-            String(palette[+button.dataset.shadeIndex]?.hex === chosen.hex),
-          ),
-        );
-    }
-    function refresh() {
-      const ready = !!original && enabled,
-        wall = active(),
-        selection = selectedWall();
-      all("button").forEach((button) => (button.disabled = !ready));
-      all("[data-tool]").forEach((button) =>
-        button.setAttribute(
-          "aria-pressed",
-          String(button.dataset.tool === mode),
-        ),
-      );
-      all('[data-tool="brush"], [data-tool="erase"]').forEach(
-        (button) => (button.disabled = !ready || !wall),
-      );
-      find('[data-tool="cutout"]').disabled = !ready || !selection;
-      find('[data-tool="unmark"]').disabled = !ready || !selection;
-      byAction("finish").disabled = !ready || points.length < 3;
-      byAction("finish").textContent =
-        mode === "cutout" ? "Protect opening" : "Finish outline";
-      byAction("back").disabled = !ready || !points.length;
-      byAction("cancel").disabled = !ready || !points.length;
-      byAction("undo").disabled = !ready || !history.length;
-      byAction("redo").disabled = !ready || !future.length;
-      byAction("reset").disabled =
-        !ready || (!walls.length && !points.length && !pendingWall);
-      byAction("add").disabled = !ready || walls.length >= 8;
-      byAction("save").disabled = !ready || !walls.length;
-      byAction("compare").disabled = !ready || !walls.length;
-      byAction("paint").disabled =
-        !ready ||
-        !selection ||
-        !selection.mask.some((value) => value >= 128) ||
-        (!wall && walls.length >= 8) ||
-        points.length > 0 ||
-        ["outline", "cutout"].includes(mode);
-      byAction("compare").setAttribute("aria-pressed", String(holding));
-      byAction("compare").textContent = holding
-        ? "Show painted"
-        : "Before / After";
-      byAction("in").disabled = !ready || zoom >= 3;
-      byAction("out").disabled = !ready || zoom <= 1;
-      byAction("fit").textContent = Math.round(zoom * 100) + "%";
-      find(".ap-brush-size").hidden = ![
-        "brush",
-        "erase",
-        "mark",
-        "unmark",
-      ].includes(mode);
-      find(".ap-outline-actions").hidden = !["outline", "cutout"].includes(
-        mode,
-      );
-      find(".ap-selected-name").textContent = selection
-        ? `${selection.label} selected`
-        : "No area selected";
-      find(".ap-selection-help").textContent = ["outline", "cutout"].includes(
-        mode,
-      )
-        ? mode === "cutout"
-          ? "Tap around a window or door, then Protect opening."
-          : `Tap around one surface, then Finish outline. ${points.length ? points.length + " corners added." : "Start at a corner."}`
-        : mode === "mark"
-          ? "Brush over the wall, column or trim you want to paint. Adjust brush size for narrow features."
-          : mode === "unmark"
-            ? "Brush over windows, doors or mistakes to exclude them from this area."
-            : mode === "pan"
-              ? "Drag the photo to reach details. Select Drag an area or Brush an area to continue."
-              : selection
-                ? selection.corners
-                  ? "Drag the corner dots to follow the surface edges. Choose a colour, then Paint selected area."
-                  : "Only the marked area will receive paint. Use New area for another surface or colour."
-                : regions.length
-                  ? "Tap a sample wall, or drag across any surface to make your own area."
-                  : "Drag across one wall, then adjust its corner dots. Use Brush an area for columns and narrow trim.";
-      const choices = find(".ap-wall-choices"),
-        focusedChoice = choices.contains(document.activeElement)
-          ? document.activeElement.dataset.region ||
-            document.activeElement.dataset.wall
-          : null;
-      choices.replaceChildren();
-      for (const region of regions) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.region = region.regionKey;
-        button.textContent = region.label;
-        button.disabled = !ready;
-        button.setAttribute(
-          "aria-pressed",
-          String(selection?.regionKey === region.regionKey),
-        );
-        choices.append(button);
+        b.append(chip);
+        if (!compact) {
+          const label = document.createElement("span");
+          label.textContent = b.title;
+          b.append(label);
+        } else b.className = "ap-swatch";
+        return b;
       }
-      for (const item of walls.filter((wall) => !wall.regionKey)) {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.dataset.wall = String(item.id);
-        button.textContent = item.label;
-        button.disabled = !ready;
-        button.setAttribute("aria-pressed", String(item.id === activeId));
-        choices.append(button);
-      }
-      if (focusedChoice)
-        [...choices.children]
-          .find(
-            (button) =>
-              (button.dataset.region || button.dataset.wall) === focusedChoice,
-          )
-          ?.focus({ preventScroll: true });
-      find(".ap-points").textContent = points.length
-        ? `${points.length} corners`
-        : "";
-      controls.querySelector(".ap-empty").hidden = walls.length > 0;
-      controls.querySelector(".ap-wall-edit").hidden = !wall;
-      const input = controls.querySelector('[aria-label="Wall name"]');
-      input.disabled = !ready || !wall;
-      if (document.activeElement !== input) input.value = wall?.label || "";
-      const list = controls.querySelector(".ap-walls");
-      const focusedWall = list.contains(document.activeElement)
-        ? document.activeElement.dataset.wall
-        : null;
-      list.replaceChildren();
-      [...walls]
-        .sort((a, b) => a.number - b.number)
-        .forEach((item) => {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.dataset.wall = String(item.id);
-          button.disabled = !ready;
-          button.setAttribute("aria-pressed", String(item.id === activeId));
-          const swatch = document.createElement("i");
-          swatch.style.background = item.hex;
-          const text = document.createElement("span");
-          text.textContent = item.label;
-          button.append(swatch, text);
-          list.append(button);
-        });
-      if (focusedWall)
-        list
-          .querySelector(`[data-wall="${focusedWall}"]`)
-          ?.focus({ preventScroll: true });
-      stage.style.width =
-        zoom === 1 ? "min(100%, var(--ap-fit-width, 100%))" : `${zoom * 100}%`;
-      stage.style.marginInline = zoom === 1 ? "auto" : "0";
-      stage.style.maxWidth = "none";
-      overlay.hidden = !ready;
-      overlay.style.touchAction = [
-        "brush",
-        "erase",
-        "mark",
-        "unmark",
-        "area",
-        "pan",
-      ].includes(mode)
-        ? "none"
-        : "manipulation";
-      overlay.dataset.mode = mode;
-      updateShadeChip();
-      draw();
-    }
-    function begin() {
-      const wasOriginal = holding;
-      holding = false;
-      comparing = false;
-      onBeforeSelect();
-      if (wasOriginal && current)
-        context.putImageData(
-          new ImageData(current.data, current.width, current.height),
-          0,
-          0,
-        );
-    }
-    function draw() {
-      loupe.hidden = true;
-      oc.clearRect(0, 0, overlay.width, overlay.height);
-      if (!original || comparing || holding) return;
-      const scale =
-          overlay.width / Math.max(1, overlay.getBoundingClientRect().width),
-        wall = gesture?.selectionStroke
-          ? { ...gesture.base, mask: gesture.mask }
-          : selectedWall();
-      if (wall && (!gesture || gesture.selectionStroke) && !points.length) {
-        const edge = oc.createImageData(overlay.width, overlay.height),
-          w = overlay.width,
-          mask = wall.mask;
-        for (let p = 0; p < mask.length; p++) {
-          if ((pendingWall || gesture?.selectionStroke) && mask[p]) {
-            edge.data[p * 4] = 111;
-            edge.data[p * 4 + 1] = 68;
-            edge.data[p * 4 + 2] = 153;
-            edge.data[p * 4 + 3] = Math.round(mask[p] * 0.18);
-          }
-          if (
-            mask[p] &&
-            (p < w ||
-              p >= mask.length - w ||
-              p % w === 0 ||
-              p % w === w - 1 ||
-              !mask[p - 1] ||
-              !mask[p + 1] ||
-              !mask[p - w] ||
-              !mask[p + w])
-          ) {
-            const i = p * 4;
-            edge.data[i] = 115;
-            edge.data[i + 1] = 54;
-            edge.data[i + 2] = 161;
-            edge.data[i + 3] = 255;
-          }
-        }
-        oc.putImageData(edge, 0, 0);
-      }
-      oc.lineWidth = Math.max(1, 2 * scale);
-      oc.strokeStyle =
-        mode === "erase" || mode === "cutout" ? "#e36948" : "#703995";
-      oc.fillStyle = "#fff";
-      const corners = gesture?.corners || wall?.corners;
-      if (corners && mode === "area") {
-        oc.beginPath();
-        corners.forEach(([x, y], i) => (i ? oc.lineTo(x, y) : oc.moveTo(x, y)));
-        oc.closePath();
-        oc.lineWidth = 4 * scale;
-        oc.strokeStyle = "#fff";
-        oc.stroke();
-        oc.lineWidth = 1.5 * scale;
-        oc.strokeStyle = "#703995";
-        oc.stroke();
-        for (const [x, y] of corners) {
-          oc.beginPath();
-          oc.arc(x, y, 7 * scale, 0, Math.PI * 2);
-          oc.fill();
-          oc.stroke();
+      for (const item of preferred) {
+        if (used.size >= 5) break;
+        if (!used.has(item.hex)) {
+          used.add(item.hex);
+          quick.append(button(item, true));
         }
       }
-      if (points.length) {
-        oc.beginPath();
-        points.forEach(([x, y], i) => (i ? oc.lineTo(x, y) : oc.moveTo(x, y)));
-        oc.stroke();
-        points.forEach(([x, y], i) => {
-          oc.beginPath();
-          oc.arc(x, y, 4 * scale, 0, Math.PI * 2);
-          oc.fill();
-          oc.stroke();
-          oc.font = `bold ${12 * scale}px Arial`;
-          oc.fillStyle = "#32104c";
-          oc.fillText(String(i + 1), x + 7 * scale, y - 5 * scale);
-          oc.fillStyle = "#fff";
-        });
-      }
-      if (cursor && ["brush", "erase", "mark", "unmark"].includes(mode)) {
-        const radius = (+find("[data-brush]").value * scale) / 2;
-        oc.lineWidth = 3 * scale;
-        oc.strokeStyle = "#fff";
-        oc.beginPath();
-        oc.arc(...cursor, radius, 0, Math.PI * 2);
-        oc.stroke();
-        oc.lineWidth = 1.3 * scale;
-        oc.strokeStyle = ["erase", "unmark"].includes(mode)
-          ? "#b83e29"
-          : "#542474";
-        oc.stroke();
-      } else if (cursor && mode !== "tap") {
-        oc.beginPath();
-        oc.moveTo(cursor[0] - 7 * scale, cursor[1]);
-        oc.lineTo(cursor[0] + 7 * scale, cursor[1]);
-        oc.moveTo(cursor[0], cursor[1] - 7 * scale);
-        oc.lineTo(cursor[0], cursor[1] + 7 * scale);
-        oc.stroke();
-      }
-      loupe.hidden =
-        !gesture ||
-        !(gesture.kind === "corner" || ["mark", "unmark"].includes(mode));
-      if (!loupe.hidden && cursor) {
-        const span = 70 * scale;
-        lc.fillStyle = "#fff";
-        lc.fillRect(0, 0, 180, 180);
-        lc.drawImage(
-          canvas,
-          cursor[0] - span / 2,
-          cursor[1] - span / 2,
-          span,
-          span,
-          0,
-          0,
-          180,
-          180,
-        );
-        lc.beginPath();
-        lc.moveTo(70, 90);
-        lc.lineTo(110, 90);
-        lc.moveTo(90, 70);
-        lc.lineTo(90, 110);
-        lc.strokeStyle = "#fff";
-        lc.lineWidth = 5;
-        lc.stroke();
-        lc.strokeStyle = "#703995";
-        lc.lineWidth = 2;
-        lc.stroke();
-        /* Counteract the scroll offset so precision stays visible after zoom/pan. */
-        const photoRect = overlay.getBoundingClientRect(),
-          viewRect = viewport.getBoundingClientRect();
-        const pointerX =
-          photoRect.left -
-          viewRect.left +
-          (cursor[0] * photoRect.width) / overlay.width;
-        loupe.style.left = `${viewport.scrollLeft + (pointerX > viewport.clientWidth / 2 ? 12 : Math.max(12, viewport.clientWidth - 108))}px`;
-        loupe.style.top = `${viewport.scrollTop + Math.min(12, Math.max(0, viewport.clientHeight - 100))}px`;
-        loupe.style.right = "auto";
-      }
-    }
-    function render() {
-      if (!original) return;
-      current = composeImage(original, walls);
-      context.putImageData(
-        new ImageData(current.data, current.width, current.height),
-        0,
-        0,
-      );
-      draw();
-    }
-    function syncShade() {
-      const wall = active();
-      if (wall) onSelectShade({ hex: wall.hex, name: wall.name });
-    }
-    function makeWall(mask, existing = active()) {
-      const chosen = shadeValue();
-      return existing
-        ? {
-            ...existing,
-            ...(pendingWall || {}),
-            mask,
-            hex: chosen.hex,
-            name: chosen.name,
-          }
-        : {
-            id: nextId,
-            number: nextId++,
-            label: pendingWall?.label || `Area ${nextId - 1}`,
-            regionKey: pendingWall?.regionKey || null,
-            corners: pendingWall?.corners || null,
-            cutoutMask: pendingWall?.cutoutMask || null,
-            mask,
-            hex: chosen.hex,
-            name: chosen.name,
-          };
-    }
-    function commitMask(mask, message) {
-      if (!original) return;
-      if (!mask.some((value) => value >= 128)) {
-        if (active()) {
-          remember();
-          walls = walls.filter((wall) => wall.id !== activeId);
-          activeId = walls.at(-1)?.id ?? null;
-          pendingWall = null;
-          points = [];
-          if (!activeId) mode = "area";
-          render();
-          syncShade();
-          refresh();
-          notify();
-        }
-        return report("Paint removed from this wall. Undo restores it.");
-      }
-      if (!active() && walls.length >= 8)
-        return report(
-          "You can paint eight walls in one photo. Choose an existing wall to edit it.",
-        );
-      const previous = active(),
-        chosen = shadeValue();
-      if (
-        previous &&
-        previous.hex === chosen.hex &&
-        mask.every((value, index) => value === previous.mask[index])
-      ) {
-        points = [];
-        context.putImageData(
-          new ImageData(current.data, current.width, current.height),
-          0,
-          0,
-        );
-        refresh();
-        return report("This part of the wall is already up to date.");
-      }
-      remember();
-      const wall = makeWall(mask);
-      walls = [...walls.filter((item) => item.id !== wall.id), wall];
-      activeId = wall.id;
-      pendingWall = null;
-      points = [];
-      render();
-      refresh();
-      notify();
-      report(
-        message ||
-          "Selected wall painted. Choose another colour and Paint selected area to try it.",
-      );
-    }
-    function finishOutline() {
-      if (!original || points.length < 3) return;
-      try {
-        const shape = polygonMask(original.width, original.height, points);
-        const wall = selectedWall();
-        if (mode === "cutout" && wall) {
-          const cutoutMask = wall.cutoutMask
-            ? wall.cutoutMask.map((value, i) => Math.max(value, shape[i]))
-            : shape;
-          if (pendingWall) {
-            pendingWall = {
-              ...pendingWall,
-              mask: subtractMask(pendingWall.mask, shape),
-              cutoutMask,
-            };
-            points = [];
-            report(
-              "Opening protected. Choose a colour and Paint selected area.",
-            );
-          } else {
-            pendingWall = { ...wall, cutoutMask };
-            commitMask(
-              subtractMask(wall.mask, shape),
-              "Opening protected. Paint stays outside the opening.",
-            );
-          }
-          mode = "area";
-          refresh();
-        } else
-          selectWall({ mask: shape, label: `Wall ${nextId}`, regionKey: null });
-      } catch (error) {
-        report(error.message);
-      }
-    }
-    /* Selecting a surface never paints it. Paint always uses this fixed mask,
-     * rather than recomputing a flood fill through other same-colour walls.
-     */
-    function selectWall(region, wall = null) {
-      cancelGesture();
-      begin();
-      activeId = wall?.id ?? null;
-      pendingWall = wall ? null : region;
-      points = [];
-      mode = "area";
-      refresh();
-      notify();
-      report(
-        `${selectedWall().label} selected. Adjust the area if needed, choose a colour, then Paint selected area.`,
-      );
-    }
-    function tapPoint(x, y) {
-      if (!enabled || !original) return;
-      begin();
-      if (mode === "tap" || mode === "area") {
-        const position =
-          clamp(Math.floor(y), 0, original.height - 1) * original.width +
-          clamp(Math.floor(x), 0, original.width - 1);
-        const existing = [...walls]
-          .reverse()
-          .find((wall) => wall.mask[position] > 127);
-        if (existing) {
-          selectWall(null, existing);
-          return;
-        }
-        const region = regions.find((region) => region.mask[position] > 127);
-        if (region) {
-          selectWall(
-            region,
-            walls.find((wall) => wall.regionKey === region.regionKey),
-          );
-          return;
-        }
-        report(
-          "Drag across the surface you want, then move its corner handles to match the edges. Brush an area works for narrow features.",
-        );
-      } else if (mode === "outline" || mode === "cutout") {
-        if (points.length >= MAX_POINTS)
-          return report("Close this outline before adding more corners.");
-        const scale =
-          overlay.width / Math.max(1, overlay.getBoundingClientRect().width);
-        if (
-          points.length >= 3 &&
-          Math.hypot(x - points[0][0], y - points[0][1]) < 9 * scale
-        ) {
-          finishOutline();
-          return;
-        }
-        if (
-          !points.length ||
-          Math.hypot(x - points.at(-1)[0], y - points.at(-1)[1]) > 1
+      for (const item of palette
+        .filter((s) =>
+          (s.name + " " + s.code + " " + s.hex).toLowerCase().includes(query),
         )
-          points.push([
-            clamp(x, 0, original.width),
-            clamp(y, 0, original.height),
-          ]);
-        refresh();
-        report(
-          mode === "cutout"
-            ? "Tap around the opening, then Protect opening to keep it unpainted."
-            : "Tap around just this wall, then Finish outline. Nothing is painted until you confirm.",
-        );
+        .slice(0, 48))
+        results.append(button(item, false));
+      refresh();
+    }
+    function stopWorker() {
+      if (worker) worker.terminate();
+      worker = null;
+      encoded = false;
+      for (const job of requests.values()) {
+        clearTimeout(job.timer);
+        job.reject(new DOMException("Photo changed", "AbortError"));
       }
+      requests.clear();
     }
-    function cancelGesture() {
-      if (frame) cancelAnimationFrame(frame);
-      frame = 0;
-      const previous = gesture;
-      gesture = null;
-      if (previous && overlay.hasPointerCapture?.(previous.id))
-        overlay.releasePointerCapture(previous.id);
-      if (current && !holding)
-        context.putImageData(
-          new ImageData(current.data, current.width, current.height),
-          0,
-          0,
+    function request(kind, payload = {}) {
+      if (!worker) {
+        worker = new Worker("/assets/wall-selector-worker.js?v=1");
+        const ownedWorker = worker;
+        worker.onmessage = ({ data }) => {
+          if (worker !== ownedWorker) return;
+          const job = requests.get(data.id);
+          if (!job) return;
+          if (data.progress) {
+            report(data.progress);
+            return;
+          }
+          clearTimeout(job.timer);
+          requests.delete(data.id);
+          data.error ? job.reject(Error(data.error)) : job.resolve(data);
+        };
+        worker.onerror = () => {
+          if (worker !== ownedWorker) return;
+          for (const job of requests.values()) {
+            clearTimeout(job.timer);
+            job.reject(
+              Error(
+                "Wall selection could not load. Try again or choose a room photo.",
+              ),
+            );
+          }
+          requests.clear();
+          worker?.terminate();
+          worker = null;
+          encoded = false;
+        };
+      }
+      return new Promise((resolve, reject) => {
+        const id = ++requestSequence,
+          timer = setTimeout(() => {
+            if (!requests.has(id)) return;
+            requests.delete(id);
+            worker?.terminate();
+            worker = null;
+            encoded = false;
+            reject(Error("Photo preparation took too long. Please try again."));
+          }, 90000);
+        requests.set(id, { resolve, reject, timer });
+        worker.postMessage(
+          { id, kind, ...payload },
+          payload.pixels ? [payload.pixels.buffer] : [],
         );
-      draw();
+      });
     }
-    function renderWorking() {
-      frame = 0;
-      if (!gesture?.mask || !original) return;
-      if (gesture.selectionStroke) {
-        lastFrame = performance.now();
-        draw();
+    async function encode() {
+      if (encoded) return;
+      const c = document.createElement("canvas"),
+        scale = 1024 / Math.max(original.width, original.height);
+      resized = [
+        Math.round(original.width * scale),
+        Math.round(original.height * scale),
+      ];
+      c.width = original.width;
+      c.height = original.height;
+      c.getContext("2d").putImageData(
+        new ImageData(
+          new Uint8ClampedArray(original.data),
+          original.width,
+          original.height,
+        ),
+        0,
+        0,
+      );
+      const small = document.createElement("canvas");
+      small.width = resized[0];
+      small.height = resized[1];
+      small.getContext("2d").drawImage(c, 0, 0, ...resized);
+      const rgba = small.getContext("2d").getImageData(0, 0, ...resized).data,
+        pixels = new Float32Array(3 * 1024 * 1024),
+        mean = [0.485, 0.456, 0.406],
+        std = [0.229, 0.224, 0.225];
+      for (let y = 0; y < resized[1]; y++)
+        for (let x = 0; x < resized[0]; x++)
+          for (let k = 0; k < 3; k++)
+            pixels[k * 1024 * 1024 + y * 1024 + x] =
+              (rgba[(y * resized[0] + x) * 4 + k] / 255 - mean[k]) / std[k];
+      await request("encode", { pixels });
+      encoded = true;
+    }
+    async function prepare() {
+      if (!original || busy) return;
+      if (regions.length && !surfaces.length) {
+        remember();
+        surfaces = regions.map((r, i) => ({
+          id: ++sequence,
+          mask: r.mask,
+          hex: null,
+          name: "",
+        }));
+        phase = "colour";
+        view = "after";
+        render(true);
         return;
       }
-      const data = paintImage(
-        original,
-        gesture.underlay.data,
-        gesture.mask,
-        gesture.hex,
-      );
-      context.putImageData(
-        new ImageData(data, original.width, original.height),
-        0,
-        0,
-      );
-      lastFrame = performance.now();
-      draw();
-    }
-    function queueWorking() {
-      if (!frame && performance.now() - lastFrame > 35)
-        frame = requestAnimationFrame(renderWorking);
-    }
-    function imagePoint(event) {
-      const rect = overlay.getBoundingClientRect();
-      return [
-        ((event.clientX - rect.left) * overlay.width) / rect.width,
-        ((event.clientY - rect.top) * overlay.height) / rect.height,
-      ];
-    }
-    function changeZoom(value) {
-      if (!original) return;
-      cancelGesture();
-      const left =
-          (viewport.scrollLeft + viewport.clientWidth / 2) /
-          (stage.scrollWidth || 1),
-        top =
-          (viewport.scrollTop + viewport.clientHeight / 2) /
-          (stage.scrollHeight || 1);
-      zoom = clamp(value, 1, 3);
-      refresh();
-      if (zoom === 1) {
-        viewport.scrollLeft = 0;
-        viewport.scrollTop = 0;
-      } else {
-        viewport.scrollLeft =
-          left * stage.scrollWidth - viewport.clientWidth / 2;
-        viewport.scrollTop =
-          top * stage.scrollHeight - viewport.clientHeight / 2;
+      if (surfaces.length) {
+        phase = "colour";
+        selected = null;
+        view = "after";
+        render();
+        report("Tap a white wall and choose a colour.");
+        return;
       }
-      report(
-        zoom === 1
-          ? "Photo fits the workspace."
-          : `${Math.round(zoom * 100)}% zoom. Choose Move photo to reach another part of the wall.`,
-      );
+      const token = generation;
+      busy = true;
+      refresh();
+      try {
+        await encode();
+        if (token !== generation || destroyed) return;
+        report("Tap the centre of each wall to make it white.");
+        viewport.scrollIntoView({ block: "start", behavior: "instant" });
+      } catch (error) {
+        if (token === generation && error.name !== "AbortError")
+          report(error.message);
+      } finally {
+        if (token === generation) {
+          busy = false;
+          refresh();
+        }
+      }
     }
-    function revealPhoto() {
+    async function tap(point) {
+      if (!original || !enabled || busy) return;
+      view = "after";
+      onBeforeSelect();
+      const hit = [...surfaces]
+        .reverse()
+        .find((s) => s.mask[pixel(point)] >= 128);
+      if (phase === "colour") {
+        selected = hit?.id ?? null;
+        render();
+        report(
+          hit
+            ? "Choose a colour for the selected wall."
+            : "Use White base to prepare this wall first.",
+        );
+        return;
+      }
+      if (hit) {
+        remember();
+        surfaces = surfaces.filter((s) => s.id !== hit.id);
+        selected = null;
+        render(true);
+        report(
+          "Wall removed from the white base. Tap another wall to prepare it.",
+        );
+        return;
+      }
+      if (surfaces.length >= 16)
+        return report(
+          "Sixteen surfaces are prepared. Tap a white surface to remove it.",
+        );
+      const token = generation;
+      busy = true;
+      refresh();
+      try {
+        let mask = regions.find((r) => r.mask[pixel(point)] >= 128)?.mask;
+        if (!mask) {
+          await encode();
+          if (token !== generation || destroyed) return;
+          report("Finding this wall…");
+          const result = await request("select", {
+            point: [
+              (point[0] * resized[0]) / original.width,
+              (point[1] * resized[1]) / original.height,
+            ],
+          });
+          if (token !== generation || destroyed) return;
+          mask = modelWallMask(
+            original,
+            result.masks,
+            result.scores,
+            resized,
+            point,
+          );
+        }
+        for (const s of surfaces) mask = subtractMask(mask, s.mask);
+        if (!mask.some((v) => v >= 128))
+          throw Error("That wall is already prepared. Tap another surface.");
+        remember();
+        surfaces = [...surfaces, { id: ++sequence, mask, hex: null, name: "" }];
+        selected = null;
+        render(true);
+        report(
+          "Wall prepared in white. Tap another wall, or continue to colours.",
+        );
+      } catch (error) {
+        if (token === generation && error.name !== "AbortError")
+          report(error.message);
+      } finally {
+        if (token === generation) {
+          busy = false;
+          refresh();
+        }
+      }
+    }
+    function applyColour(value, notifyHost = true) {
+      const wall = selectedSurface();
+      if (
+        !wall ||
+        phase !== "colour" ||
+        busy ||
+        !/^#[0-9a-f]{6}$/i.test(value.hex)
+      )
+        return;
+      const hex =
+        value.hex.toLowerCase() === "#ffffff" ? null : value.hex.toLowerCase();
+      if (wall.hex !== hex) {
+        remember();
+        surfaces = surfaces.map((s) =>
+          s.id === wall.id ? { ...s, hex, name: value.name } : s,
+        );
+        view = "after";
+        render();
+      }
+      if (notifyHost) onSelectShade(value);
+      find(".ap-palette").open = false;
+      report(value.name + " applied to the selected wall.");
       viewport.scrollIntoView({ block: "start", behavior: "instant" });
     }
-    function doAction(event) {
-      const button = event.target.closest("button");
-      if (!button || button.disabled || !original || !enabled) return;
-      if (button.dataset.shadeIndex !== undefined) {
-        const item = palette[+button.dataset.shadeIndex];
-        if (item)
-          onSelectShade({
-            hex: item.hex,
-            name: item.name + (item.code ? " (" + item.code + ")" : ""),
-          });
-        toolbar.querySelector(".ap-palette").open = false;
+    const action = (event) => {
+      const b = event.target.closest("button");
+      if (!b || b.disabled) return;
+      if (b.dataset.colour !== undefined) {
+        applyColour(palette[+b.dataset.colour]);
         return;
       }
-      if (button.dataset.wall) {
-        const wall = walls.find(
-          (wall) => wall.id === Number(button.dataset.wall),
-        );
-        if (wall) selectWall(null, wall);
+      if (b.dataset.phase) {
+        phase = b.dataset.phase;
+        selected = null;
+        view = "after";
+        render();
         return;
       }
-      if (button.dataset.region) {
-        const region = regions.find(
-          (region) => region.regionKey === button.dataset.region,
-        );
-        if (region)
-          selectWall(
-            region,
-            walls.find((wall) => wall.regionKey === region.regionKey),
-          );
-        return;
-      }
-      if (button.dataset.tool) {
-        cancelGesture();
-        mode = button.dataset.tool;
-        if (mode === "outline") {
-          activeId = null;
-          pendingWall = null;
-        }
-        points = [];
-        cursor = null;
-        begin();
-        refresh();
-        report(
-          {
-            area: "Drag across a wall, column or trim. Then adjust the four corner dots to follow its edges.",
-            mark: "Brush over only the surface you want to colour. Use a small brush for columns, ledges and trim.",
-            unmark:
-              "Brush over windows, doors and anything that must stay unpainted. Paint selected area applies your changes.",
-            brush:
-              "Drag over the selected wall to adjust its paint. Use Paint selected area after choosing a new shade.",
-            erase:
-              "Drag over windows, doors or furniture to restore the photo there.",
-            tap: "Select one wall, then choose a colour and Paint selected area.",
-            pan: "Drag the photo to move around. Use zoom for small details.",
-            outline:
-              "Tap around ONE wall, then Finish outline. You can add more than four corners.",
-            cutout: "Tap around a window or door, then Protect opening.",
-          }[mode],
-        );
-        revealPhoto();
-        return;
-      }
-      switch (button.dataset.action) {
-        case "paint": {
-          const selection = selectedWall();
-          if (!selection || points.length) break;
-          cancelGesture();
-          begin();
-          commitMask(
-            selection.mask,
-            `${selection.label} painted. Other surfaces keep their colours.`,
-          );
-          mode = "area";
-          refresh();
-          revealPhoto();
+      switch (b.dataset.action) {
+        case "prepare":
+          void prepare();
           break;
-        }
-        case "close-palette":
-          toolbar.querySelector(".ap-palette").open = false;
-          toolbar.querySelector(".ap-palette summary").focus();
-          break;
-        case "finish":
-          finishOutline();
-          break;
-        case "back":
-          points.pop();
-          refresh();
-          break;
-        case "cancel":
-          points = [];
-          mode = "area";
-          refresh();
-          report("Outline cancelled. Your painted walls are unchanged.");
-          break;
-        case "add":
-        case "new-area":
-          cancelGesture();
-          activeId = null;
-          pendingWall = null;
-          points = [];
-          mode = "area";
-          refresh();
-          notify();
-          report(
-            "Drag across the next surface, or choose Brush an area for a column or trim. It can have its own colour.",
-          );
-          revealPhoto();
-          break;
-        case "delete":
-          if (active()) {
-            remember();
-            walls = walls.filter((wall) => wall.id !== activeId);
-            activeId = walls.at(-1)?.id ?? null;
-            pendingWall = null;
-            render();
-            syncShade();
-            refresh();
-            notify();
-            report(
-              "Wall removed. The original photo is restored wherever it was the only paint.",
-            );
-          }
-          break;
-        case "undo":
-          api.undo();
-          break;
-        case "redo":
-          api.redo();
-          break;
-        case "reset":
-          api.reset();
-          break;
-        case "in":
-          changeZoom(zoom + 0.5);
-          revealPhoto();
-          break;
-        case "out":
-          changeZoom(zoom - 0.5);
-          revealPhoto();
-          break;
-        case "fit":
-          changeZoom(1);
-          revealPhoto();
-          break;
-        case "compare":
-          showOriginal(!holding);
-          refresh();
-          break;
-        case "save":
-          savePreview();
-          break;
-      }
-    }
-    listen(toolbar, "click", doAction);
-    if (controls !== toolbar) listen(controls, "click", doAction);
-    listen(find("[data-brush]"), "input", (event) => {
-      find(".ap-brush-size output").textContent = event.target.value + " px";
-      draw();
-    });
-    listen(
-      toolbar.querySelector('[aria-label="Find a paint shade"]'),
-      "input",
-      renderPalette,
-    );
-    listen(toolbar.querySelector(".ap-palette"), "keydown", (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        toolbar.querySelector(".ap-palette").open = false;
-        toolbar.querySelector(".ap-palette summary").focus();
-      }
-    });
-    listen(document, "pointerdown", (event) => {
-      const picker = toolbar.querySelector(".ap-palette");
-      if (
-        picker.open &&
-        !picker.contains(event.target) &&
-        !overlay.contains(event.target)
-      )
-        picker.open = false;
-    });
-    listen(controls.querySelector(".ap-refine"), "toggle", () => {
-      if (
-        !controls.querySelector(".ap-refine").open &&
-        ["brush", "erase", "pan", "cutout"].includes(mode)
-      ) {
-        cancelGesture();
-        mode = "area";
-        points = [];
-        cursor = null;
-        changeZoom(1);
-        refresh();
-        report("Select one wall, choose a colour, then Paint selected area.");
-      }
-    });
-    const nameInput = controls.querySelector('[aria-label="Wall name"]');
-    listen(nameInput, "change", () => {
-      const wall = active(),
-        label = nameInput.value.trim().slice(0, 32);
-      if (wall && label && label !== wall.label) {
-        remember();
-        walls = walls.map((item) =>
-          item.id === wall.id ? { ...item, label } : item,
-        );
-        refresh();
-        notify();
-      }
-    });
-    listen(nameInput, "keydown", (event) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        nameInput.blur();
-      }
-    });
-    listen(overlay, "pointerdown", (event) => {
-      if (toolbar.querySelector(".ap-palette").open) {
-        toolbar.querySelector(".ap-palette").open = false;
-        return;
-      }
-      if (!event.isPrimary) {
-        cancelGesture();
-        return;
-      }
-      if (event.button !== 0 || !original || !enabled) return;
-      if (["brush", "erase"].includes(mode) && !active() && walls.length >= 8)
-        return report("Select an existing wall to continue painting.");
-      begin();
-      const point = imagePoint(event);
-      cursor = point;
-      if (mode === "area") {
-        event.preventDefault();
-        const selection = selectedWall(),
-          scale =
-            overlay.width / Math.max(1, overlay.getBoundingClientRect().width);
-        const handles = selection?.corners || [];
-        let corner = -1,
-          distance = 18 * scale;
-        handles.forEach((p, i) => {
-          const d = Math.hypot(point[0] - p[0], point[1] - p[1]);
-          if (d < distance) {
-            corner = i;
-            distance = d;
-          }
-        });
-        gesture = {
-          id: event.pointerId,
-          kind: corner < 0 ? "box" : "corner",
-          before: snapshot(),
-          start: point,
-          startClient: [event.clientX, event.clientY],
-          corners: corner < 0 ? null : handles.map((p) => [...p]),
-          corner,
-          base: selection,
-        };
-        overlay.setPointerCapture(event.pointerId);
-      } else if (["mark", "unmark"].includes(mode)) {
-        const selection = selectedWall();
-        if (mode === "unmark" && !selection) return;
-        event.preventDefault();
-        gesture = {
-          id: event.pointerId,
-          selectionStroke: true,
-          before: snapshot(),
-          start: point,
-          last: point,
-          base: selection || { label: `Area ${nextId}`, regionKey: null },
-          mask: new Uint8Array(
-            selection?.mask || original.width * original.height,
-          ),
-          radius:
-            (+find("[data-brush]").value * overlay.width) /
-            Math.max(1, overlay.getBoundingClientRect().width) /
-            2,
-          erase: mode === "unmark",
-        };
-        strokeInto(
-          gesture.mask,
-          original.width,
-          original.height,
-          point,
-          point,
-          gesture.radius,
-          gesture.erase,
-        );
-        overlay.setPointerCapture(event.pointerId);
-      } else if (["brush", "erase"].includes(mode)) {
-        if (mode === "erase" && !active()) return;
-        event.preventDefault();
-        const wall = active();
-        gesture = {
-          id: event.pointerId,
-          start: point,
-          last: point,
-          mask: new Uint8Array(wall?.mask || original.width * original.height),
-          underlay: composeImage(
-            original,
-            walls.filter((item) => item.id !== activeId),
-          ),
-          hex: shadeValue().hex,
-          radius:
-            (+find("[data-brush]").value * original.width) /
-            Math.max(1, overlay.getBoundingClientRect().width) /
-            2,
-          erase: mode === "erase",
-          changed: false,
-        };
-        strokeInto(
-          gesture.mask,
-          original.width,
-          original.height,
-          point,
-          point,
-          gesture.radius,
-          gesture.erase,
-        );
-        gesture.changed = true;
-        overlay.setPointerCapture(event.pointerId);
-        renderWorking();
-      } else if (mode === "pan") {
-        event.preventDefault();
-        gesture = {
-          id: event.pointerId,
-          startClient: [event.clientX, event.clientY],
-          scroll: [viewport.scrollLeft, viewport.scrollTop],
-        };
-        overlay.setPointerCapture(event.pointerId);
-      } else
-        gesture = {
-          id: event.pointerId,
-          startClient: [event.clientX, event.clientY],
-          start: point,
-        };
-      draw();
-    });
-    listen(overlay, "pointermove", (event) => {
-      if (!original || !enabled) return;
-      const point = imagePoint(event);
-      cursor = point;
-      if (
-        gesture?.id === event.pointerId &&
-        ["box", "corner"].includes(gesture.kind)
-      ) {
-        try {
-          gesture.corners =
-            gesture.kind === "box"
-              ? boxCorners(
-                  original.width,
-                  original.height,
-                  gesture.start,
-                  point,
-                )
-              : moveAreaCorner(
-                  original.width,
-                  original.height,
-                  gesture.corners,
-                  gesture.corner,
-                  point,
-                );
-        } catch {
-          /* Keep the last valid shape when a handle crosses another edge. */
-        }
-      } else if (gesture?.id === event.pointerId && gesture.mask) {
-        strokeInto(
-          gesture.mask,
-          original.width,
-          original.height,
-          gesture.last,
-          point,
-          gesture.radius,
-          gesture.erase,
-        );
-        gesture.last = point;
-        queueWorking();
-        if (gesture.selectionStroke) return;
-      } else if (gesture?.id === event.pointerId && mode === "pan") {
-        viewport.scrollLeft =
-          gesture.scroll[0] + gesture.startClient[0] - event.clientX;
-        viewport.scrollTop =
-          gesture.scroll[1] + gesture.startClient[1] - event.clientY;
-      }
-      draw();
-    });
-    listen(overlay, "pointerup", (event) => {
-      if (!gesture || gesture.id !== event.pointerId) return;
-      const saved = gesture,
-        point = imagePoint(event);
-      if (frame) cancelAnimationFrame(frame);
-      frame = 0;
-      gesture = null;
-      if (overlay.hasPointerCapture?.(event.pointerId))
-        overlay.releasePointerCapture(event.pointerId);
-      if (["box", "corner"].includes(saved.kind)) {
-        if (
-          saved.kind === "box" &&
-          Math.hypot(
-            event.clientX - saved.startClient[0],
-            event.clientY - saved.startClient[1],
-          ) < 8
-        ) {
-          tapPoint(...point);
-        } else {
-          try {
-            const corners =
-              saved.kind === "box"
-                ? boxCorners(
-                    original.width,
-                    original.height,
-                    saved.start,
-                    point,
-                  )
-                : moveAreaCorner(
-                    original.width,
-                    original.height,
-                    saved.corners,
-                    saved.corner,
-                    point,
-                  );
-            let mask = polygonMask(original.width, original.height, corners);
-            if (saved.kind === "corner" && saved.base?.cutoutMask)
-              mask = subtractMask(mask, saved.base.cutoutMask);
-            remember(saved.before);
-            if (saved.kind === "box") {
-              activeId = null;
-              pendingWall = {
-                label: `Area ${nextId}`,
-                regionKey: null,
-                mask,
-                corners,
-                cutoutMask: null,
-              };
-            } else pendingWall = { ...saved.base, mask, corners };
-            points = [];
-            refresh();
-            notify();
-            report(
-              "Area ready. Drag its corner dots to follow the edges, then choose a colour and Paint selected area.",
-            );
-          } catch (error) {
-            report(error.message);
-          }
-        }
-      } else if (saved.selectionStroke) {
-        strokeInto(
-          saved.mask,
-          original.width,
-          original.height,
-          saved.last,
-          point,
-          saved.radius,
-          saved.erase,
-        );
-        remember(saved.before);
-        pendingWall = {
-          ...saved.base,
-          mask: saved.mask,
-          corners: null,
-          cutoutMask: null,
-        };
-        points = [];
-        refresh();
-        notify();
-        report(
-          saved.erase
-            ? "Area trimmed. Windows, doors and unmarked surfaces stay out of your selection."
-            : "Area marked. Keep brushing to include the surface, then choose a colour and Paint selected area.",
-        );
-      } else if (saved.mask) {
-        strokeInto(
-          saved.mask,
-          original.width,
-          original.height,
-          saved.last,
-          point,
-          saved.radius,
-          saved.erase,
-        );
-        if (saved.mask.some((value) => value >= 128))
-          commitMask(
-            saved.mask,
-            saved.erase
-              ? "Paint removed from that part of the wall. Try a smaller eraser for fine edges."
-              : "Wall adjusted. Choose a shade and Paint selected area to recolour it.",
-          );
-        else if (active()) {
-          remember();
-          walls = walls.filter((item) => item.id !== activeId);
-          activeId = null;
+        case "before":
+        case "after":
+          view = b.dataset.action;
           render();
-          refresh();
-          notify();
-          report("Paint removed from this wall.");
-        }
-      } else if (
-        mode !== "pan" &&
-        Math.hypot(
-          event.clientX - saved.startClient[0],
-          event.clientY - saved.startClient[1],
-        ) <= 8
+          break;
+        case "close-colours":
+          find(".ap-palette").open = false;
+          break;
+        case "print":
+          void printComparison(
+            original,
+            after,
+            surfaces.filter((s) => s.hex),
+          ).catch(() =>
+            report("The print view could not open. Please try again."),
+          );
+          break;
+      }
+    };
+    listen(toolbar, "click", action);
+    listen(controls, "click", action);
+    listen(find('[aria-label="Find a paint shade"]'), "input", renderPalette);
+    listen(overlay, "pointerdown", (e) => {
+      if (e.isPrimary && e.button === 0)
+        gesture = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    });
+    listen(overlay, "pointerup", (e) => {
+      const start = gesture;
+      gesture = null;
+      if (
+        start &&
+        start.id === e.pointerId &&
+        Math.hypot(start.x - e.clientX, start.y - e.clientY) < 8
       )
-        tapPoint(...point);
-      if (event.pointerType === "touch") cursor = null;
-      draw();
+        void tap(photoPoint(e));
     });
-    listen(overlay, "pointercancel", cancelGesture);
-    listen(overlay, "lostpointercapture", () => {
-      if (gesture) cancelGesture();
+    listen(overlay, "pointercancel", () => {
+      gesture = null;
     });
-    listen(overlay, "pointerleave", () => {
-      if (!gesture) {
-        cursor = null;
-        draw();
+    listen(overlay, "keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        api.undo();
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        void tap([overlay.width / 2, overlay.height / 2]);
       }
     });
-    listen(overlay, "keydown", (event) => {
-      if (!enabled || !original) return;
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
-        event.preventDefault();
-        event.shiftKey ? api.redo() : api.undo();
-        return;
-      }
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "y") {
-        event.preventDefault();
-        api.redo();
-        return;
-      }
-      const delta = {
-        ArrowLeft: [-1, 0],
-        ArrowRight: [1, 0],
-        ArrowUp: [0, -1],
-        ArrowDown: [0, 1],
-      }[event.key];
-      if (delta) {
-        event.preventDefault();
-        begin();
-        cursor ||= [overlay.width / 2, overlay.height / 2];
-        const from = [...cursor],
-          step = event.shiftKey ? 20 : 2;
-        cursor = [
-          clamp(cursor[0] + delta[0] * step, 0, overlay.width),
-          clamp(cursor[1] + delta[1] * step, 0, overlay.height),
-        ];
-        if (event.altKey && ["brush", "erase"].includes(mode)) {
-          const mask = brushMask(
-            original.width,
-            original.height,
-            active()?.mask || new Uint8Array(original.width * original.height),
-            [from, cursor],
-            (+find("[data-brush]").value * original.width) /
-              Math.max(1, overlay.getBoundingClientRect().width) /
-              2,
-            mode === "erase",
-          );
-          commitMask(mask);
-        }
-        draw();
-      } else if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        cursor ||= [overlay.width / 2, overlay.height / 2];
-        if (["brush", "erase"].includes(mode)) {
-          const mask = brushMask(
-            original.width,
-            original.height,
-            active()?.mask || new Uint8Array(original.width * original.height),
-            [cursor],
-            (+find("[data-brush]").value * original.width) /
-              Math.max(1, overlay.getBoundingClientRect().width) /
-              2,
-            mode === "erase",
-          );
-          commitMask(mask);
-        } else tapPoint(...cursor);
-      } else if (event.key === "Backspace") {
-        event.preventDefault();
-        points.pop();
-        refresh();
-      } else if (event.key === "Escape") {
-        cancelGesture();
-        points = [];
-        cursor = null;
-        refresh();
-        report("Outline cancelled.");
-      }
+    listen(document, "pointerdown", (e) => {
+      if (!toolbar.contains(e.target)) find(".ap-palette").open = false;
     });
-    function showOriginal(value) {
-      if (!original || !enabled) return;
-      if (value) {
-        cancelGesture();
-        begin();
-        holding = true;
-        context.putImageData(
-          new ImageData(original.data, original.width, original.height),
-          0,
-          0,
-        );
-      } else {
-        holding = false;
-        if (current)
-          context.putImageData(
-            new ImageData(current.data, current.width, current.height),
-            0,
-            0,
-          );
-      }
-      draw();
-    }
-    const originalButton = byAction("original");
-    listen(originalButton, "pointerdown", (event) => {
-      event.preventDefault();
-      originalButton.setPointerCapture(event.pointerId);
-      showOriginal(true);
-    });
-    for (const name of [
-      "pointerup",
-      "pointercancel",
-      "lostpointercapture",
-      "blur",
-    ])
-      listen(originalButton, name, () => showOriginal(false));
-    listen(originalButton, "keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        showOriginal(true);
-      }
-    });
-    listen(originalButton, "keyup", () => showOriginal(false));
-    function savePreview() {
-      if (!current || !walls.length) return;
-      const target = document.createElement("canvas");
-      target.width = current.width;
-      target.height = current.height;
-      target
-        .getContext("2d")
-        .putImageData(
-          new ImageData(current.data, current.width, current.height),
-          0,
-          0,
-        );
-      target.toBlob((blob) => {
-        if (!blob || destroyed) return;
-        const url = URL.createObjectURL(blob),
-          a = document.createElement("a");
-        a.href = url;
-        a.download = "Areva-Paints-My-Home.png";
-        document.body.append(a);
-        a.click();
-        a.remove();
-        const timer = setTimeout(() => {
-          URL.revokeObjectURL(url);
-          objectUrls.delete(url);
-        }, 1500);
-        objectUrls.set(url, timer);
-        report("Your painted home preview is ready to save.");
-      }, "image/png");
-    }
     const api = {
       setImage(image, { roomId = null } = {}) {
-        const count = size(image.width, image.height);
-        if (image.data.length !== count * 4)
+        size(image.width, image.height);
+        if (image.data.length !== image.width * image.height * 4)
           throw Error("This photo could not be read.");
-        cancelGesture();
+        generation++;
+        stopWorker();
+        busy = false;
+        enabled = true;
         original = {
           width: image.width,
           height: image.height,
           data: new Uint8ClampedArray(image.data),
         };
-        stage.style.setProperty(
-          "--ap-fit-width",
-          `${(image.width / image.height) * 64}dvh`,
-        );
-        controls.querySelector(".ap-refine").open = false;
+        regions = presetWallRegions(image.width, image.height, roomId);
+        surfaces = regions.map((r, i) => ({
+          id: i + 1,
+          mask: r.mask,
+          hex: null,
+          name: "",
+        }));
+        sequence = surfaces.length + 1;
+        selected = null;
+        history = [];
+        phase = regions.length ? "colour" : "white";
+        view = "after";
+        encoded = false;
         overlay.width = image.width;
         overlay.height = image.height;
-        enabled = true;
-        toolbar.hidden = controls.hidden = false;
-        walls = [];
-        regions = presetWallRegions(image.width, image.height, roomId);
-        pendingWall = null;
-        activeId = null;
-        nextId = 1;
-        history = [];
-        future = [];
-        points = [];
-        mode = "area";
-        holding = comparing = false;
-        zoom = 1;
-        cursor = null;
-        viewport.scrollLeft = viewport.scrollTop = 0;
-        render();
-        refresh();
-        notify();
+        stage.style.width =
+          "min(100%, " + (image.width / image.height) * 64 + "dvh)";
+        stage.style.marginInline = "auto";
+        base = null;
+        render(true);
         report(
           regions.length
-            ? "Choose one wall in the sample photo, then choose a colour and Paint selected area."
-            : "Your photo is ready. Drag across one surface and adjust the corner dots, or brush over a column or trim.",
+            ? "White base ready. Tap a wall and choose a colour."
+            : "Prepare a white base first, then choose colours for your walls.",
         );
       },
-      reset() {
-        if (!original || !enabled) return;
-        cancelGesture();
-        if (walls.length || pendingWall) {
-          remember();
-          walls = [];
-          activeId = null;
-        }
-        points = [];
-        pendingWall = null;
-        cursor = null;
-        mode = "area";
-        begin();
-        render();
-        refresh();
-        notify();
-        report("Original photo restored. Undo brings your walls back.");
-      },
       undo() {
-        if (!original || !enabled || !history.length) return;
-        cancelGesture();
-        future.push(snapshot());
+        if (busy || !history.length) return;
         const saved = history.pop();
-        walls = saved.walls;
-        activeId = saved.activeId;
-        pendingWall = saved.pendingWall;
-        points = [];
-        mode = "area";
-        begin();
-        render();
-        syncShade();
-        refresh();
-        notify();
+        surfaces = saved.surfaces;
+        selected = saved.selected;
+        phase = saved.phase;
+        view = "after";
+        render(true);
         report("Last change undone.");
       },
-      redo() {
-        if (!original || !enabled || !future.length) return;
-        cancelGesture();
-        history.push(snapshot());
-        const saved = future.pop();
-        walls = saved.walls;
-        activeId = saved.activeId;
-        pendingWall = saved.pendingWall;
-        points = [];
-        mode = "area";
-        begin();
-        render();
-        syncShade();
-        refresh();
-        notify();
-        report("Change restored.");
+      reset() {
+        if (!original || busy) return;
+        remember();
+        surfaces = surfaces.map((s) => ({ ...s, hex: null, name: "" }));
+        selected = null;
+        phase = "white";
+        view = "after";
+        render(true);
       },
       setEnabled(value) {
-        cancelGesture();
+        if (!value) {
+          generation++;
+          stopWorker();
+          busy = false;
+        }
         enabled = value;
-        toolbar.hidden = controls.hidden = !value;
         refresh();
       },
       setComparison(value) {
-        if (value) cancelGesture();
-        comparing = value;
-        draw();
-      },
-      setSwatches(values) {
-        palette = normalizeSwatches(values);
-        renderPalette();
-        updateShadeChip();
+        view = value ? "before" : "after";
+        render();
       },
       shadeChanged() {
-        updateShadeChip();
-        if (!original || !enabled) return;
-        report(
-          selectedWall()
-            ? `${shadeValue().name} chosen. Press Paint selected area to apply it only here.`
-            : "Colour chosen. Select one wall before painting.",
-        );
+        if (original && enabled) applyColour(shade(), false);
+      },
+      setSwatches(values) {
+        palette = normalize(values);
+        renderPalette();
       },
       destroy() {
-        cancelGesture();
         destroyed = true;
-        removers.forEach((remove) => remove());
-        objectUrls.forEach((timer, url) => {
-          clearTimeout(timer);
-          URL.revokeObjectURL(url);
-        });
-        objectUrls.clear();
+        generation++;
+        stopWorker();
+        listeners.forEach((remove) => remove());
         overlay.remove();
-        loupe.remove();
         toolbar.replaceChildren();
         controls.replaceChildren();
         if (ownsToolbar) toolbar.remove();
         stage.style.width = "";
-        stage.style.maxWidth = "";
         stage.style.marginInline = "";
-        stage.style.removeProperty("--ap-fit-width");
-        original = current = null;
-        walls = [];
-        regions = [];
-        pendingWall = null;
+        original = base = after = null;
+        surfaces = [];
         history = [];
-        future = [];
       },
     };
+    palette = normalize(swatches);
     renderPalette();
     refresh();
     return api;
   }
   globalThis.ArevaPaintStudio = Object.freeze({
-    version: 5,
+    version: 6,
     polygonMask,
     subtractMask,
     connectedMask,
@@ -2383,6 +1751,12 @@
     boxCorners,
     moveAreaCorner,
     presetWallRegions,
+    whiteWallBase,
+    renderWhitePreview,
+    cleanWallMask,
+    refineWallBoundary,
+    modelWallMask,
+    printComparison,
     createEditor,
   });
 })();

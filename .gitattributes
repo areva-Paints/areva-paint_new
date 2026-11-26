@@ -1,0 +1,4 @@
+# Keep pinned third-party runtime/model bytes unchanged across platforms.
+public/assets/vendor/onnx/** -text -whitespace linguist-vendored
+public/assets/vendor/onnx/*.wasm -diff
+public/assets/wall-model/v1/*.onnx -text -diff linguist-vendored

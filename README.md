@@ -24,7 +24,7 @@ The project does not currently enable TypeScript's `strict` option. `npm run lin
 ## Features and integration status
 
 - Public catalogue with category pages, technical specifications, bases/packing, optional product warranty badges, shades, visualizers, calculator and dealer search.
-- Home-photo visualizer with the photo first and all room, upload, selection and colour options below it. Customers drag adjustable perspective areas or brush over walls, columns and trim, remove openings, then explicitly paint the selected area. Room-photo presets, magnified precision editing, local Undo/Redo, Before/After and PNG export are shared by both studios. Photos stay in the browser. See [photo painting](docs/photo-paint-selection.md).
+- Simple home-photo painter: **prepare a white base → tap a wall → choose a colour**, with visible Before/After and two-image printing. Room samples use known wall masks; uploaded homes use a bundled local SlimSAM detector. Photos stay on the device, and the previous manual tool panels have been removed. See [white-base painting](docs/photo-paint-selection.md).
 - Admin editing for Certifications and documents, products, landing images, dealers, colours/shade PDFs, Gallery projects/campaigns/reviews, accounts and activity history.
 - Warranty purchase registration with a captured login phone, dealer/invoice/site details, private receipt upload, admin search/date filters, final review decisions and decision PDFs.
 - Customer **My registrations** after mobile/demo entry, with reference-protected history, current review status, existing-reference lookup and new/unfinished registration actions. Approved cards offer **View PDF** and **Download PDF** for the same saved decision report as the admin portal, including review notes. See [customer history](docs/customer-warranty-history.md) for demo access limits and private SQL table migration 014, and [PDF and OTP details](docs/customer-warranty-pdfs-and-random-otp.md).
@@ -78,7 +78,7 @@ Use local `.env` during development and the hosting provider's environment setti
 | `WARRANTY_OTP_MODE`   | `demo` for the current flow; `disabled` to stop new warranty entry                                                     |
 | `VITE_CONTENT_ORIGIN` | Optional **build-time public backend origin** for a separately hosted frontend; rebuild the frontend after changing it |
 
-`VITE_*` values are exposed to the browser and must never contain passwords, API secrets or database credentials. The two existing Render public origins are included in the code's public allowlist; the variable adds other origins. Admin, auth and warranty writes remain same-origin. No AI API key is required by this application.
+`VITE_*` values are exposed to the browser and must never contain passwords, API secrets or database credentials. The two existing Render public origins are included in the code's public allowlist; the variable adds other origins. Admin, auth and warranty writes remain same-origin. No AI API key is required by this application. Uploaded-home wall preparation downloads about 25 MB of bundled model/runtime assets on first use and runs in the browser; room samples do not need that download. Keep `public/assets/wall-model` and `public/assets/vendor/onnx` in deployments. See the [model licenses and integrity manifest](public/assets/wall-model/README.md).
 
 ## Host on Render
 

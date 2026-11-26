@@ -114,12 +114,12 @@ export function legacyPage() {
   html = html.replace('</head>', '<link rel="stylesheet" href="/assets/shade-library.css"></head>');
   html = html.replace('<input id="q" type="search" placeholder="Search colour by name or code" aria-label="Search colours"><div class="sw" id="sw"></div>', '');
   html = html.replace(/(<section id="visualizer"[\s\S]*?)(<\/section>)/, (_match, body: string, end) => {
-    const heading = slots.add(renderToStaticMarkup(createElement(ColourCollectionHeading, { total: c.colours.length })));
+    const heading = '<div class="ap-title"><h2>Paint your home</h2><p>Prepare a white base, tap a wall and choose your colour.</p></div>';
     const library = slots.add(renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true })));
     body = body.replace(/<h2>Try colours on a room<\/h2><p class="lead">[\s\S]*?<\/p>/, () => heading);
     body = body.replace('<div class="two"><div>', '<div class="two colour-studio-grid"><div class="colour-room-panel">');
     body = body.replace(/<div>\s*<p><b id="cn">[\s\S]*?Tap ♡ beside a shade to save it to your palette\.<\/p>/,
-      () => `<div class="colour-shade-panel">${library}`);
+      () => `<div class="colour-shade-panel" hidden>${library}`);
     return body + end;
   });
   html = html.replace('function drawSw(){', 'let shadeFamily = "All Shades", shadeTone = "All";\nfunction drawSw(){');
