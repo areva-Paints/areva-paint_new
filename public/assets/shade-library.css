@@ -256,7 +256,10 @@
   letter-spacing: 0.18em;
 }
 #visualizer .colour-collection-heading .colour-collection-title,
-.areva-reference-site #visualizer .colour-collection-heading .colour-collection-title {
+.areva-reference-site
+  #visualizer
+  .colour-collection-heading
+  .colour-collection-title {
   margin: 0 0 14px;
   color: #361052;
   font:
@@ -265,7 +268,10 @@
   letter-spacing: -0.035em;
 }
 #visualizer .colour-collection-heading .colour-collection-title::after,
-.areva-reference-site #visualizer .colour-collection-heading .colour-collection-title::after {
+.areva-reference-site
+  #visualizer
+  .colour-collection-heading
+  .colour-collection-title::after {
   content: none;
 }
 .colour-collection-description {
@@ -291,7 +297,13 @@
 .colour-shade-panel {
   min-width: 0;
 }
-.colour-painting-label { margin: 0; color: #302536; font: 400 14px/1.6 Arial, sans-serif; }
+.colour-painting-label {
+  margin: 0;
+  color: #302536;
+  font:
+    400 14px/1.6 Arial,
+    sans-serif;
+}
 .colour-shade-panel .shade-library {
   margin: 0;
   padding: 18px;
@@ -365,6 +377,96 @@
     padding: 12px;
   }
   .colour-shade-panel .shade-swatch-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* The visualizer shows every published record and only its saved families. */
+#visualizer .colour-shade-panel .shade-library {
+  margin: 0;
+  padding: 0 14px 14px;
+  border: 0;
+  border-radius: 0;
+}
+#visualizer .shade-controls {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #fff;
+  padding: 14px 0 4px;
+}
+#visualizer .shade-palette-title {
+  margin: 0 0 12px;
+  color: #35124f;
+  font:
+    600 20px/1.3 Georgia,
+    serif;
+}
+#visualizer .shade-families {
+  flex-wrap: wrap;
+  overflow: visible;
+  gap: 6px;
+  padding: 0;
+}
+#visualizer .shade-families button {
+  min-height: 34px;
+  padding: 7px 9px;
+  gap: 6px;
+  font-size: 10px;
+  text-transform: none;
+  border-radius: 8px;
+}
+#visualizer .shade-families i {
+  width: 13px;
+  height: 13px;
+}
+#visualizer .shade-search-row {
+  gap: 6px;
+  margin: 12px 0 8px;
+  flex-wrap: nowrap;
+}
+#visualizer .shade-search-row input {
+  padding: 10px;
+  font-size: 13px;
+  flex-basis: 0;
+}
+#visualizer .shade-search-row button {
+  padding: 8px;
+  font-size: 11px;
+}
+#visualizer .shade-tones-panel[hidden] {
+  display: none;
+}
+#visualizer .shade-result-count {
+  margin: 8px 0;
+  font-size: 12px;
+}
+#visualizer .colour-shade-panel .shade-swatch-grid {
+  max-height: none;
+  overflow: visible;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+#visualizer .shade-chip {
+  height: 90px;
+}
+#visualizer .shade-swatch strong {
+  font-size: 12px;
+}
+#visualizer .shade-swatch small {
+  font-size: 11px;
+}
+#visualizer .shade-pdfs {
+  margin-top: 18px;
+}
+#visualizer .shade-pdfs a {
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 12px;
+  font-size: 13px;
+}
+@media (max-width: 600px) {
+  #visualizer .colour-shade-panel .shade-swatch-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

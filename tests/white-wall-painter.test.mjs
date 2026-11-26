@@ -15,6 +15,8 @@ const {
   cleanWallMask,
   refineWallBoundary,
   modelWallMask,
+  modelBuildingMask,
+  paintableBuildingMask,
 } = globalThis.ArevaPaintStudio;
 const image = (width, height, colour) => ({
   width,
@@ -28,6 +30,84 @@ const image = (width, height, colour) => ({
 });
 const rgb = (im, x, y) =>
   Array.from(im.data.slice((y * im.width + x) * 4, (y * im.width + x) * 4 + 3));
+
+test("automatic preparation whitens distant wall faces and cast shadows, while protecting openings and surrounding pixels", () => {
+  const original = image(120, 100, (x, y) => {
+    if (y < 10 || x < 10 || x >= 110) return [70, 150, 220]; // Sky outside the model body.
+    if (x >= 45 && x < 75 && y >= 35 && y < 65) return [12, 15, 18]; // Opening.
+    if (x >= 85 && x < 105 && y > 55) return [140, 83, 38]; // Wood door.
+    if (x > 55 && y < 30) return [80, 80, 80]; // Cast shadow on concrete.
+    if (x === 60 && y === 50) return [150, 150, 150]; // A window reflection.
+    return x < 55 ? [170, 170, 170] : [140, 140, 140];
+  });
+  const body = polygonMask(120, 100, [
+    [10, 10],
+    [110, 10],
+    [110, 95],
+    [10, 95],
+  ]);
+  const mask = paintableBuildingMask(original, body),
+    base = whiteWallBase(original, [{ mask }]);
+  for (const [x, y] of [
+    [25, 25],
+    [95, 25],
+    [65, 20],
+    [25, 80],
+  ]) {
+    assert.equal(mask[y * 120 + x], 255, `Wall face at ${x},${y} is prepared`);
+    const colour = rgb(base, x, y);
+    assert.equal(colour[0], colour[1]);
+    assert.equal(colour[1], colour[2]);
+    assert.ok(colour[0] > rgb(original, x, y)[0]);
+  }
+  for (const [x, y] of [
+    [5, 40],
+    [50, 50],
+    [60, 50],
+    [95, 70],
+    [50, 97],
+  ])
+    assert.deepEqual(
+      rgb(base, x, y),
+      rgb(original, x, y),
+      `Protected source at ${x},${y}`,
+    );
+  assert.deepEqual(paintableBuildingMask(original, body), mask);
+});
+
+test("automatic building detection uses an enclosing confident mask, while a wall tap chooses its fine surface", () => {
+  const original = image(100, 80, () => [170, 170, 170]),
+    logits = new Float32Array(3 * 65536).fill(-8);
+  for (let y = 0; y < 205; y++)
+    for (let x = 0; x < 256; x++) {
+      if (x > 25 && x < 230 && y > 25 && y < 190) logits[y * 256 + x] = 8;
+      if (x > 95 && x < 190 && y > 70 && y < 150)
+        logits[65536 + y * 256 + x] = 8;
+      if (x > 115 && x < 155 && y > 90 && y < 140)
+        logits[131072 + y * 256 + x] = 8;
+    }
+  const scores = new Float32Array([0.92, 0.85, 0.8]),
+    resized = [1024, 819],
+    point = [52, 45];
+  const building = modelBuildingMask(original, logits, scores, resized, point),
+    wall = modelWallMask(original, logits, scores, resized, point);
+  assert.ok(building.filter(Boolean).length > wall.filter(Boolean).length * 3);
+  assert.equal(building[20 * 100 + 20], 255);
+  assert.equal(wall[20 * 100 + 20], 0);
+  assert.equal(
+    modelBuildingMask(
+      original,
+      logits,
+      new Float32Array([NaN, 0.1, 0.1]),
+      resized,
+      point,
+    ),
+    null,
+  );
+  assert.throws(() =>
+    modelBuildingMask(original, logits, scores, resized, [NaN, 0]),
+  );
+});
 
 test("white foundation removes old pigment, preserves openings and source, and recolours only its selected wall", () => {
   const original = image(80, 60, (x, y) => [130 + y, 100 + y, 75 + y]),

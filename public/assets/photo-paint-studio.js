@@ -916,21 +916,19 @@
     const bounded = connected(true);
     return bounded.area >= plain.area * 0.12 ? bounded.out : plain.out;
   }
-  function modelWallMask(original, logits, scores, resized, point) {
+  function decodeModelMasks(original, logits, scores, resized) {
     const { width, height } = original,
       count = size(width, height);
     if (
       logits.length !== 3 * 256 * 256 ||
       scores.length !== 3 ||
-      !point.every(Number.isFinite)
+      resized.length !== 2 ||
+      !resized.every((v) => Number.isFinite(v) && v > 0 && v <= 1024)
     )
       throw Error("Wall selection could not be read.");
-    const px = clamp(Math.floor(point[0]), 0, width - 1),
-      py = clamp(Math.floor(point[1]), 0, height - 1);
-    let best = null,
-      bestArea = Infinity;
+    const candidates = [];
     for (let k = 0; k < 3; k++) {
-      if (scores[k] < 0.55) continue;
+      if (!Number.isFinite(scores[k]) || scores[k] < 0.55) continue;
       const mask = new Uint8Array(count);
       let area = 0;
       for (let y = 0; y < height; y++)
@@ -956,16 +954,26 @@
             area++;
           }
         }
-      if (
-        mask[py * width + px] &&
-        area > count * 0.001 &&
-        area < count * 0.6 &&
-        area < bestArea
-      ) {
-        best = mask;
-        bestArea = area;
-      }
+      if (area) candidates.push({ mask, area, score: scores[k] });
     }
+    return candidates;
+  }
+  function modelWallMask(original, logits, scores, resized, point) {
+    const { width, height } = original,
+      count = size(width, height);
+    if (!point.every(Number.isFinite))
+      throw Error("Wall selection could not be read.");
+    const px = clamp(Math.floor(point[0]), 0, width - 1),
+      py = clamp(Math.floor(point[1]), 0, height - 1);
+    const candidates = decodeModelMasks(original, logits, scores, resized)
+      .filter(
+        (c) =>
+          c.mask[py * width + px] &&
+          c.area > count * 0.001 &&
+          c.area < count * 0.6,
+      )
+      .sort((a, b) => a.area - b.area);
+    let best = candidates[0]?.mask;
     if (!best) throw Error("Tap nearer the centre of a wall to select it.");
     best = cleanWallMask(best, width, height);
     const source = original.data,
@@ -1007,6 +1015,178 @@
     if (!best[py * width + px])
       throw Error("Tap the wall surface rather than a window or opening.");
     return refineWallBoundary(original, best, point);
+  }
+  /* Automatic preparation asks the local model for the enclosing building/wall,
+   * rather than painting the whole photograph or using a tap's tiny object mask.
+   * Wide sky bands, floors and small foreground objects are not white foundations.
+   */
+  function modelBuildingMask(original, logits, scores, resized, point) {
+    const { width, height } = original,
+      count = size(width, height);
+    if (point.length !== 2 || !point.every(Number.isFinite))
+      throw Error("Building selection could not be read.");
+    const at =
+      clamp(Math.floor(point[1]), 0, height - 1) * width +
+      clamp(Math.floor(point[0]), 0, width - 1);
+    const candidates = decodeModelMasks(original, logits, scores, resized)
+      .filter((c) => {
+        if (
+          c.score < 0.68 ||
+          !c.mask[at] ||
+          c.area < count * 0.035 ||
+          c.area > count * 0.94
+        )
+          return false;
+        let sx = 0,
+          sy = 0,
+          top = 0,
+          bottom = 0,
+          sides = 0;
+        for (let p = 0; p < count; p++)
+          if (c.mask[p]) {
+            const x = p % width,
+              y = Math.floor(p / width);
+            sx += x;
+            sy += y;
+            if (y < height * 0.035) top++;
+            if (y > height * 0.96) bottom++;
+            if (x < width * 0.025 || x > width * 0.975) sides++;
+          }
+        const cy = sy / c.area / height,
+          cx = sx / c.area / width;
+        return (
+          cy < 0.73 &&
+          cx > 0.12 &&
+          cx < 0.88 &&
+          !(
+            top > width * height * 0.018 &&
+            sides > count * 0.012 &&
+            cy < 0.42
+          ) &&
+          !(bottom > count * 0.022 && cy > 0.63)
+        );
+      })
+      .sort((a, b) => b.area - a.area);
+    return candidates[0]?.mask || null;
+  }
+  /* Separate wall material from openings and contrasting wood/glass/vegetation.
+   * Chroma is independent of illumination, so concrete in cast shadow still
+   * becomes white. Source pixels outside the model boundary remain byte-exact.
+   */
+  function paintableBuildingMask(original, body) {
+    const count = size(original.width, original.height);
+    if (body.length !== count) throw Error("Building sizes do not match.");
+    const source = original.data,
+      smooth = selectionImage(original),
+      bins = new Uint32Array(41 * 41),
+      histogram = new Uint32Array(256);
+    let total = 0;
+    for (let p = 0; p < count; p++)
+      if (body[p] && source[p * 4 + 3] >= 128) {
+        const i = p * 4,
+          l = Math.round(luminance(source, i) * 255);
+        histogram[l]++;
+        total++;
+        if (l < 10) continue;
+        const sum = Math.max(80, smooth[i] + smooth[i + 1] + smooth[i + 2]);
+        const a = clamp(
+          Math.round(((smooth[i] - smooth[i + 1]) / sum) * 40) + 20,
+          0,
+          40,
+        );
+        const b = clamp(
+          Math.round(((smooth[i + 2] - smooth[i + 1]) / sum) * 40) + 20,
+          0,
+          40,
+        );
+        bins[b * 41 + a]++;
+      }
+    if (!total) return new Uint8Array(count);
+    let mode = 0;
+    for (let i = 1; i < bins.length; i++) if (bins[i] > bins[mode]) mode = i;
+    const chroma = [((mode % 41) - 20) / 40, (Math.floor(mode / 41) - 20) / 40];
+    let level = 0,
+      cumulative = 0;
+    while (level < 255) {
+      cumulative += histogram[level];
+      if (cumulative >= total * 0.65) break;
+      level++;
+    }
+    const mask = new Uint8Array(count),
+      dark = Math.max(0.004, (level / 255) * 0.12);
+    for (let p = 0; p < count; p++)
+      if (body[p]) {
+        const i = p * 4,
+          sum = Math.max(80, smooth[i] + smooth[i + 1] + smooth[i + 2]);
+        const a = (smooth[i] - smooth[i + 1]) / sum,
+          b = (smooth[i + 2] - smooth[i + 1]) / sum;
+        const sameMaterial =
+          (a - chroma[0]) ** 2 + (b - chroma[1]) ** 2 < 0.075 ** 2;
+        const neutralTrim = a * a + b * b < 0.045 ** 2;
+        if (
+          (sameMaterial || neutralTrim) &&
+          luminance(source, i) >= dark &&
+          source[i + 3] >= 128
+        )
+          mask[p] = 255;
+      }
+    /* Reflections can have the same neutral RGB as concrete. Remove their
+     * isolated speckles instead of whitening patches of glass between frames.
+     * Erosion separates those islands; dilation restores the original wall edge.
+     */
+    const { width, height } = original,
+      core = new Uint8Array(count),
+      queue = new Int32Array(count),
+      seen = new Uint8Array(count);
+    for (let y = 1; y < height - 1; y++)
+      for (let x = 1; x < width - 1; x++) {
+        const p = y * width + x;
+        if (
+          mask[p] &&
+          mask[p - 1] &&
+          mask[p + 1] &&
+          mask[p - width] &&
+          mask[p + width]
+        )
+          core[p] = 255;
+      }
+    const kept = new Uint8Array(count),
+      minimum = Math.max(4, count * 0.0015);
+    for (let start = 0; start < count; start++)
+      if (core[start] && !seen[start]) {
+        let head = 0,
+          tail = 1;
+        queue[0] = start;
+        seen[start] = 1;
+        while (head < tail) {
+          const p = queue[head++],
+            x = p % width;
+          for (const n of [
+            x ? p - 1 : -1,
+            x < width - 1 ? p + 1 : -1,
+            p - width,
+            p + width,
+          ])
+            if (n >= 0 && n < count && core[n] && !seen[n]) {
+              seen[n] = 1;
+              queue[tail++] = n;
+            }
+        }
+        if (tail >= minimum)
+          for (let i = 0; i < tail; i++) kept[queue[i]] = 255;
+      }
+    for (let p = 0; p < count; p++)
+      if (mask[p] && !kept[p]) {
+        const x = p % width;
+        if (!(
+          (x && kept[p - 1]) ||
+          (x < width - 1 && kept[p + 1]) ||
+          kept[p - width] ||
+          kept[p + width]
+        ))
+          mask[p] = 0;
+      }
+    return mask;
   }
   /* Print the actual before/after buffers, even while Before is displayed.
    * The same-origin print document contains images and text only, with no scripts.
@@ -1078,6 +1258,9 @@
   /* A deliberately small workflow: white foundation, tap a wall, choose colour.
    * No brush panels, editable area lists, zoom controls or hidden advanced tools.
    */
+  /* Both public hosts share one controller: automatic white preparation,
+   * one-wall selection, and immutable recolouring. The CMS owns the palette.
+   */
   function createEditor({
     canvas,
     controls,
@@ -1101,32 +1284,32 @@
     controls.classList.add("ap-tools");
     viewport.classList.add("ap-viewport");
     toolbar.innerHTML =
-      '<div class="ap-steps" role="group" aria-label="Painting steps"><button type="button" data-phase="white">1. White base</button><button type="button" data-phase="colour">2. Choose colour</button></div><p class="ap-instruction"></p><button class="ap-prepare" type="button" data-action="prepare">Prepare white walls</button><div class="ap-colour-options" hidden><div class="ap-quick-swatches" role="group" aria-label="Choose a paint colour"></div><details class="ap-palette"><summary>More colours</summary><div class="ap-palette-panel"><label>Find a colour<input type="search" aria-label="Find a paint shade" placeholder="Colour name or code"></label><div class="ap-palette-results"></div><button type="button" data-action="close-colours">Close</button></div></details></div><p class="ap-shade-name"></p>';
+      '<p class="ap-instruction"></p><p class="ap-shade-name"></p><button type="button" data-action="retry" hidden>Retry white preparation</button>';
     controls.innerHTML =
-      '<div class="ap-footer"><div class="ap-view" role="group" aria-label="Photo comparison"><button type="button" data-action="before">Before</button><button type="button" data-action="after">After</button></div><button type="button" class="ap-print" data-action="print">Print before &amp; after</button></div><p class="ap-feedback" role="status" aria-live="polite"></p>';
+      '<div class="ap-footer"><div class="ap-view" role="group" aria-label="Photo comparison"><button type="button" data-action="before">Before</button><button type="button" data-action="after">After</button></div><button type="button" data-action="reset">Reset to white</button><button type="button" data-action="download">Download</button><button type="button" class="ap-print" data-action="print">Print before &amp; after</button></div><p class="ap-feedback" role="status" aria-live="polite"></p>';
     const overlay = document.createElement("canvas"),
       oc = overlay.getContext("2d");
     overlay.className = "ap-selection";
     overlay.tabIndex = 0;
-    overlay.setAttribute("aria-label", "Tap a wall to prepare or colour it.");
+    overlay.setAttribute(
+      "aria-label",
+      "Select a wall in the photo, then choose a colour from the palette.",
+    );
     stage.append(overlay);
-    const find = (s) => toolbar.querySelector(s) || controls.querySelector(s),
-      all = (s) => [
-        ...toolbar.querySelectorAll(s),
-        ...controls.querySelectorAll(s),
-      ];
+    const find = (s) => toolbar.querySelector(s) || controls.querySelector(s);
     let original = null,
       base = null,
       after = null,
+      foundation = null,
       surfaces = [],
       regions = [],
       selected = null,
-      phase = "white",
       view = "after",
       enabled = true,
       busy = false,
       encoded = false,
       destroyed = false,
+      failed = false,
       generation = 0,
       worker = null,
       sequence = 0,
@@ -1147,19 +1330,27 @@
         onStatus(message);
       }
     };
-    const cloneState = () => ({ surfaces: [...surfaces], selected, phase });
+    const selectedSurface = () => surfaces.find((s) => s.id === selected);
     const remember = () => {
-      history.push(cloneState());
+      history.push({ surfaces: [...surfaces], selected });
       if (history.length > 8) history.shift();
     };
-    const notify = () =>
+    const notify = () => {
+      const wall = selectedSurface();
+      controls.dataset.selectedCode = wall?.code || "";
       onChange({
         canUndo: history.length > 0,
         colors: surfaces
           .filter((s) => s.hex)
-          .map((s) => ({ hex: s.hex, name: s.name })),
+          .map((s) => ({ hex: s.hex, name: s.name, code: s.code })),
+        selectedShade: wall?.hex
+          ? { hex: wall.hex, name: wall.name, code: wall.code }
+          : undefined,
       });
-    const selectedSurface = () => surfaces.find((s) => s.id === selected);
+    };
+    const pixel = (point) =>
+      clamp(Math.floor(point[1]), 0, original.height - 1) * original.width +
+      clamp(Math.floor(point[0]), 0, original.width - 1);
     const photoPoint = (e) => {
       const r = overlay.getBoundingClientRect();
       return [
@@ -1167,60 +1358,108 @@
         ((e.clientY - r.top) * overlay.height) / r.height,
       ];
     };
-    const pixel = (p) =>
-      clamp(Math.floor(p[1]), 0, original.height - 1) * original.width +
-      clamp(Math.floor(p[0]), 0, original.width - 1);
-    function refresh() {
-      const ready = !!original && enabled;
-      all("button").forEach((b) => (b.disabled = !ready || busy));
-      all("[data-phase]").forEach((b) => {
-        b.setAttribute("aria-pressed", String(b.dataset.phase === phase));
-        if (b.dataset.phase === "colour")
-          b.disabled = !ready || busy || !surfaces.length;
-      });
-      const action = find('[data-action="prepare"]');
-      action.hidden =
-        phase === "colour" || (!busy && encoded && !surfaces.length);
-      action.textContent = busy
-        ? "Preparing your photo…"
-        : surfaces.length
-          ? "Next: choose a colour"
-          : "Prepare white walls";
-      find(".ap-colour-options").hidden = phase !== "colour";
-      all("[data-colour]").forEach((b) => {
-        b.disabled = !ready || busy || phase !== "colour" || !selectedSurface();
-        b.setAttribute(
-          "aria-pressed",
-          String(
-            !!selectedSurface() &&
-              (selectedSurface().hex || "#ffffff") ===
-                palette[+b.dataset.colour]?.hex,
-          ),
+    /* Keep image dimensions stable while families/search results change. The
+     * available height accounts for the actual shared navigation, not a guess.
+     */
+    const root = viewport.closest("#visualizer"),
+      header = document.querySelector("header");
+    function fit() {
+      if (root) {
+        const top = Math.max(
+          12,
+          (header?.getBoundingClientRect().height || 0) + 12,
         );
-      });
-      find(".ap-instruction").textContent =
-        phase === "white"
-          ? encoded
-            ? "Tap each wall to make it white. Tap a white wall again to remove it."
-            : "Start with a clean white base for your walls."
-          : selectedSurface()
-            ? "Choose a colour for this wall."
-            : "Tap a white wall in the photo, then choose its colour.";
-      all('[data-action="before"],[data-action="after"]').forEach((b) => {
+        root.style.setProperty("--ap-sticky-top", top + "px");
+        const panel = viewport.closest(".colour-room-panel");
+        if (panel)
+          root.style.setProperty(
+            "--ap-controls-height",
+            Math.ceil(
+              Math.max(
+                viewport.getBoundingClientRect().bottom,
+                ...[...panel.children]
+                  .filter((el) => el !== viewport && el.getClientRects().length)
+                  .map((el) => el.getBoundingClientRect().bottom),
+              ) -
+                viewport.getBoundingClientRect().bottom +
+                12,
+            ) + "px",
+          );
+      }
+      if (original) {
+        const ratio = original.width / original.height;
+        stage.style.aspectRatio = original.width + " / " + original.height;
+        stage.style.width =
+          Math.max(
+            1,
+            Math.min(
+              viewport.clientWidth - 2,
+              (viewport.clientHeight - 2) * ratio,
+            ),
+          ) + "px";
+      }
+    }
+    let fitFrame = 0;
+    const fitSoon = () => {
+      if (!fitFrame)
+        fitFrame = requestAnimationFrame(() => {
+          fitFrame = 0;
+          if (!destroyed) fit();
+        });
+    };
+    const observer =
+      typeof ResizeObserver === "function" ? new ResizeObserver(fitSoon) : null;
+    if (header) observer?.observe(header);
+    observer?.observe(viewport);
+    const panel = viewport.closest(".colour-room-panel");
+    if (panel) {
+      observer?.observe(panel);
+      for (const child of panel.children) observer?.observe(child);
+    }
+    listen(window, "resize", fitSoon);
+    fit();
+    function refresh() {
+      const ready = !!original && enabled,
+        prepared = ready && !!base;
+      controls
+        .querySelectorAll("button")
+        .forEach((b) => (b.disabled = !prepared || busy));
+      for (const action of ["before", "after"]) {
+        const b = find('[data-action="' + action + '"]');
         b.disabled = !ready;
-        b.setAttribute("aria-pressed", String(view === b.dataset.action));
-      });
-      find('[data-action="print"]').disabled =
-        !ready || busy || !surfaces.length;
+        b.setAttribute("aria-pressed", String(view === action));
+      }
+      const retry = find('[data-action="retry"]');
+      retry.hidden = !failed;
+      retry.disabled = !ready || busy;
+      find(".ap-instruction").textContent = busy
+        ? base
+          ? "Finding the edges of this wall…"
+          : "Preparing your walls in white…"
+        : failed
+          ? "Your photo is safe. Retry preparation or choose a sample room."
+          : selectedSurface()
+            ? "Wall selected. Choose its colour from the palette."
+            : base
+              ? "Tap one white wall, then choose a colour from the palette."
+              : "Choose a room or upload your home photo.";
       find(".ap-shade-name").textContent = selectedSurface()?.name || "";
       overlay.hidden = !ready;
-      overlay.dataset.mode = phase;
-      toolbar.hidden = controls.hidden = !enabled;
+      overlay.dataset.mode = busy
+        ? "preparing"
+        : base
+          ? "colour"
+          : failed
+            ? "error"
+            : "loading";
+      overlay.setAttribute("aria-busy", String(busy));
+      overlay.style.cursor = busy ? "progress" : "pointer";
+      viewport.setAttribute("aria-busy", String(busy));
       draw();
     }
     function draw() {
       oc.clearRect(0, 0, overlay.width, overlay.height);
-      if (!original || view === "before" || phase === "white") return;
+      if (!original || view === "before") return;
       const wall = selectedSurface();
       if (!wall) return;
       const edge = oc.createImageData(overlay.width, overlay.height),
@@ -1244,12 +1483,10 @@
         }
       oc.putImageData(edge, 0, 0);
     }
-    function render(rebuild = false) {
+    function render() {
       if (!original) return;
-      if (rebuild || !base) base = whiteWallBase(original, surfaces);
-      after = renderWhitePreview(base, surfaces);
-      const shown =
-        view === "before" ? original : phase === "white" ? base : after;
+      after = base ? renderWhitePreview(base, surfaces) : original;
+      const shown = view === "before" ? original : after;
       ctx.putImageData(
         new ImageData(
           new Uint8ClampedArray(shown.data),
@@ -1263,81 +1500,16 @@
       notify();
     }
     function normalize(values) {
-      const items = Array.isArray(values)
-        ? values
-            .slice(0, 5000)
-            .filter(
-              (s) =>
-                s &&
-                typeof s.name === "string" &&
-                /^#[0-9a-f]{6}$/i.test(s.hex),
-            )
-            .map((s) => ({
-              hex: s.hex.toLowerCase(),
-              name: s.name,
-              code: s.code || "",
-            }))
-        : [];
-      return [
-        { hex: "#ffffff", name: "White base", code: "" },
-        ...items.filter((s) => s.hex !== "#ffffff"),
-      ];
-    }
-    function renderPalette() {
-      const quick = find(".ap-quick-swatches"),
-        results = find(".ap-palette-results"),
-        query = find('[aria-label="Find a paint shade"]')
-          .value.trim()
-          .toLowerCase();
-      quick.replaceChildren();
-      results.replaceChildren();
-      const preferred = [
-        ...palette.filter((s) => {
-          const v = [1, 3, 5].map((i) => parseInt(s.hex.slice(i, i + 2), 16));
-          return (
-            Math.max(...v) - Math.min(...v) < 100 &&
-            v.reduce((a, b) => a + b) / 3 > 130
-          );
-        }),
-        ...palette,
-      ];
-      const used = new Set();
-      function button(item, compact) {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.dataset.colour = String(palette.indexOf(item));
-        b.setAttribute(
-          "aria-label",
-          item.name + (item.code ? " (" + item.code + ")" : ""),
-        );
-        b.title = b.getAttribute("aria-label");
-        const chip = document.createElement("i");
-        chip.style.background = item.hex;
-        b.append(chip);
-        if (!compact) {
-          const label = document.createElement("span");
-          label.textContent = b.title;
-          b.append(label);
-        } else b.className = "ap-swatch";
-        return b;
-      }
-      for (const item of preferred) {
-        if (used.size >= 5) break;
-        if (!used.has(item.hex)) {
-          used.add(item.hex);
-          quick.append(button(item, true));
-        }
-      }
-      for (const item of palette
-        .filter((s) =>
-          (s.name + " " + s.code + " " + s.hex).toLowerCase().includes(query),
+      return (Array.isArray(values) ? values : [])
+        .slice(0, 5000)
+        .filter(
+          (s) =>
+            s && typeof s.name === "string" && /^#[0-9a-f]{6}$/i.test(s.hex),
         )
-        .slice(0, 48))
-        results.append(button(item, false));
-      refresh();
+        .map((s) => ({ ...s, tones: [...(s.tones || [])] }));
     }
     function stopWorker() {
-      if (worker) worker.terminate();
+      worker?.terminate();
       worker = null;
       encoded = false;
       for (const job of requests.values()) {
@@ -1366,11 +1538,7 @@
           if (worker !== ownedWorker) return;
           for (const job of requests.values()) {
             clearTimeout(job.timer);
-            job.reject(
-              Error(
-                "Wall selection could not load. Try again or choose a room photo.",
-              ),
-            );
+            job.reject(Error("Wall preparation could not load. Please retry."));
           }
           requests.clear();
           worker?.terminate();
@@ -1397,7 +1565,8 @@
     }
     async function encode() {
       if (encoded) return;
-      const c = document.createElement("canvas"),
+      const token = generation,
+        c = document.createElement("canvas"),
         scale = 1024 / Math.max(original.width, original.height);
       resized = [
         Math.round(original.width * scale),
@@ -1428,29 +1597,90 @@
             pixels[k * 1024 * 1024 + y * 1024 + x] =
               (rgba[(y * resized[0] + x) * 4 + k] / 255 - mean[k]) / std[k];
       await request("encode", { pixels });
-      encoded = true;
+      if (token === generation) encoded = true;
+    }
+    async function selectModel(point) {
+      return request("select", {
+        point: [
+          (point[0] * resized[0]) / original.width,
+          (point[1] * resized[1]) / original.height,
+        ],
+      });
     }
     async function prepare() {
-      if (!original || busy) return;
-      if (regions.length && !surfaces.length) {
-        remember();
-        surfaces = regions.map((r, i) => ({
-          id: ++sequence,
-          mask: r.mask,
-          hex: null,
-          name: "",
-        }));
-        phase = "colour";
-        view = "after";
-        render(true);
-        return;
-      }
-      if (surfaces.length) {
-        phase = "colour";
+      if (!original || !enabled || busy) return;
+      const token = generation;
+      busy = true;
+      failed = false;
+      refresh();
+      report(
+        "Finding paintable walls on your device. Your photo stays private.",
+      );
+      try {
+        await encode();
+        if (token !== generation || destroyed) return;
+        const count = original.width * original.height,
+          body = new Uint8Array(count);
+        /* Multiple prompts reach disconnected faces of a home. They run against
+         * one cached image embedding; photos are never sent to an external API.
+         */
+        for (const [x, y] of [
+          [0.5, 0.4],
+          [0.3, 0.35],
+          [0.7, 0.45],
+        ]) {
+          const point = [x * original.width, y * original.height],
+            result = await selectModel(point);
+          if (token !== generation || destroyed) return;
+          const mask = modelBuildingMask(
+            original,
+            result.masks,
+            result.scores,
+            resized,
+            point,
+          );
+          if (mask)
+            for (let p = 0; p < count; p++)
+              body[p] = Math.max(body[p], mask[p]);
+        }
+        const mask = paintableBuildingMask(original, body);
+        if (mask.reduce((n, v) => n + (v ? 1 : 0), 0) < count * 0.025)
+          throw Error(
+            "We could not identify enough wall surface. Try a clearer, well-lit photo of the building.",
+          );
+        foundation = mask;
+        base = whiteWallBase(original, [{ mask }]);
         selected = null;
+        surfaces = [];
+        history = [];
         view = "after";
+        report("White walls ready. Tap one wall, then choose its colour.");
+      } catch (error) {
+        if (token === generation && error.name !== "AbortError") {
+          failed = true;
+          report(error.message);
+        }
+      } finally {
+        if (token === generation && !destroyed) {
+          busy = false;
+          render();
+        }
+      }
+    }
+    async function tap(point) {
+      if (!original || !base || !enabled || busy) return;
+      const at = pixel(point);
+      if (!foundation[at])
+        return report(
+          "Tap the middle of a white wall. Windows and surroundings are protected.",
+        );
+      view = "after";
+      onBeforeSelect();
+      const known = regions.find((r) => r.mask[at] >= 128);
+      if (known) {
+        selected = surfaces.find((s) => s.mask === known.mask)?.id ?? null;
         render();
-        report("Tap a white wall and choose a colour.");
+        report("Wall selected. Choose a colour from the palette.");
         return;
       }
       const token = generation;
@@ -1459,133 +1689,120 @@
       try {
         await encode();
         if (token !== generation || destroyed) return;
-        report("Tap the centre of each wall to make it white.");
-        viewport.scrollIntoView({ block: "start", behavior: "instant" });
+        const result = await selectModel(point);
+        if (token !== generation || destroyed) return;
+        const mask = modelWallMask(
+          original,
+          result.masks,
+          result.scores,
+          resized,
+          point,
+        );
+        let area = 0;
+        for (let p = 0; p < mask.length; p++) {
+          mask[p] = Math.min(mask[p], foundation[p]);
+          if (mask[p]) area++;
+        }
+        if (area < mask.length * 0.0005)
+          throw Error("Tap nearer the centre of the wall.");
+        let matching = null;
+        for (const wall of surfaces) {
+          let intersection = 0,
+            union = 0;
+          for (let p = 0; p < mask.length; p++) {
+            if (mask[p] && wall.mask[p]) intersection++;
+            if (mask[p] || wall.mask[p]) union++;
+          }
+          if (intersection / Math.max(1, union) > 0.85) {
+            matching = wall;
+            break;
+          }
+        }
+        if (matching) selected = matching.id;
+        else {
+          if (surfaces.length >= 16)
+            throw Error(
+              "You can colour up to sixteen different surfaces. Reset to try a new pattern.",
+            );
+          remember();
+          const wall = { id: ++sequence, mask, hex: null, name: "", code: "" };
+          surfaces = [...surfaces, wall];
+          selected = wall.id;
+        }
+        report("Wall selected. Choose a colour from the palette.");
       } catch (error) {
         if (token === generation && error.name !== "AbortError")
           report(error.message);
       } finally {
-        if (token === generation) {
+        if (token === generation && !destroyed) {
           busy = false;
-          refresh();
-        }
-      }
-    }
-    async function tap(point) {
-      if (!original || !enabled || busy) return;
-      view = "after";
-      onBeforeSelect();
-      const hit = [...surfaces]
-        .reverse()
-        .find((s) => s.mask[pixel(point)] >= 128);
-      if (phase === "colour") {
-        selected = hit?.id ?? null;
-        render();
-        report(
-          hit
-            ? "Choose a colour for the selected wall."
-            : "Use White base to prepare this wall first.",
-        );
-        return;
-      }
-      if (hit) {
-        remember();
-        surfaces = surfaces.filter((s) => s.id !== hit.id);
-        selected = null;
-        render(true);
-        report(
-          "Wall removed from the white base. Tap another wall to prepare it.",
-        );
-        return;
-      }
-      if (surfaces.length >= 16)
-        return report(
-          "Sixteen surfaces are prepared. Tap a white surface to remove it.",
-        );
-      const token = generation;
-      busy = true;
-      refresh();
-      try {
-        let mask = regions.find((r) => r.mask[pixel(point)] >= 128)?.mask;
-        if (!mask) {
-          await encode();
-          if (token !== generation || destroyed) return;
-          report("Finding this wall…");
-          const result = await request("select", {
-            point: [
-              (point[0] * resized[0]) / original.width,
-              (point[1] * resized[1]) / original.height,
-            ],
-          });
-          if (token !== generation || destroyed) return;
-          mask = modelWallMask(
-            original,
-            result.masks,
-            result.scores,
-            resized,
-            point,
-          );
-        }
-        for (const s of surfaces) mask = subtractMask(mask, s.mask);
-        if (!mask.some((v) => v >= 128))
-          throw Error("That wall is already prepared. Tap another surface.");
-        remember();
-        surfaces = [...surfaces, { id: ++sequence, mask, hex: null, name: "" }];
-        selected = null;
-        render(true);
-        report(
-          "Wall prepared in white. Tap another wall, or continue to colours.",
-        );
-      } catch (error) {
-        if (token === generation && error.name !== "AbortError")
-          report(error.message);
-      } finally {
-        if (token === generation) {
-          busy = false;
-          refresh();
+          render();
         }
       }
     }
     function applyColour(value, notifyHost = true) {
+      if (!value || !/^#[0-9a-f]{6}$/i.test(value.hex)) return;
+      const record = palette.find((s) =>
+        value.code
+          ? s.code === value.code
+          : s.hex.toLowerCase() === value.hex.toLowerCase() &&
+            (s.name === value.name ||
+              value.name === s.name + " (" + s.code + ")"),
+      );
+      if (!record) return report("Choose a published colour from the palette.");
+      if (busy || !base)
+        return report("Please wait for the white walls to be ready.");
       const wall = selectedSurface();
+      if (!wall)
+        return report(
+          "Tap the wall you want to paint, then select this colour.",
+        );
       if (
-        !wall ||
-        phase !== "colour" ||
-        busy ||
-        !/^#[0-9a-f]{6}$/i.test(value.hex)
-      )
-        return;
-      const hex =
-        value.hex.toLowerCase() === "#ffffff" ? null : value.hex.toLowerCase();
-      if (wall.hex !== hex) {
+        wall.hex !== record.hex ||
+        wall.code !== record.code ||
+        wall.name !== record.name
+      ) {
         remember();
         surfaces = surfaces.map((s) =>
-          s.id === wall.id ? { ...s, hex, name: value.name } : s,
+          s.id === wall.id ? { ...s, ...record, mask: s.mask, id: s.id } : s,
         );
         view = "after";
         render();
       }
-      if (notifyHost) onSelectShade(value);
-      find(".ap-palette").open = false;
-      report(value.name + " applied to the selected wall.");
-      viewport.scrollIntoView({ block: "start", behavior: "instant" });
+      if (notifyHost) onSelectShade(record);
+      report(
+        record.name +
+          (record.code ? " (" + record.code + ")" : "") +
+          " applied to this wall.",
+      );
+    }
+    /* Exports always use the after buffer, without selection outlines, even if
+     * the customer is currently comparing the untouched Before photograph.
+     */
+    function download() {
+      const c = document.createElement("canvas");
+      c.width = after.width;
+      c.height = after.height;
+      c.getContext("2d").putImageData(
+        new ImageData(
+          new Uint8ClampedArray(after.data),
+          after.width,
+          after.height,
+        ),
+        0,
+        0,
+      );
+      const a = document.createElement("a");
+      a.download = "areva-home-colours.png";
+      a.href = c.toDataURL("image/png");
+      a.click();
+      report("Your painted preview has been downloaded.");
     }
     const action = (event) => {
       const b = event.target.closest("button");
       if (!b || b.disabled) return;
-      if (b.dataset.colour !== undefined) {
-        applyColour(palette[+b.dataset.colour]);
-        return;
-      }
-      if (b.dataset.phase) {
-        phase = b.dataset.phase;
-        selected = null;
-        view = "after";
-        render();
-        return;
-      }
       switch (b.dataset.action) {
-        case "prepare":
+        case "retry":
           void prepare();
           break;
         case "before":
@@ -1593,8 +1810,11 @@
           view = b.dataset.action;
           render();
           break;
-        case "close-colours":
-          find(".ap-palette").open = false;
+        case "reset":
+          api.reset();
+          break;
+        case "download":
+          download();
           break;
         case "print":
           void printComparison(
@@ -1609,7 +1829,6 @@
     };
     listen(toolbar, "click", action);
     listen(controls, "click", action);
-    listen(find('[aria-label="Find a paint shade"]'), "input", renderPalette);
     listen(overlay, "pointerdown", (e) => {
       if (e.isPrimary && e.button === 0)
         gesture = { id: e.pointerId, x: e.clientX, y: e.clientY };
@@ -1636,9 +1855,6 @@
         void tap([overlay.width / 2, overlay.height / 2]);
       }
     });
-    listen(document, "pointerdown", (e) => {
-      if (!toolbar.contains(e.target)) find(".ap-palette").open = false;
-    });
     const api = {
       setImage(image, { roomId = null } = {}) {
         size(image.width, image.height);
@@ -1648,6 +1864,7 @@
         stopWorker();
         busy = false;
         enabled = true;
+        failed = false;
         original = {
           width: image.width,
           height: image.height,
@@ -1659,44 +1876,52 @@
           mask: r.mask,
           hex: null,
           name: "",
+          code: "",
         }));
-        sequence = surfaces.length + 1;
+        sequence = surfaces.length;
         selected = null;
         history = [];
-        phase = regions.length ? "colour" : "white";
         view = "after";
-        encoded = false;
+        foundation = new Uint8Array(image.width * image.height);
+        for (const r of regions)
+          for (let p = 0; p < foundation.length; p++)
+            foundation[p] = Math.max(foundation[p], r.mask[p]);
+        base = regions.length
+          ? whiteWallBase(original, [{ mask: foundation }])
+          : null;
         overlay.width = image.width;
         overlay.height = image.height;
-        stage.style.width =
-          "min(100%, " + (image.width / image.height) * 64 + "dvh)";
-        stage.style.marginInline = "auto";
-        base = null;
-        render(true);
+        fit();
+        render();
         report(
           regions.length
-            ? "White base ready. Tap a wall and choose a colour."
-            : "Prepare a white base first, then choose colours for your walls.",
+            ? "White walls ready. Tap a wall and choose a colour."
+            : "Preparing your walls automatically…",
         );
+        if (!regions.length) void prepare();
       },
       undo() {
         if (busy || !history.length) return;
         const saved = history.pop();
         surfaces = saved.surfaces;
         selected = saved.selected;
-        phase = saved.phase;
         view = "after";
-        render(true);
+        render();
         report("Last change undone.");
       },
       reset() {
-        if (!original || busy) return;
+        if (!original || busy || !base) return;
         remember();
-        surfaces = surfaces.map((s) => ({ ...s, hex: null, name: "" }));
+        surfaces = surfaces.map((s) => ({
+          ...s,
+          hex: null,
+          name: "",
+          code: "",
+        }));
         selected = null;
-        phase = "white";
         view = "after";
-        render(true);
+        render();
+        report("All walls restored to the white base.");
       },
       setEnabled(value) {
         if (!value) {
@@ -1706,41 +1931,58 @@
         }
         enabled = value;
         refresh();
+        if (value && original && !base && !failed) void prepare();
       },
       setComparison(value) {
         view = value ? "before" : "after";
         render();
       },
       shadeChanged() {
-        if (original && enabled) applyColour(shade(), false);
+        if (!original || !enabled) return;
+        const value = shade(),
+          wall = selectedSurface();
+        if (
+          wall?.hex?.toLowerCase() === value.hex?.toLowerCase() &&
+          (wall.name === value.name ||
+            value.name === wall.name + " (" + wall.code + ")")
+        )
+          return;
+        applyColour(value, false);
+      },
+      applyShade(value) {
+        applyColour(value);
       },
       setSwatches(values) {
         palette = normalize(values);
-        renderPalette();
+        /* Saved CMS changes refresh available choices without resetting a photo
+         * or silently recolouring a customer's existing design.
+         */
+        notify();
       },
       destroy() {
         destroyed = true;
         generation++;
         stopWorker();
+        observer?.disconnect();
+        cancelAnimationFrame(fitFrame);
         listeners.forEach((remove) => remove());
         overlay.remove();
         toolbar.replaceChildren();
         controls.replaceChildren();
         if (ownsToolbar) toolbar.remove();
+        stage.style.aspectRatio = "";
         stage.style.width = "";
-        stage.style.marginInline = "";
-        original = base = after = null;
+        original = base = after = foundation = null;
         surfaces = [];
         history = [];
       },
     };
     palette = normalize(swatches);
-    renderPalette();
     refresh();
     return api;
   }
   globalThis.ArevaPaintStudio = Object.freeze({
-    version: 6,
+    version: 7,
     polygonMask,
     subtractMask,
     connectedMask,
@@ -1756,6 +1998,8 @@
     cleanWallMask,
     refineWallBoundary,
     modelWallMask,
+    modelBuildingMask,
+    paintableBuildingMask,
     printComparison,
     createEditor,
   });

@@ -17,6 +17,25 @@ export const SHADE_FAMILIES = [
 ] as const;
 export type ShadeFamily = (typeof SHADE_FAMILIES)[number]["name"];
 export const COLOUR_FAMILIES: ShadeFamily[] = SHADE_FAMILIES.map((f) => f.name);
+/* Public family choices come from published records, never a colour guessed from RGB. */
+export function catalogueFamilies(
+  shades: Pick<ColorShade, "family" | "hex">[],
+  cards: { family?: string }[] = [],
+) {
+  const names = new Set([
+    ...shades.map((s) => s.family),
+    ...cards
+      .map((c) => c.family)
+      .filter((f): f is string => !!f && f !== "All Shades"),
+  ]);
+  return [...names].map((name) => ({
+    name,
+    color:
+      shades.find((s) => s.family === name)?.hex ||
+      SHADE_FAMILIES.find((f) => f.name === name)?.color ||
+      "#79218c",
+  }));
+}
 export const SHADE_TONES = [
   "Cool",
   "Dark",

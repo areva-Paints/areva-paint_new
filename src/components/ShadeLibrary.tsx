@@ -1,13 +1,14 @@
 /*
  * Search and filter the shared shade catalogue, then route shade selections into visualization or enquiry actions.
  */
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type { ColorShade } from "../types";
 import type { ShadeCard } from "../admin/content-types";
 import {
   SHADE_FAMILIES,
   SHADE_TONES,
   filterShades,
+  catalogueFamilies,
 } from "../data/shadeFamilies";
 
 interface FilterProps {
@@ -19,6 +20,8 @@ interface FilterProps {
   onTone: (tone: string) => void;
   onQuery: (query: string) => void;
   legacy?: boolean;
+  families?: { name: string; color: string }[];
+  compact?: boolean;
 }
 
 /* Render the shared shade-library introduction. */
@@ -48,24 +51,24 @@ export function ShadeFilters({
   onTone,
   onQuery,
   legacy,
+  families = [...SHADE_FAMILIES],
+  compact = false,
 }: FilterProps) {
   return (
     <>
       <div className="shade-families" role="group" aria-label="Colour families">
-        {[{ name: "All Shades", color: "#79218c" }, ...SHADE_FAMILIES].map(
-          (f) => (
-            <button
-              key={f.name}
-              type="button"
-              data-shade-family={f.name}
-              aria-pressed={family === f.name}
-              onClick={() => onFamily(f.name)}
-            >
-              <i style={{ backgroundColor: f.color }} aria-hidden="true" />
-              {f.name}
-            </button>
-          ),
-        )}
+        {[{ name: "All Shades", color: "#79218c" }, ...families].map((f) => (
+          <button
+            key={f.name}
+            type="button"
+            data-shade-family={f.name}
+            aria-pressed={family === f.name}
+            onClick={() => onFamily(f.name)}
+          >
+            <i style={{ backgroundColor: f.color }} aria-hidden="true" />
+            {f.name}
+          </button>
+        ))}
       </div>
       <div className="shade-search-row">
         <input
@@ -89,7 +92,7 @@ export function ShadeFilters({
           Reset filters
         </button>
       </div>
-      <div className="shade-tones-panel">
+      <div className="shade-tones-panel" hidden={compact}>
         <h3 data-shade-family-heading>{family}</h3>
         <div className="shade-tones" role="group" aria-label="Shade tones">
           {["All", ...SHADE_TONES].map((t) => (
@@ -117,6 +120,9 @@ export function ShadeLibrary({
   legacy = false,
   savedCodes = [],
   onToggleSave,
+  visualizer = false,
+  selectedCode,
+  onSelectRecord,
 }: {
   shades: ColorShade[];
   cards?: ShadeCard[];
@@ -125,57 +131,86 @@ export function ShadeLibrary({
   legacy?: boolean;
   savedCodes?: string[];
   onToggleSave?: (code: string) => void;
+  visualizer?: boolean;
+  selectedCode?: string;
+  onSelectRecord?: (shade: ColorShade) => void;
 }) {
   const [family, setFamily] = useState("All Shades"),
     [tone, setTone] = useState("All"),
     [query, setQuery] = useState("");
-  const filtered = filterShades(shades, family, tone, query);
+  const families = visualizer
+    ? catalogueFamilies(shades, cards)
+    : [...SHADE_FAMILIES];
+  const activeFamily =
+    family === "All Shades" || families.some((f) => f.name === family)
+      ? family
+      : "All Shades";
+  useEffect(() => {
+    if (family !== activeFamily) setFamily(activeFamily);
+  }, [family, activeFamily]);
+  const filtered = filterShades(shades, activeFamily, tone, query);
   const pdfs = cards.filter(
     (c) =>
-      (family === "All Shades" ||
-        !c.family ||
-        c.family === "All Shades" ||
-        c.family === family) &&
+      (activeFamily === "All Shades" ||
+        c.family === activeFamily ||
+        (!visualizer && (!c.family || c.family === "All Shades"))) &&
       (tone === "All" || !c.tones?.length || c.tones.some((t) => t === tone)),
   );
   return (
     <div
       className="shade-library"
       data-shade-library
+      data-visualizer-palette={visualizer || undefined}
       aria-label="Colour shade library"
     >
-      <ShadeFilters
-        shades={shades}
-        family={family}
-        tone={tone}
-        query={query}
-        onFamily={(value) => {
-          setFamily(value);
-          setTone("All");
-        }}
-        onTone={setTone}
-        onQuery={setQuery}
-        legacy={legacy}
-      />
-      <p className="shade-result-count" role="status" data-shade-count>
-        {filtered.length} shades found
-      </p>
+      <div className="shade-controls">
+        {visualizer && (
+          <h3 className="shade-palette-title">Find your colour</h3>
+        )}
+        <ShadeFilters
+          shades={shades}
+          family={activeFamily}
+          tone={tone}
+          query={query}
+          onFamily={(value) => {
+            setFamily(value);
+            setTone("All");
+          }}
+          onTone={setTone}
+          onQuery={setQuery}
+          legacy={legacy}
+          families={families}
+          compact={visualizer}
+        />
+        <p className="shade-result-count" role="status" data-shade-count>
+          {filtered.length} shades found
+        </p>
+      </div>
       <div className="shade-swatch-grid" id={legacy ? "sw" : undefined}>
         {filtered.map((s, i) => (
           <div className="shade-tile" key={s.code}>
             <button
               type="button"
               className="shade-swatch"
-              data-c={legacy ? i : undefined}
-              aria-pressed={selectedHex.toLowerCase() === s.hex.toLowerCase()}
+              data-c={legacy ? shades.indexOf(s) : undefined}
+              data-shade-code={s.code}
+              data-shade-family-name={s.family}
+              aria-pressed={
+                selectedCode !== undefined
+                  ? selectedCode === s.code
+                  : selectedHex.toLowerCase() === s.hex.toLowerCase()
+              }
               aria-label={`Apply ${s.name} (${s.code})`}
-              onClick={() => onSelect?.(s.hex, s.name)}
+              onClick={() => {
+                onSelectRecord?.(s);
+                onSelect?.(s.hex, s.name);
+              }}
             >
               <span className="shade-chip" style={{ backgroundColor: s.hex }} />
               <strong>{s.name}</strong>
               <small>{s.code}</small>
             </button>
-            {(legacy || onToggleSave) && (
+            {((legacy && !visualizer) || onToggleSave) && (
               <button
                 className="shade-save"
                 type="button"

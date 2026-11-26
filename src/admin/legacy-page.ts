@@ -108,36 +108,33 @@ export function legacyPage() {
   );
   html = html.replace(
     'paint(C[5][2], C[5][0]+" ("+C[5][1]+")")',
-    'paint((C[5]||C[0])[2], (C[5]||C[0])[0]+" ("+(C[5]||C[0])[1]+")")',
+    'if(C.length) paint((C[5]||C[0])[2], (C[5]||C[0])[0]+" ("+(C[5]||C[0])[1]+")")',
   );
   html = html.replace("Tap ♡ to save a colour. Shade names and codes are samples.", "Tap ♡ beside a shade to save it to your palette.");
+  html = html.replace('swatches: C.map(value=>({name:value[0],code:value[1],hex:value[2],family:value[3],tones:value[4]})),', () => `swatches: ${json(c.colours)},`);
   html = html.replace('</head>', '<link rel="stylesheet" href="/assets/shade-library.css"></head>');
   html = html.replace('<input id="q" type="search" placeholder="Search colour by name or code" aria-label="Search colours"><div class="sw" id="sw"></div>', '');
   html = html.replace(/(<section id="visualizer"[\s\S]*?)(<\/section>)/, (_match, body: string, end) => {
-    const heading = '<div class="ap-title"><h2>Paint your home</h2><p>Prepare a white base, tap a wall and choose your colour.</p></div>';
-    const library = slots.add(renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true })));
+    const heading = '<div class="ap-title"><h2>Paint your home</h2><p>Start with white walls. Tap one wall, then choose a colour from your palette.</p></div>';
+    const library = slots.add(renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true, visualizer: true })));
     body = body.replace(/<h2>Try colours on a room<\/h2><p class="lead">[\s\S]*?<\/p>/, () => heading);
     body = body.replace('<div class="two"><div>', '<div class="two colour-studio-grid"><div class="colour-room-panel">');
     body = body.replace(/<div>\s*<p><b id="cn">[\s\S]*?Tap ♡ beside a shade to save it to your palette\.<\/p>/,
-      () => `<div class="colour-shade-panel" hidden>${library}`);
+      () => `<div class="colour-shade-panel">${library}`);
     return body + end;
   });
-  html = html.replace('function drawSw(){', 'let shadeFamily = "All Shades", shadeTone = "All";\nfunction drawSw(){');
-  html = html.replace(/function drawSw\(\)\{[\s\S]*?\n\}/, () => `function drawSw(){
-    const root=document.querySelector('[data-shade-library]'); if(!root) return;
-    const query=(document.querySelector('#q')?.value||'').trim().toLowerCase();
-    const matches=(c,tone)=> (shadeFamily==='All Shades'||c[3]===shadeFamily) && (tone==='All'||c[4].includes(tone)) && (c[0]+' '+c[1]).toLowerCase().includes(query);
-    root.querySelectorAll('[data-shade-family]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.shadeFamily===shadeFamily)));
-    root.querySelector('[data-shade-family-heading]').textContent=shadeFamily;
-    root.querySelectorAll('[data-shade-tone]').forEach(b=>{const t=b.dataset.shadeTone;b.setAttribute('aria-pressed',String(t===shadeTone));b.textContent=t+' ('+C.filter(c=>matches(c,t)).length+')'});
-    const visible=C.map((c,i)=>({c,i})).filter(({c})=>matches(c,shadeTone));
-    root.querySelector('[data-shade-count]').textContent=visible.length+' shades found';
-    root.querySelector('#sw').innerHTML=visible.map(({c,i})=>'<div class="shade-tile"><button type="button" class="shade-swatch" data-c="'+i+'" aria-pressed="'+(c[2].toLowerCase()===curHex.toLowerCase())+'" aria-label="Apply '+c[0]+' ('+c[1]+')"><span class="shade-chip" style="background:'+c[2]+'"></span><strong>'+c[0]+'</strong><small>'+c[1]+'</small></button><button class="shade-save" type="button" data-h="'+i+'" aria-label="Save '+c[0]+'">'+(store.sv.includes(c[1])?'♥':'♡')+'</button></div>').join('') || '<p class="shade-empty">No shades match these filters. Try another family or reset the filters.</p>';
-    const links=[...root.querySelectorAll('[data-shade-pdf-family]')];links.forEach(a=>{const tags=JSON.parse(a.dataset.shadePdfTones);a.hidden=!((shadeFamily==='All Shades'||a.dataset.shadePdfFamily==='All Shades'||a.dataset.shadePdfFamily===shadeFamily)&&(shadeTone==='All'||!tags.length||tags.includes(shadeTone)))});
-    root.querySelector('[data-shade-pdfs]').hidden=!links.some(a=>!a.hidden);
-  }`);
-  html = html.replace('if($("#q")) $("#q").oninput=drawSw;', `if($("#q")) $("#q").oninput=drawSw;
-    document.querySelector('[data-shade-library]')?.addEventListener('click',e=>{const family=e.target.closest('[data-shade-family]'),tone=e.target.closest('[data-shade-tone]'),reset=e.target.closest('[data-shade-reset]');if(family){shadeFamily=family.dataset.shadeFamily;shadeTone='All'}else if(tone){shadeTone=tone.dataset.shadeTone}else if(reset){shadeFamily='All Shades';shadeTone='All';document.querySelector('#q').value=''}else return;drawSw()});`);
+  /* The legacy page uses the same saved catalogue, with live refresh that does
+   * not rebuild the painter or discard a customer's uploaded photograph. */
+  html = html.replace('</head>', '<script src="/assets/shade-catalogue.js?v=1"></script></head>');
+  html = html.replace(/function drawSw\(\)\{[\s\S]*?\n\}/, 'function drawSw(){ shadeCatalogue.draw(); }');
+  html = html.replace('if($("#q")) $("#q").oninput=drawSw;', () => `const shadeCatalogue=window.ArevaShadeCatalogue.mount({
+    root:document.querySelector('[data-shade-library]'),
+    initial:${json({ colours: c.colours, shadeCards: c.shadeCards, revision: c.revision })},
+    rows:C,
+    onSelect:record=>photoPainter?.applyShade(record),
+    onRefresh:values=>photoPainter?.setSwatches(values),
+    selectedCode:()=>document.querySelector('#photoPaintTools')?.dataset.selectedCode||''
+  });`);
   // No selling price is configured in administration; do not present a zero-price estimate.
   html = html.replace('d.cost.toLocaleString("en-IN")', "'Contact dealer'");
   html = html

@@ -1,15 +1,42 @@
-/* The photo stays first. The complete workflow fits in one small control card. */
-#visualizer .colour-studio-grid {
-  display: block !important;
-  max-width: 900px;
-  margin: 0 auto;
+/* The preview and its actions stay together; only the published palette scrolls. */
+#visualizer {
+  --ap-sticky-top: 150px;
+  --ap-available: calc(100dvh - var(--ap-sticky-top) - 20px);
+  --ap-photo-height: clamp(
+    200px,
+    calc(var(--ap-available) - var(--ap-controls-height, 320px)),
+    570px
+  );
 }
-.colour-room-panel {
+#visualizer .colour-studio-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  max-width: none;
+  margin: 0;
+}
+#visualizer .colour-room-panel {
+  position: sticky;
+  top: var(--ap-sticky-top);
   display: flex;
   flex-direction: column;
   min-width: 0;
+  height: var(--ap-available);
 }
-.colour-shade-panel[hidden],
+#visualizer .colour-shade-panel {
+  position: sticky;
+  top: var(--ap-sticky-top);
+  height: var(--ap-available);
+  min-height: 330px;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  border: 1px solid #e4dcea;
+  border-radius: 16px;
+  background: #fff;
+}
 .ap-legacy-compare,
 .colour-painting-label[hidden],
 #cameraRange[hidden],
@@ -21,7 +48,7 @@
   margin: 0 0 22px;
   color: #35124f;
 }
-.ap-title h2 {
+#visualizer .ap-title h2 {
   font:
     600 clamp(28px, 4vw, 42px)/1.2 Georgia,
     serif;
@@ -29,29 +56,34 @@
 }
 .ap-title p {
   font:
-    400 15px/1.5 "DM Sans",
-    Arial,
+    400 15px/1.5 Arial,
     sans-serif;
   color: #806e8a;
   margin: 0;
 }
-.ap-viewport {
+#visualizer .ap-viewport {
+  order: 0;
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
   width: 100%;
-  max-height: 65dvh;
-  min-height: 100px;
-  overflow: auto;
-  overscroll-behavior: contain;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  max-height: var(--ap-photo-height);
+  min-height: 200px;
+  overflow: hidden;
   background: #f4f0f7;
   border: 1px solid #e8deef;
-  border-radius: 16px;
-  scroll-margin-top: 140px;
-  margin-bottom: 18px;
+  border-radius: 16px 16px 0 0;
+  margin: 0;
+  box-sizing: border-box;
 }
-.ap-viewport .ap-photo-stage {
+#visualizer .ap-viewport .ap-photo-stage {
   position: relative;
   isolation: isolate;
-  max-width: none;
+  max-width: 100%;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -72,336 +104,239 @@ canvas.ap-selection {
   cursor: pointer;
   touch-action: manipulation;
 }
-.ap-toolbar,
-.ap-tools {
+#visualizer .ap-toolbar,
+#visualizer .ap-tools {
   box-sizing: border-box;
   background: white;
   color: #35124f;
   font:
-    400 13px/1.5 "DM Sans",
-    Arial,
+    400 13px/1.5 Arial,
     sans-serif;
-  padding: 16px 20px;
+  padding: 10px 12px;
   border: 1px solid #e7ddef;
-}
-.ap-toolbar {
-  order: 0;
-  border-radius: 15px 15px 0 0;
-  border-bottom: 0;
-}
-.ap-tools {
-  order: 1;
-  border-radius: 0 0 15px 15px;
   border-top: 0;
-  margin-bottom: 16px;
-  padding-top: 8px;
 }
-.ap-toolbar *,
-.ap-tools * {
+#visualizer .ap-toolbar {
+  min-height: 55px;
+}
+#visualizer .ap-tools {
+  border-radius: 0 0 15px 15px;
+  margin-bottom: 12px;
+  padding-top: 0;
+}
+#visualizer .ap-toolbar *,
+#visualizer .ap-tools * {
   box-sizing: border-box;
 }
-.ap-steps,
 .ap-footer,
-.ap-view,
-.ap-quick-swatches,
-.ap-colour-options {
+.ap-view {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  flex-wrap: wrap;
 }
-.ap-steps {
-  margin-bottom: 10px;
+.ap-footer {
+  justify-content: flex-start;
 }
-.ap-toolbar button,
-.ap-tools button,
-.ap-palette summary {
+#visualizer .ap-toolbar button,
+#visualizer .ap-tools button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 40px;
-  padding: 8px 14px;
+  min-height: 36px;
+  padding: 7px 10px;
   border: 1px solid #e1d2ea;
   border-radius: 9px;
   background: #fff;
   color: #633887;
   cursor: pointer;
   font:
-    600 12px/1.4 "DM Sans",
-    Arial,
+    600 11px/1.4 Arial,
     sans-serif;
 }
-.ap-toolbar button[aria-pressed="true"],
-.ap-tools button[aria-pressed="true"] {
+#visualizer .ap-tools button[aria-pressed="true"],
+#visualizer .ap-tools .ap-print {
   background: #65358b;
   border-color: #65358b;
   color: #fff;
 }
-.ap-toolbar button:disabled,
-.ap-tools button:disabled {
+#visualizer .ap-toolbar button:disabled,
+#visualizer .ap-tools button:disabled {
   opacity: 0.4;
   cursor: default;
 }
-.ap-toolbar button:focus-visible,
-.ap-tools button:focus-visible,
-.ap-palette summary:focus-visible,
-.ap-selection:focus-visible,
-.ap-room-preset:focus-visible {
+#visualizer
+  :is(
+    .ap-toolbar button,
+    .ap-tools button,
+    .ap-selection,
+    .ap-room-preset,
+    .ap-upload-home
+  ):focus-visible {
   outline: 3px solid #edb73b;
   outline-offset: 3px;
 }
-.ap-instruction {
-  margin: 0 0 12px;
-  color: #806b8c;
+#visualizer .ap-instruction {
+  margin: 0;
+  color: #5d476b;
+  font-size: 12px;
+  height: 34px;
+  line-height: 17px;
 }
-.ap-toolbar button.ap-prepare,
-.ap-tools button.ap-print {
-  background: #65358b;
-  border-color: #65358b;
-  color: white;
-}
-.ap-toolbar button.ap-prepare {
-  min-width: 190px;
-}
-.ap-colour-options {
-  justify-content: space-between;
-  position: relative;
-}
-.ap-quick-swatches {
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.ap-toolbar button.ap-swatch {
-  width: 40px;
-  height: 40px;
-  min-height: 0;
-  padding: 0;
-  border: 4px solid #fff;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px #dbcce5;
-}
-.ap-swatch i {
-  display: block;
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-}
-.ap-toolbar button.ap-swatch[aria-pressed="true"] {
-  outline: 2px solid #65358b;
-  outline-offset: 2px;
-}
-.ap-shade-name {
+#visualizer .ap-shade-name {
   color: #65358b;
-  font-size: 12px;
-  min-height: 0;
-  margin: 8px 0 0;
-}
-.ap-shade-name:empty {
-  display: none;
-}
-.ap-palette summary {
-  list-style: none;
   font-size: 11px;
+  height: 16px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 3px 0 0;
 }
-.ap-palette-panel {
-  position: absolute;
-  z-index: 35;
-  left: 0;
-  right: 0;
-  top: calc(100% + 8px);
-  padding: 14px;
-  border: 1px solid #d8c6e4;
-  border-radius: 12px;
-  background: white;
-  box-shadow: 0 14px 35px #32104c26;
-}
-.ap-palette-panel label {
-  display: block;
-  font-size: 12px;
-  color: #806b8c;
-}
-.ap-palette-panel input {
-  display: block;
-  width: 100%;
-  padding: 10px;
-  margin: 6px 0 12px;
-  border: 1px solid #e1d4e9;
-  border-radius: 8px;
-  font: inherit;
-}
-.ap-palette-results {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 7px;
-  max-height: 260px;
-  overflow: auto;
-  padding: 3px;
-  margin-bottom: 12px;
-}
-.ap-palette-results button {
-  flex-direction: column;
-  min-width: 0;
-  padding: 7px;
-  font-size: 10px;
-}
-.ap-palette-results i {
-  display: block;
-  width: 100%;
-  height: 35px;
-  border-radius: 5px;
-}
-.ap-palette-results span {
-  overflow-wrap: anywhere;
-}
-.ap-footer {
-  justify-content: space-between;
-  flex-wrap: wrap;
-}
-.ap-feedback {
+#visualizer .ap-feedback {
   font-size: 11px;
-  color: #8b7397;
-  margin: 9px 0 0;
+  line-height: 1.4;
+  color: #806b8c;
+  height: 30px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin: 7px 0 0;
 }
 .ap-toolbar [hidden],
 .ap-tools [hidden],
-.ap-toolbar[hidden],
-.ap-tools[hidden],
 .ap-selection[hidden] {
   display: none !important;
 }
-.ap-scenes {
+#visualizer .ap-scenes {
   order: 3;
   padding: 0;
   color: #806b8c;
   font:
-    400 11px/1.4 "DM Sans",
-    Arial,
+    400 11px/1.4 Arial,
     sans-serif;
-  margin-top: 5px;
+  margin: 0;
 }
-.ap-scenes h3 {
+#visualizer .ap-scenes h3 {
   font:
-    600 13px/1.4 "DM Sans",
-    Arial,
+    600 12px/1.4 Arial,
     sans-serif;
   color: #633887;
-  margin: 0 0 9px;
+  margin: 0 0 7px;
 }
-.ap-room-presets {
+#visualizer .ap-room-presets {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 7px;
-  max-width: 650px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
-.ap-room-preset {
+#visualizer .ap-room-preset {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 3px;
   min-width: 0;
   padding: 3px;
   border: 2px solid #e6deed;
-  border-radius: 10px;
+  border-radius: 9px;
   background: white;
   color: #65358b;
   cursor: pointer;
   font:
-    600 11px/1.3 "DM Sans",
-    Arial,
+    600 10px/1.3 Arial,
     sans-serif;
   overflow: hidden;
 }
-.ap-room-preset img {
+#visualizer .ap-room-preset img {
   display: block;
   width: 100%;
-  max-height: 70px;
-  aspect-ratio: 1.6;
+  height: 48px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 5px;
 }
-.ap-room-preset span {
-  padding: 0 2px 4px;
+#visualizer .ap-room-preset span {
+  padding: 0 1px 2px;
 }
-.ap-room-preset[aria-pressed="true"] {
+#visualizer .ap-room-preset[aria-pressed="true"] {
   border-color: #65358b;
   background: #f6f0fa;
 }
-.ap-upload-actions {
+#visualizer .ap-upload-actions {
   order: 4;
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin: 12px 0;
+  margin: 0;
 }
-.ap-upload-home {
-  display: flex;
+#visualizer .ap-upload-home,
+#visualizer .ap-upload-actions .btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 11px 16px;
+  min-height: 38px;
+  padding: 9px 12px;
   border: 1px solid #d9c9e4;
   border-radius: 10px;
   background: white;
   color: #65358b;
   cursor: pointer;
   font:
-    600 13px/1.4 "DM Sans",
-    Arial,
+    600 12px/1.4 Arial,
     sans-serif;
 }
-.ap-external-status {
+#visualizer .ap-external-status {
   order: 2;
   color: #806b8c;
   font-size: 12px;
+  margin: 0 0 8px;
 }
-.ap-external-status:empty {
+#visualizer .ap-external-status:empty {
   display: none;
+}
+#visualizer .ap-catalogue-status {
+  padding: 14px;
+  color: #806b8c;
+  font:
+    13px/1.5 Arial,
+    sans-serif;
 }
 html:has(.ap-toolbar) {
   scroll-behavior: auto;
 }
-.ap-toolbar,
-.ap-tools,
-.ap-toolbar button,
-.ap-tools button {
-  scroll-margin-top: 140px;
-  scroll-margin-bottom: 60px;
+#visualizer .ap-toolbar,
+#visualizer .ap-tools {
   overflow-anchor: none;
 }
-@media (max-width: 520px) {
-  .ap-toolbar,
-  .ap-tools {
-    padding: 13px 12px;
+/* Stack the two panels on phones; room choices and actions still follow the photo. */
+@media (max-width: 900px) {
+  #visualizer {
+    --ap-photo-height: clamp(220px, 48dvh, 480px);
   }
-  .ap-tools {
-    padding-top: 5px;
+  #visualizer .colour-studio-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
   }
-  .ap-quick-swatches {
-    gap: 7px;
+  #visualizer .colour-room-panel,
+  #visualizer .colour-shade-panel {
+    position: static;
   }
-  .ap-toolbar button.ap-swatch {
-    width: 34px;
-    height: 34px;
+  #visualizer .colour-room-panel {
+    height: auto;
   }
-  .ap-toolbar button,
-  .ap-tools button {
-    padding: 8px 10px;
-    font-size: 11px;
+  #visualizer .colour-shade-panel {
+    height: 650px;
+    min-height: 0;
   }
-  .ap-palette summary {
-    padding: 8px 10px;
+  #visualizer .ap-room-preset img {
+    height: 42px;
+  }
+}
+@media (max-width: 400px) {
+  #visualizer .ap-footer {
+    gap: 5px;
+  }
+  #visualizer .ap-tools button {
     font-size: 10px;
-  }
-  .ap-palette-results {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .ap-feedback {
-    font-size: 10px;
-  }
-  .ap-room-preset {
-    font-size: 10px;
-  }
-  .ap-room-preset img {
-    max-height: 55px;
+    padding: 7px 8px;
   }
 }

@@ -351,8 +351,8 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 #grid .btn{margin-top:6px}
 </style>
 <link rel="stylesheet" href="/assets/landing-theme.css">
-<link rel="stylesheet" href="/assets/photo-paint-studio.css?v=6">
-<script src="/assets/photo-paint-studio.js?v=6"></script>
+<link rel="stylesheet" href="/assets/photo-paint-studio.css?v=7">
+<script src="/assets/photo-paint-studio.js?v=7"></script>
 </head>
 <body>
 <header><div class="topbar"><div class="wrap"><span>Paint your dreams</span><span id="today"></span></div></div><div class="wrap nav">
@@ -399,8 +399,8 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 </div></section>
 
 <section id="visualizer"><div class="wrap"><h2>Try colours on a room</h2><p class="lead">Choose a room or upload a photo of your own home, pick a shade and see it on the walls. Prepare a white base, tap a wall and choose a colour. Print your before and after preview.</p>
-<div id="photoPaintViewport" class="ap-viewport ap-preview-first"><div class="room ap-photo-stage" id="roomWrap"><canvas id="cv" aria-label="Photo paint preview"></canvas><canvas id="cv0" aria-hidden="true"></canvas><div id="splitBar" class="split-divider"><div class="split-knob"><span>◀▶</span></div></div><div id="afterTag" class="split-tag split-tag-after">✨ AFTER (Painted)</div><div id="beforeTag" class="split-tag split-tag-before">🏛️ BEFORE (Original)</div></div>
-</div><div class="two"><div><p class="colour-painting-label" hidden>Painting with: <b id="cn2"></b></p><div class="ap-scenes" role="group" aria-label="Choose a room photo"><h3>Choose a photo</h3><div class="ap-room-presets" id="rooms" role="group" aria-label="Room types"></div></div><div class="ap-upload-actions"><label class="btn btn-main" style="cursor:pointer">Upload my home photo<input class="vh" id="up" type="file" accept="image/*"></label><label class="btn btn-line" style="cursor:pointer">Take a photo<input class="vh" id="camf" type="file" accept="image/*" capture="environment"></label></div>
+<div class="two"><div><div id="photoPaintViewport" class="ap-viewport"><div class="room ap-photo-stage" id="roomWrap"><canvas id="cv" aria-label="Photo paint preview"></canvas><canvas id="cv0" aria-hidden="true"></canvas><div id="splitBar" class="split-divider"><div class="split-knob"><span>◀▶</span></div></div><div id="afterTag" class="split-tag split-tag-after">✨ AFTER (Painted)</div><div id="beforeTag" class="split-tag split-tag-before">🏛️ BEFORE (Original)</div></div>
+</div><p class="colour-painting-label" hidden>Painting with: <b id="cn2"></b></p><div class="ap-scenes" role="group" aria-label="Choose a room photo"><h3>Choose a photo</h3><div class="ap-room-presets" id="rooms" role="group" aria-label="Room types"></div></div><div class="ap-upload-actions"><label class="btn btn-main" style="cursor:pointer">Upload my home photo<input class="vh" id="up" type="file" accept="image/*"></label><label class="btn btn-line" style="cursor:pointer">Take a photo<input class="vh" id="camf" type="file" accept="image/*" capture="environment"></label></div>
 
 <div class="chips" id="live" hidden><button class="btn btn-main" id="snap" type="button">Capture frame</button><button class="btn btn-line" id="stopcam" type="button">Stop camera</button></div>
 <div id="photoPaintToolbar"></div><div id="photoPaintTools"></div>
@@ -1316,9 +1316,9 @@ photoPainter = window.ArevaPaintStudio.createEditor({
   viewport: $("#photoPaintViewport"),
   onSelectShade: value => paint(value.hex,value.name),
   shade: () => ({hex:curHex, name:cn}),
-  swatches: C.map(value=>({name:value[0],code:value[1],hex:value[2]})),
+  swatches: C.map(value=>({name:value[0],code:value[1],hex:value[2],family:value[3],tones:value[4]})),
   onStatus: () => { $("#hm").textContent = ""; },
-  onChange: state => { used=state.colors.map(c=>({n:c.name,h:c.hex}));if($("#un")) $("#un").disabled=!state.canUndo; },
+  onChange: state => { drawSw(); used=state.colors.map(c=>({n:c.name,h:c.hex}));if($("#un")) $("#un").disabled=!state.canUndo; },
   onBeforeSelect: () => { $("#cmp").value=100; ov(100); }
 });
 
@@ -1633,7 +1633,7 @@ if(upInput){
         orig = cx.getImageData(0, 0, cv.width, cv.height);
         rm = -1;
         afterLoad("Your uploaded photo");
-        $("#photoPaintViewport").scrollIntoView({block:"start",behavior:"instant"});
+
       };
       im.onerror = () => {
         if(request!==photoLoadId) return;
@@ -1655,7 +1655,7 @@ if(roomsContainer){
     const b = e.target.closest("[data-rm]");
     if(b){
       loadScene(+b.dataset.rm);
-      $("#photoPaintViewport").scrollIntoView({block:"start",behavior:"instant"});
+
     } else if(e.target.closest("#mine")){
       if(upInput) upInput.click();
     } else if(e.target.closest("#camb")){

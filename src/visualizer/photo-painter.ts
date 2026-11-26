@@ -1,7 +1,13 @@
 /* Load the same standalone painter used by the preserved public page. Keeping the
  * controller and pixel math in one browser asset prevents the two studios drifting.
  */
-export type PaintedShade = { hex: string; name: string; code?: string };
+export type PaintedShade = {
+  hex: string;
+  name: string;
+  code?: string;
+  family?: string;
+  tones?: readonly string[];
+};
 export type PhotoPainter = {
   setImage: (image: ImageData, options?: { roomId?: string }) => void;
   undo: () => void;
@@ -9,6 +15,7 @@ export type PhotoPainter = {
   setEnabled: (enabled: boolean) => void;
   setComparison: (comparing: boolean) => void;
   shadeChanged: () => void;
+  applyShade: (shade: PaintedShade) => void;
   setSwatches: (shades: PaintedShade[]) => void;
   destroy: () => void;
 };
@@ -21,7 +28,11 @@ type Options = {
   swatches: PaintedShade[];
   onSelectShade: (shade: PaintedShade) => void;
   onStatus: (message: string) => void;
-  onChange: (state: { canUndo: boolean; colors: PaintedShade[] }) => void;
+  onChange: (state: {
+    canUndo: boolean;
+    colors: PaintedShade[];
+    selectedShade?: PaintedShade;
+  }) => void;
   onBeforeSelect: () => void;
 };
 declare global {
@@ -34,13 +45,13 @@ declare global {
 }
 let pending: Promise<NonNullable<Window["ArevaPaintStudio"]>> | null = null;
 export function loadPhotoPainter() {
-  if (window.ArevaPaintStudio?.version === 6)
+  if (window.ArevaPaintStudio?.version === 7)
     return Promise.resolve(window.ArevaPaintStudio);
   if (!pending) {
-    const path = "/assets/photo-paint-studio.js?v=6";
+    const path = "/assets/photo-paint-studio.js?v=7";
     pending = import(/* @vite-ignore */ path)
       .then(() => {
-        if (window.ArevaPaintStudio?.version !== 6)
+        if (window.ArevaPaintStudio?.version !== 7)
           throw Error("Photo tools could not load. Please refresh the page.");
         return window.ArevaPaintStudio;
       })

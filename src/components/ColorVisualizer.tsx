@@ -3,17 +3,19 @@
  */
 import React, { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
-import { useSiteContent } from "../admin/ContentContext";
-import {
-  COLOR_SHADES as DEFAULT_SHADES,
-  ROOM_PRESETS,
-} from "../data/paintsData";
+import { useContentStatus, useSiteContent } from "../admin/ContentContext";
+import { ROOM_PRESETS } from "../data/paintsData";
+import { ShadeLibrary } from "./ShadeLibrary";
+import type { ColorShade } from "../types";
 import {
   decodePhoto,
   loadPhotoPainter,
   type PhotoPainter,
 } from "../visualizer/photo-painter";
 import "../../public/assets/photo-paint-studio.css";
+import "../../public/assets/shade-library.css";
+
+const NO_COLOURS: ColorShade[] = [];
 
 interface ColorVisualizerProps {
   selectedColorHex: string;
@@ -35,7 +37,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   onSelectColor,
 }) => {
   const content = useSiteContent(),
-    colours = content?.colours || DEFAULT_SHADES;
+    colours = content?.colours || NO_COLOURS,
+    catalogueStatus = useContentStatus();
   const canvasRef = useRef<HTMLCanvasElement>(null),
     toolbarRef = useRef<HTMLDivElement>(null),
     toolsRef = useRef<HTMLDivElement>(null),
@@ -48,6 +51,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
   const [ready, setReady] = useState(false),
     [preset, setPreset] = useState(ROOM_PRESETS[0]),
     [custom, setCustom] = useState(false),
+    [selectedCode, setSelectedCode] = useState(""),
     [status, setStatus] = useState("Loading photo tools…");
   useEffect(() => {
     let active = true;
@@ -70,7 +74,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
           swatches: colours,
           onSelectShade: (value) => onSelectColor(value.hex, value.name),
           onStatus: () => setStatus(""),
-          onChange: () => {},
+          onChange: (state) => setSelectedCode(state.selectedShade?.code || ""),
           onBeforeSelect: () => {},
         });
         setReady(true);
@@ -152,10 +156,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       if (generation.current !== request) return;
       show(image);
       setCustom(true);
-      viewportRef.current?.scrollIntoView({
-        block: "start",
-        behavior: "instant",
-      });
     } catch (error) {
       if (generation.current === request) {
         painter.current?.setEnabled(true);
@@ -168,15 +168,18 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="ap-title">
           <h2>Paint your home</h2>
-          <p>Prepare a white base, tap a wall and choose your colour.</p>
-        </div>
-        <div ref={viewportRef} className="ap-viewport ap-preview-first">
-          <div className="ap-photo-stage">
-            <canvas ref={canvasRef} aria-label="Photo paint preview" />
-          </div>
+          <p>
+            Start with white walls. Tap one wall, then choose a colour from your
+            palette.
+          </p>
         </div>
         <div className="colour-studio-grid">
           <div className="colour-room-panel">
+            <div ref={viewportRef} className="ap-viewport">
+              <div className="ap-photo-stage">
+                <canvas ref={canvasRef} aria-label="Photo paint preview" />
+              </div>
+            </div>
             <div ref={toolbarRef} />
             <div ref={toolsRef} />
             <p className="ap-external-status" role="status">
@@ -202,10 +205,6 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                     onClick={() => {
                       setCustom(false);
                       setPreset(room);
-                      viewportRef.current?.scrollIntoView({
-                        block: "start",
-                        behavior: "instant",
-                      });
                     }}
                   >
                     <img src={room.imageUrl} alt="" loading="lazy" />
@@ -230,6 +229,33 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                 onChange={upload}
               />
             </div>
+          </div>
+          <div className="colour-shade-panel">
+            {catalogueStatus.loading && (
+              <p className="ap-catalogue-status" role="status">
+                Loading published colours…
+              </p>
+            )}
+            {catalogueStatus.error && (
+              <p className="ap-catalogue-status" role="status">
+                {catalogueStatus.error}{" "}
+                <button type="button" onClick={catalogueStatus.reload}>
+                  Retry
+                </button>
+              </p>
+            )}
+            {content && (
+              <ShadeLibrary
+                shades={colours}
+                cards={content.shadeCards}
+                visualizer
+                selectedCode={selectedCode}
+                onSelectRecord={(record) => {
+                  painter.current?.applyShade(record);
+                  onSelectColor(record.hex, record.name);
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
