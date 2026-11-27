@@ -74,7 +74,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
           swatches: colours,
           onSelectShade: (value) => onSelectColor(value.hex, value.name),
           onStatus: () => setStatus(""),
-          onChange: (state) => setSelectedCode(state.selectedShade?.code || ""),
+          onChange: (state) => setSelectedCode(state.activeShade?.code || ""),
           onBeforeSelect: () => {},
         });
         setReady(true);
@@ -168,10 +168,7 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="ap-title">
           <h2>Paint your home</h2>
-          <p>
-            Tap a wall, optionally apply white primer, then choose a colour from
-            your palette.
-          </p>
+          <p>Select a wall. Make it white, paint it, or add a brush design.</p>
         </div>
         <div className="colour-studio-grid">
           <div className="colour-room-panel">
@@ -180,54 +177,59 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
                 <canvas ref={canvasRef} aria-label="Photo paint preview" />
               </div>
             </div>
-            <div ref={toolbarRef} />
-            <div ref={toolsRef} />
-            <p className="ap-external-status" role="status">
-              {status}
-            </p>
             <div
-              className="ap-scenes"
-              role="group"
-              aria-label="Choose a room photo"
+              className="ap-control-stack"
+              aria-label="Photo painting controls"
             >
-              <h3>Choose a photo</h3>
+              <div ref={toolbarRef} />
+              <div ref={toolsRef} />
+              <p className="ap-external-status" role="status">
+                {status}
+              </p>
               <div
-                className="ap-room-presets"
+                className="ap-scenes"
                 role="group"
-                aria-label="Room types"
+                aria-label="Choose a room photo"
               >
-                {ROOM_PRESETS.map((room) => (
-                  <button
-                    key={room.id}
-                    type="button"
-                    className="ap-room-preset"
-                    aria-pressed={!custom && preset.id === room.id}
-                    onClick={() => {
-                      setCustom(false);
-                      setPreset(room);
-                    }}
-                  >
-                    <img src={room.imageUrl} alt="" loading="lazy" />
-                    <span>{ROOM_NAMES[room.id] || room.name}</span>
-                  </button>
-                ))}
+                <h3>Choose a photo</h3>
+                <div
+                  className="ap-room-presets"
+                  role="group"
+                  aria-label="Room types"
+                >
+                  {ROOM_PRESETS.map((room) => (
+                    <button
+                      key={room.id}
+                      type="button"
+                      className="ap-room-preset"
+                      aria-pressed={!custom && preset.id === room.id}
+                      onClick={() => {
+                        setCustom(false);
+                        setPreset(room);
+                      }}
+                    >
+                      <img src={room.imageUrl} alt="" loading="lazy" />
+                      <span>{ROOM_NAMES[room.id] || room.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="ap-upload-home"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Upload size={18} />
+                  {custom ? "Change your home photo" : "Upload your home photo"}
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  aria-label="Upload room photo"
+                  className="hidden"
+                  onChange={upload}
+                />
               </div>
-              <button
-                type="button"
-                className="ap-upload-home"
-                onClick={() => fileRef.current?.click()}
-              >
-                <Upload size={18} />
-                {custom ? "Change your home photo" : "Upload your home photo"}
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                aria-label="Upload room photo"
-                className="hidden"
-                onChange={upload}
-              />
             </div>
           </div>
           <div className="colour-shade-panel">

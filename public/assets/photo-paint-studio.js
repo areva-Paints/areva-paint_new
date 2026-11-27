@@ -1,6 +1,6 @@
 /* Shared photo painter for the public HTML and React studios. This dependency-free
  * browser asset also exposes its pure geometry/colour functions to regression tests.
- * Photos and masks stay in browser memory; this code makes no network requests.
+ * Photos and masks stay in browser memory; the worker loads bundled model assets.
  */
 (() => {
   const MAX_PIXELS = 1500000,
@@ -727,6 +727,163 @@
     );
     return next;
   }
+  /* Brush coverage is always intersected with a selected wall, including its
+   * opening cutouts. Other known walls are protected even if masks overlap.
+   */
+  function brushBoundary(width, height, selectedMask, protectedMasks = []) {
+    const count = size(width, height);
+    if (
+      selectedMask.length !== count ||
+      protectedMasks.some((m) => m.length !== count)
+    )
+      throw Error("Wall sizes do not match.");
+    const mask = new Uint8Array(selectedMask);
+    for (const other of protectedMasks)
+      for (let p = 0; p < count; p++)
+        if (other[p]) mask[p] = Math.min(mask[p], 255 - other[p]);
+    return mask;
+  }
+  function constrainedBrushMask(width, height, boundary, mask, points, radius) {
+    if (boundary.length !== size(width, height))
+      throw Error("Wall sizes do not match.");
+    const next = brushMask(width, height, mask, points, radius);
+    for (let p = 0; p < next.length; p++)
+      next[p] = Math.min(next[p], boundary[p]);
+    return next;
+  }
+  /* Store just a stroke's bounding rectangle, rather than one full-photo mask
+   * per stroke. Undo snapshots share immutable rectangles and unchanged walls.
+   */
+  function cropBrushMask(mask, width, height, bounds = [0, 0, width, height]) {
+    if (mask.length !== size(width, height))
+      throw Error("Brush sizes do not match.");
+    const x0 = clamp(Math.floor(bounds[0]), 0, width),
+      y0 = clamp(Math.floor(bounds[1]), 0, height),
+      x1 = clamp(Math.ceil(bounds[2]), x0, width),
+      y1 = clamp(Math.ceil(bounds[3]), y0, height);
+    let left = x1,
+      right = x0,
+      top = y1,
+      bottom = y0;
+    for (let y = y0; y < y1; y++)
+      for (let x = x0; x < x1; x++)
+        if (mask[y * width + x]) {
+          left = Math.min(left, x);
+          right = Math.max(right, x + 1);
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y + 1);
+        }
+    if (left >= right || top >= bottom) return null;
+    const data = new Uint8Array((right - left) * (bottom - top));
+    for (let y = top; y < bottom; y++)
+      data.set(
+        mask.subarray(y * width + left, y * width + right),
+        (y - top) * (right - left),
+      );
+    return { x: left, y: top, width: right - left, height: bottom - top, data };
+  }
+  const wallReferences = new WeakMap();
+  function wallLightReference(original, mask) {
+    let refs = wallReferences.get(original);
+    if (!refs) {
+      refs = new WeakMap();
+      wallReferences.set(original, refs);
+    }
+    if (refs.has(mask)) return refs.get(mask);
+    const histogram = new Uint32Array(256);
+    let total = 0;
+    for (let p = 0; p < mask.length; p++)
+      if (mask[p] >= 128 && original.data[p * 4 + 3] >= 128) {
+        histogram[Math.round(luminance(original.data, p * 4) * 255)]++;
+        total++;
+      }
+    let level = 0,
+      cumulative = 0;
+    while (level < 255) {
+      cumulative += histogram[level];
+      if (cumulative >= total * 0.75) break;
+      level++;
+    }
+    const reference = Math.max(0.015, level / 255);
+    refs.set(mask, reference);
+    return reference;
+  }
+  function writeBrushLayer(original, data, boundary, layer) {
+    const count = size(original.width, original.height);
+    if (
+      boundary.length !== count ||
+      data.length !== count * 4 ||
+      original.data.length !== count * 4 ||
+      ![layer.x, layer.y, layer.width, layer.height].every(Number.isInteger) ||
+      layer.x < 0 ||
+      layer.y < 0 ||
+      layer.width < 1 ||
+      layer.height < 1 ||
+      layer.x + layer.width > original.width ||
+      layer.y + layer.height > original.height ||
+      layer.data.length !== layer.width * layer.height ||
+      !/^#[0-9a-f]{6}$/i.test(layer.hex)
+    )
+      throw Error("This brush stroke could not be read.");
+    const reference = wallLightReference(original, boundary),
+      target = [1, 3, 5].map(
+        (i) => linear[parseInt(layer.hex.slice(i, i + 2), 16)],
+      ),
+      source = original.data;
+    for (let y = 0; y < layer.height; y++)
+      for (let x = 0; x < layer.width; x++) {
+        const p = (layer.y + y) * original.width + layer.x + x,
+          alpha = Math.min(boundary[p], layer.data[y * layer.width + x]) / 255;
+        if (!alpha || source[p * 4 + 3] < 128) continue;
+        const i = p * 4,
+          ratio = luminance(source, i) / reference,
+          shadow = Math.min(1, Math.max(0.025, ratio) ** 0.85),
+          highlight = clamp((ratio - 1) * 0.12, 0, 0.16);
+        for (let k = 0; k < 3; k++)
+          data[i + k] = encode(
+            clamp(
+              linear[data[i + k]] * (1 - alpha) +
+                (target[k] * shadow * (1 - highlight) + highlight) * alpha,
+              0,
+              1,
+            ),
+          );
+      }
+  }
+  function paintBrushLayer(original, current, boundary, layer) {
+    const data = new Uint8ClampedArray(current);
+    writeBrushLayer(original, data, boundary, layer);
+    return data;
+  }
+  function eraseBrushLayers(width, height, layers, eraser, boundary) {
+    const count = size(width, height);
+    if (eraser.length !== count || boundary.length !== count)
+      throw Error("Brush sizes do not match.");
+    let any = false;
+    const next = layers
+      .map((layer) => {
+        let data = null;
+        for (let y = 0; y < layer.height; y++)
+          for (let x = 0; x < layer.width; x++) {
+            const p = (layer.y + y) * width + layer.x + x,
+              j = y * layer.width + x,
+              // Normalize to the wall's coverage so a full eraser pass also
+              // clears soft boundary pixels, rather than leaving a faint rim.
+              a = boundary[p]
+                ? Math.min(eraser[p], boundary[p]) / boundary[p]
+                : 0;
+            if (a && layer.data[j]) {
+              if (!data) data = new Uint8Array(layer.data);
+              data[j] = Math.round(layer.data[j] * (1 - a));
+            }
+          }
+        if (!data) return layer;
+        any = true;
+        return data.some(Boolean) ? { ...layer, data } : null;
+      })
+      .filter(Boolean);
+    return any ? next : layers;
+  }
   /* Rebuild from the untouched photo and named walls. Erasing a wall or changing
    * a shade therefore restores the correct underlying image without colour buildup.
    */
@@ -779,10 +936,23 @@
     if (!Array.isArray(surfaces) || surfaces.length > 16)
       throw Error("Keep up to sixteen wall surfaces.");
     let data = new Uint8ClampedArray(original.data);
+    const operations = [];
     for (const surface of surfaces) {
       if (surface.mask.length !== original.width * original.height)
         throw Error("Wall sizes do not match.");
       if (surface.hex || surface.primed)
+        operations.push({ surface, order: surface.order ?? operations.length });
+      for (const brush of surface.brushes || [])
+        operations.push({
+          surface,
+          brush,
+          order: brush.order ?? operations.length,
+        });
+    }
+    operations.sort((a, b) => a.order - b.order);
+    for (const { surface, brush } of operations) {
+      if (brush) writeBrushLayer(original, data, surface.mask, brush);
+      else
         data = paintImage(
           original,
           data,
@@ -1212,6 +1382,39 @@
       }
     return mask;
   }
+  /* Let a neutral concrete wall in deep shade use its own local mask rather
+   * than a bright neighbouring facade's material threshold. Bounds still keep
+   * background out, and the fine mask retains its window/opening exclusions.
+   */
+  function constrainDetectedWall(original, fine, building, material, point) {
+    const count = size(original.width, original.height);
+    if ([fine, building, material].some((m) => m.length !== count))
+      throw Error("Wall sizes do not match.");
+    const x = clamp(Math.floor(point[0]), 0, original.width - 1),
+      y = clamp(Math.floor(point[1]), 0, original.height - 1),
+      at = y * original.width + x;
+    if (!building[at] || !fine[at])
+      throw Error("Tap the middle of a wall, away from the background.");
+    if (!material[at]) {
+      const i = at * 4,
+        source = original.data,
+        sum = Math.max(80, source[i] + source[i + 1] + source[i + 2]);
+      const chroma =
+        ((source[i] - source[i + 1]) / sum) ** 2 +
+        ((source[i + 2] - source[i + 1]) / sum) ** 2;
+      if (chroma > 0.085 ** 2 || luminance(source, i) < 0.006)
+        throw Error("Tap the wall surface rather than a window or opening.");
+    }
+    const mask = new Uint8Array(count);
+    let area = 0;
+    for (let p = 0; p < count; p++) {
+      mask[p] = Math.min(fine[p], building[p]);
+      if (mask[p]) area++;
+    }
+    if (area < count * 0.0005)
+      throw Error("Tap nearer the centre of the wall.");
+    return mask;
+  }
   /* Print the actual before/after buffers, even while Before is displayed.
    * The same-origin print document contains images and text only, with no scripts.
    */
@@ -1305,7 +1508,7 @@
     controls.classList.add("ap-tools");
     viewport.classList.add("ap-viewport");
     toolbar.innerHTML =
-      '<p class="ap-instruction"></p><div class="ap-wall-actions"><button type="button" data-action="primer" aria-label="Apply white primer to selected wall">Apply white primer</button><button type="button" data-action="retry" aria-label="Retry wall selection" hidden>Retry selection</button><p class="ap-shade-name"></p></div>';
+      '<p class="ap-instruction"></p><div class="ap-wall-actions"><button type="button" data-action="primer">Make selected wall white</button><button type="button" data-action="retry" hidden>Retry selection</button><span class="ap-shade-name"></span></div><div class="ap-mode-tools" role="group" aria-label="Painting tools"><button type="button" data-tool="select">Select wall</button><button type="button" data-tool="fill">Paint wall</button><button type="button" data-tool="brush">Brush</button><button type="button" data-tool="erase">Eraser</button><button type="button" data-action="undo">Undo</button></div><div class="ap-brush-options"><label for="areva-brush-size">Brush size</label><input id="areva-brush-size" aria-label="Brush size" type="range" min="6" max="64" step="2" value="24"><output>24 px</output></div><p class="ap-active-colour"><i aria-hidden="true"></i><span></span></p>';
     controls.innerHTML =
       '<div class="ap-footer"><div class="ap-view" role="group" aria-label="Photo comparison"><button type="button" data-action="before">Before</button><button type="button" data-action="after">After</button></div><button type="button" data-action="reset">Reset photo</button><button type="button" data-action="download">Download</button><button type="button" class="ap-print" data-action="print">Print before &amp; after</button></div><p class="ap-feedback" role="status" aria-live="polite"></p>';
     const overlay = document.createElement("canvas"),
@@ -1314,13 +1517,16 @@
     overlay.tabIndex = 0;
     overlay.setAttribute(
       "aria-label",
-      "Select a wall in the photo, then choose a colour from the palette.",
+      "Select a wall or paint inside the selected wall with the brush.",
     );
     stage.append(overlay);
-    const find = (s) => toolbar.querySelector(s) || controls.querySelector(s);
+    const find = (s) => toolbar.querySelector(s) || controls.querySelector(s),
+      root = viewport.closest("#visualizer"),
+      header = document.querySelector("header");
     let original = null,
       after = null,
       allowedMask = null,
+      buildingMask = null,
       surfaces = [],
       regions = [],
       selected = null,
@@ -1334,11 +1540,19 @@
       worker = null,
       sequence = 0,
       requestSequence = 0,
+      editSequence = 0,
       history = [],
       palette = [],
       resized = [1024, 1024],
       gesture = null,
-      retryPoint = null;
+      retryPoint = null,
+      queuedPoint = null,
+      mode = "select",
+      activeShade = null,
+      brushSize = 24,
+      paintFrame = 0,
+      fitFrame = 0,
+      cursor = null;
     const requests = new Map(),
       listeners = [];
     const listen = (target, event, fn) => {
@@ -1354,27 +1568,39 @@
     const selectedSurface = () => surfaces.find((s) => s.id === selected);
     const remember = () => {
       history.push({ surfaces: [...surfaces], selected });
-      if (history.length > 8) history.shift();
+      if (history.length > 16) history.shift();
+    };
+    const editedColours = () => {
+      const entries = [];
+      for (const wall of surfaces) {
+        if (wall.hex || wall.primed)
+          entries.push({
+            hex: wall.hex || "#ffffff",
+            name: wall.hex ? wall.name : "White primer",
+            code: wall.code,
+          });
+        for (const brush of wall.brushes || [])
+          entries.push({ hex: brush.hex, name: brush.name, code: brush.code });
+      }
+      return entries.filter(
+        (v, i) =>
+          entries.findIndex((c) => c.hex === v.hex && c.name === v.name) === i,
+      );
     };
     const notify = () => {
       const wall = selectedSurface();
-      controls.dataset.selectedCode = wall?.code || "";
+      controls.dataset.selectedCode = activeShade?.code || "";
+      controls.dataset.wallId = wall?.id || "";
       onChange({
         canUndo: history.length > 0,
         colors: editedColours(),
+        activeShade: activeShade || undefined,
+        mode,
         selectedShade: wall?.hex
           ? { hex: wall.hex, name: wall.name, code: wall.code }
           : undefined,
       });
     };
-    const editedColours = () =>
-      surfaces
-        .filter((s) => s.hex || s.primed)
-        .map((s) => ({
-          hex: s.hex || "#ffffff",
-          name: s.hex ? s.name : "White primer",
-          code: s.code,
-        }));
     const pixel = (point) =>
       clamp(Math.floor(point[1]), 0, original.height - 1) * original.width +
       clamp(Math.floor(point[0]), 0, original.width - 1);
@@ -1385,48 +1611,33 @@
         ((e.clientY - r.top) * overlay.height) / r.height,
       ];
     };
-    /* Keep image dimensions stable while families/search results change. The
-     * available height accounts for the actual shared navigation, not a guess.
-     */
-    const root = viewport.closest("#visualizer"),
-      header = document.querySelector("header");
     function fit() {
-      if (root) {
-        const top = Math.max(
-          12,
-          (header?.getBoundingClientRect().height || 0) + 12,
+      if (root)
+        root.style.setProperty(
+          "--ap-sticky-top",
+          Math.max(12, (header?.getBoundingClientRect().height || 0) + 12) +
+            "px",
         );
-        root.style.setProperty("--ap-sticky-top", top + "px");
-        const panel = viewport.closest(".colour-room-panel");
-        if (panel)
-          root.style.setProperty(
-            "--ap-controls-height",
-            Math.ceil(
-              Math.max(
-                viewport.getBoundingClientRect().bottom,
-                ...[...panel.children]
-                  .filter((el) => el !== viewport && el.getClientRects().length)
-                  .map((el) => el.getBoundingClientRect().bottom),
-              ) -
-                viewport.getBoundingClientRect().bottom +
-                12,
-            ) + "px",
-          );
-      }
       if (original) {
-        const ratio = original.width / original.height;
+        if (gesture?.painting) {
+          const r = overlay.getBoundingClientRect();
+          if (
+            Math.abs(r.width - gesture.rect.width) > 1 ||
+            Math.abs(r.height - gesture.rect.height) > 1
+          )
+            cancelStroke();
+        }
         stage.style.aspectRatio = original.width + " / " + original.height;
         stage.style.width =
           Math.max(
             1,
             Math.min(
               viewport.clientWidth - 2,
-              (viewport.clientHeight - 2) * ratio,
+              ((viewport.clientHeight - 2) * original.width) / original.height,
             ),
           ) + "px";
       }
     }
-    let fitFrame = 0;
     const fitSoon = () => {
       if (!fitFrame)
         fitFrame = requestAnimationFrame(() => {
@@ -1438,47 +1649,73 @@
       typeof ResizeObserver === "function" ? new ResizeObserver(fitSoon) : null;
     if (header) observer?.observe(header);
     observer?.observe(viewport);
-    const panel = viewport.closest(".colour-room-panel");
-    if (panel) {
-      observer?.observe(panel);
-      for (const child of panel.children) observer?.observe(child);
-    }
+    observer?.observe(viewport.parentElement);
     listen(window, "resize", fitSoon);
-    fit();
     function refresh() {
-      const ready = !!original && enabled;
-      controls
-        .querySelectorAll("button")
-        .forEach((b) => (b.disabled = !ready || busy));
+      const ready = !!original && enabled,
+        wall = selectedSurface(),
+        locked = busy || !!gesture?.painting;
+      for (const b of [
+        ...toolbar.querySelectorAll("button"),
+        ...controls.querySelectorAll("button"),
+      ])
+        b.disabled = !ready || locked;
       for (const action of ["before", "after"]) {
         const b = find('[data-action="' + action + '"]');
-        b.disabled = !ready;
+        b.disabled = !ready || !!gesture?.painting;
         b.setAttribute("aria-pressed", String(view === action));
       }
       const retry = find('[data-action="retry"]');
       retry.hidden = !failed;
-      retry.disabled = !ready || busy;
-      const wall = selectedSurface(),
-        primer = find('[data-action="primer"]');
-      primer.disabled = !ready || busy || !wall;
-      primer.dataset.applied = String(!!wall?.primed && !wall.hex);
+      const primer = find('[data-action="primer"]');
+      primer.disabled = !ready || locked || !wall;
+      primer.dataset.applied = String(
+        !!wall?.primed && !wall.hex && !(wall.brushes || []).length,
+      );
+      find('[data-action="undo"]').disabled =
+        !ready || busy || (!history.length && !gesture?.painting);
+      for (const b of toolbar.querySelectorAll("[data-tool]")) {
+        const tool = b.dataset.tool;
+        b.setAttribute("aria-pressed", String(mode === tool));
+        b.disabled =
+          !ready ||
+          !!gesture?.painting ||
+          ((tool === "brush" || tool === "erase") && (busy || !wall));
+      }
+      find('[aria-label="Brush size"]').disabled =
+        !ready || locked || !wall || (mode !== "brush" && mode !== "erase");
+      find(".ap-brush-options output").textContent = brushSize + " px";
       find(".ap-instruction").textContent = busy
-        ? "Finding the edges of your selected wall…"
+        ? "Finding the selected wall…"
         : failed
           ? "Selection failed. Tap another wall or retry."
-          : wall
-            ? "Wall selected. Apply white primer or choose a palette colour."
-            : ready
-              ? "Tap a wall to select it. White primer is optional."
-              : "Choose a room or upload your home photo.";
-      find(".ap-shade-name").textContent = wall?.hex
-        ? wall.name
-        : wall?.primed
-          ? "White primer applied"
-          : wall
-            ? "Original wall"
-            : "No wall selected";
-      find(".ap-shade-name").hidden = failed;
+          : mode === "brush"
+            ? "Brush is locked to the selected wall. Choose a colour, then draw."
+            : mode === "erase"
+              ? "Erase brush marks inside this wall. Its base colour stays in place."
+              : mode === "fill"
+                ? activeShade
+                  ? "Tap another wall to paint it with " +
+                    activeShade.name +
+                    "."
+                  : "Choose a colour, then tap a wall to paint it."
+                : wall
+                  ? "Wall selected. Make it white, choose a colour, or use Brush."
+                  : "Tap a wall to select it. White primer is optional.";
+      find(".ap-shade-name").textContent = wall
+        ? wall.hex
+          ? wall.name
+          : wall.primed
+            ? "White primer applied"
+            : "Wall selected"
+        : "No wall selected";
+      find(".ap-active-colour i").style.background =
+        activeShade?.hex || "transparent";
+      find(".ap-active-colour span").textContent = activeShade
+        ? "Current colour: " +
+          activeShade.name +
+          (activeShade.code ? " (" + activeShade.code + ")" : "")
+        : "Choose your paint colour on the right.";
       overlay.hidden = !ready;
       overlay.dataset.mode = busy
         ? "selecting"
@@ -1487,8 +1724,15 @@
           : ready
             ? "colour"
             : "loading";
+      overlay.dataset.tool = mode;
       overlay.setAttribute("aria-busy", String(busy));
-      overlay.style.cursor = busy ? "progress" : "pointer";
+      overlay.style.cursor = busy
+        ? "progress"
+        : mode === "brush" || mode === "erase"
+          ? "crosshair"
+          : "pointer";
+      overlay.style.touchAction =
+        mode === "brush" || mode === "erase" ? "none" : "manipulation";
       viewport.setAttribute("aria-busy", String(busy));
       draw();
     }
@@ -1517,20 +1761,34 @@
           edge.data[p * 4 + 3] = 230;
         }
       oc.putImageData(edge, 0, 0);
+      if (cursor && (mode === "brush" || mode === "erase")) {
+        const scale =
+          overlay.width / Math.max(1, overlay.getBoundingClientRect().width);
+        oc.beginPath();
+        oc.arc(cursor[0], cursor[1], (brushSize * scale) / 2, 0, Math.PI * 2);
+        oc.lineWidth = 2 * scale;
+        oc.strokeStyle = "#ffffff";
+        oc.stroke();
+        oc.lineWidth = scale;
+        oc.strokeStyle = "#65358b";
+        oc.stroke();
+      }
     }
-    function render() {
-      if (!original) return;
-      after = renderSelectedPreview(original, surfaces);
-      const shown = view === "before" ? original : after;
+    function show(data) {
       ctx.putImageData(
         new ImageData(
-          new Uint8ClampedArray(shown.data),
-          shown.width,
-          shown.height,
+          new Uint8ClampedArray(data.data),
+          data.width,
+          data.height,
         ),
         0,
         0,
       );
+    }
+    function render() {
+      if (!original) return;
+      after = renderSelectedPreview(original, surfaces);
+      show(view === "before" ? original : after);
       refresh();
       notify();
     }
@@ -1642,8 +1900,10 @@
         ],
       });
     }
-    /* Detection is lazy and only computes masks. It never creates a white base
-     * or edits an unselected wall, even while the local model is loading.
+
+    /* Coarse geometry protects background, while point-local material filtering
+     * keeps a dark concrete wall selectable instead of using a bright facade's
+     * global brightness threshold as a veto on every other wall.
      */
     async function detectSurfaces(point, token) {
       const count = original.width * original.height,
@@ -1656,12 +1916,12 @@
             [0.7, 0.45],
           ].map(([x, y]) => [x * original.width, y * original.height]),
         ];
-      let tappedResult = null;
-      for (let index = 0; index < probes.length; index++) {
-        const probe = probes[index],
+      let tapped = null;
+      for (let i = 0; i < probes.length; i++) {
+        const probe = probes[i],
           result = await selectModel(probe);
         if (token !== generation || destroyed) return null;
-        if (!index) tappedResult = result;
+        if (!i) tapped = result;
         const mask = modelBuildingMask(
           original,
           result.masks,
@@ -1672,16 +1932,36 @@
         if (mask)
           for (let p = 0; p < count; p++) body[p] = Math.max(body[p], mask[p]);
       }
-      const mask = paintableBuildingMask(original, body);
-      if (mask.reduce((n, v) => n + (v ? 1 : 0), 0) < count * 0.025)
+      if (body.reduce((n, v) => n + (v ? 1 : 0), 0) < count * 0.025)
         throw Error(
-          "We could not identify this wall. Try a clearer, well-lit building photo.",
+          "This wall could not be identified. Try a clearer building photo.",
         );
-      allowedMask = mask;
-      return tappedResult;
+      buildingMask = body;
+      allowedMask = paintableBuildingMask(original, body);
+      return tapped;
+    }
+    function selectedReady() {
+      failed = false;
+      retryPoint = null;
+      if (mode === "fill" && activeShade)
+        finishWall(selectedSurface(), {
+          ...activeShade,
+          primed: selectedSurface().primed,
+        });
+      else render();
+      report(
+        mode === "fill" && activeShade
+          ? activeShade.name + " applied to this wall."
+          : "Wall selected. Make it white, choose a colour, or use Brush.",
+      );
     }
     async function tap(point) {
-      if (!original || !enabled || busy) return;
+      if (!original || !enabled || gesture?.painting) return;
+      if (busy) {
+        queuedPoint = [...point];
+        report("Switching to the latest wall you tapped…");
+        return;
+      }
       const at = pixel(point);
       view = "after";
       selected = null;
@@ -1691,13 +1971,12 @@
       const known = regions.find((r) => r.mask[at] >= 128);
       if (known) {
         selected = surfaces.find((s) => s.mask === known.mask)?.id ?? null;
-        render();
-        report("Wall selected. Apply white primer or choose a colour.");
+        selectedReady();
         return;
       }
-      if (regions.length || (allowedMask && !allowedMask[at])) {
+      if (regions.length) {
         render();
-        report("Tap the middle of a wall, away from windows and doors.");
+        report("Tap a wall surface, away from windows and doors.");
         return;
       }
       const token = generation;
@@ -1708,26 +1987,30 @@
       try {
         await encode();
         if (token !== generation || destroyed) return;
-        let result = allowedMask ? null : await detectSurfaces(point, token);
+        let result = buildingMask ? null : await detectSurfaces(point, token);
         if (token !== generation || destroyed) return;
-        if (!allowedMask[at])
-          throw Error("Tap the middle of a wall, away from windows and doors.");
+        if (queuedPoint) return;
+        if (!buildingMask[at])
+          throw Error(
+            "Tap a wall surface, away from the sky and surroundings.",
+          );
         if (!result) result = await selectModel(point);
         if (token !== generation || destroyed) return;
-        const mask = modelWallMask(
-          original,
-          result.masks,
-          result.scores,
-          resized,
-          point,
-        );
-        let area = 0;
-        for (let p = 0; p < mask.length; p++) {
-          mask[p] = Math.min(mask[p], allowedMask[p]);
-          if (mask[p]) area++;
-        }
-        if (area < mask.length * 0.0005)
-          throw Error("Tap nearer the centre of the wall.");
+        if (queuedPoint) return;
+        const fine = modelWallMask(
+            original,
+            result.masks,
+            result.scores,
+            resized,
+            point,
+          ),
+          mask = constrainDetectedWall(
+            original,
+            fine,
+            buildingMask,
+            allowedMask,
+            point,
+          );
         let matching = null;
         for (const wall of surfaces) {
           let intersection = 0,
@@ -1745,7 +2028,7 @@
         else {
           if (surfaces.length >= 16)
             throw Error(
-              "You can colour up to sixteen different surfaces. Reset to try a new combination.",
+              "Up to sixteen walls can be edited. Reset the photo to start another combination.",
             );
           const wall = {
             id: ++sequence,
@@ -1754,11 +2037,13 @@
             hex: null,
             name: "",
             code: "",
+            brushes: [],
           };
           surfaces = [...surfaces, wall];
           selected = wall.id;
         }
-        report("Wall selected. Apply white primer or choose a colour.");
+        busy = false;
+        selectedReady();
       } catch (error) {
         if (token === generation && error.name !== "AbortError") {
           failed = true;
@@ -1767,72 +2052,350 @@
       } finally {
         if (token === generation && !destroyed) {
           busy = false;
-          render();
+          const next = queuedPoint;
+          queuedPoint = null;
+          if (next) void tap(next);
+          else render();
         }
       }
     }
-    /* The latest finish wins inside its selection, including nested trim/wall
-     * masks. Selecting an area alone never changes this edit order or pixels.
-     */
     function finishWall(wall, finish) {
-      const laterOverlap = surfaces
-        .slice(surfaces.indexOf(wall) + 1)
-        .some(
-          (s) =>
-            (s.hex || s.primed) &&
-            s.mask.some((value, p) => value && wall.mask[p]),
-        );
+      if (!wall) return;
+      const laterOverlap = surfaces.some(
+        (s) =>
+          s.id !== wall.id &&
+          ((s.order || 0) > (wall.order || 0) ||
+            (s.brushes || []).some((b) => b.order > (wall.order || 0))) &&
+          s.mask.some((v, p) => v && wall.mask[p]),
+      );
       if (
-        ["hex", "primed", "name", "code"].some(
-          (key) => wall[key] !== finish[key],
-        ) ||
+        ["hex", "primed", "name", "code"].some((k) => wall[k] !== finish[k]) ||
+        (wall.brushes || []).length ||
         laterOverlap
       ) {
         remember();
         surfaces = [
           ...surfaces.filter((s) => s.id !== wall.id),
-          { ...wall, ...finish, mask: wall.mask, id: wall.id },
+          {
+            ...wall,
+            ...finish,
+            id: wall.id,
+            mask: wall.mask,
+            brushes: [],
+            order: ++editSequence,
+          },
         ];
       }
       view = "after";
       render();
     }
+    function resolveShade(value) {
+      if (!value || !/^#[0-9a-f]{6}$/i.test(value.hex)) return null;
+      return (
+        palette.find((s) =>
+          value.code
+            ? s.code === value.code
+            : s.hex.toLowerCase() === value.hex.toLowerCase() &&
+              (s.name === value.name ||
+                value.name === s.name + " (" + s.code + ")"),
+        ) || null
+      );
+    }
+    function chooseColour(value) {
+      const record = resolveShade(value);
+      if (!record) return report("Choose a published colour from the palette.");
+      if (gesture?.painting) cancelStroke();
+      activeShade = { ...record };
+      if (mode === "brush" || mode === "erase") mode = "brush";
+      else mode = "fill";
+      const wall = selectedSurface();
+      if (wall && !busy && mode === "fill")
+        finishWall(wall, { ...record, primed: wall.primed });
+      else {
+        refresh();
+        notify();
+      }
+      onSelectShade(record);
+      report(
+        busy
+          ? record.name +
+              " selected. It will be ready when wall selection finishes."
+          : mode === "brush"
+            ? record.name +
+              " ready for the brush. Strokes stay inside the selected wall."
+            : wall
+              ? record.name + " applied to this wall."
+              : "Tap a wall to paint it with " + record.name + ".",
+      );
+    }
     function applyPrimer() {
       const wall = selectedSurface();
       if (!original || !enabled || busy || !wall) return;
+      cancelStroke();
+      mode = "select";
       finishWall(wall, { primed: true, hex: null, name: "", code: "" });
+      report("The selected wall is now white. Other walls keep their colours.");
+    }
+    function setTool(tool) {
+      if (!["select", "fill", "brush", "erase"].includes(tool)) return;
+      cancelStroke();
+      mode = tool;
+      cursor = null;
+      if (tool === "fill" && selectedSurface() && activeShade && !busy)
+        finishWall(selectedSurface(), {
+          ...activeShade,
+          primed: selectedSurface().primed,
+        });
+      else {
+        refresh();
+        notify();
+      }
       report(
-        "White primer applied to this wall. Choose a palette colour whenever you are ready.",
+        tool === "select"
+          ? "Tap a wall to select it without changing its colour."
+          : tool === "fill"
+            ? activeShade
+              ? "Tap a wall to paint it with " + activeShade.name + "."
+              : "Choose a paint colour on the right."
+            : tool === "brush"
+              ? "Draw inside the selected wall. Use Select wall to change walls."
+              : "Erase brush marks inside the selected wall. Base paint and primer are preserved.",
       );
     }
-    function applyColour(value, notifyHost = true) {
-      if (!value || !/^#[0-9a-f]{6}$/i.test(value.hex)) return;
-      const record = palette.find((s) =>
-        value.code
-          ? s.code === value.code
-          : s.hex.toLowerCase() === value.hex.toLowerCase() &&
-            (s.name === value.name ||
-              value.name === s.name + " (" + s.code + ")"),
-      );
-      if (!record) return report("Choose a published colour from the palette.");
-      if (!original || !enabled || busy)
-        return report("Please wait for wall selection to finish.");
-      const wall = selectedSurface();
-      if (!wall)
-        return report(
-          "Tap the wall you want to paint, then select this colour.",
-        );
-      finishWall(wall, { ...record, primed: wall.primed });
-      if (notifyHost) onSelectShade(record);
-      report(
-        record.name +
-          (record.code ? " (" + record.code + ")" : "") +
-          " applied to this wall.",
-      );
-    }
-    /* Exports always use the after buffer, without selection outlines, even if
-     * the customer is currently comparing the untouched Before photograph.
+    /* A gesture owns one immutable wall boundary and one Undo entry. Pointer
+     * capture and clipping cover fast strokes, holes, photo edges and touch input.
      */
+    function cancelStroke() {
+      const current = gesture;
+      gesture = null;
+      cancelAnimationFrame(paintFrame);
+      paintFrame = 0;
+      if (current?.painting) {
+        if (overlay.hasPointerCapture?.(current.id))
+          overlay.releasePointerCapture(current.id);
+        if (original && after) {
+          show(view === "before" ? original : after);
+          refresh();
+        }
+      }
+    }
+    function strokeSegment(point) {
+      const g = gesture;
+      if (!g?.painting) return;
+      strokeInto(
+        g.mask,
+        original.width,
+        original.height,
+        g.last,
+        point,
+        g.radius,
+      );
+      const left = clamp(
+          Math.floor(Math.min(g.last[0], point[0]) - g.radius - 1),
+          0,
+          original.width,
+        ),
+        right = clamp(
+          Math.ceil(Math.max(g.last[0], point[0]) + g.radius + 1),
+          0,
+          original.width,
+        ),
+        top = clamp(
+          Math.floor(Math.min(g.last[1], point[1]) - g.radius - 1),
+          0,
+          original.height,
+        ),
+        bottom = clamp(
+          Math.ceil(Math.max(g.last[1], point[1]) + g.radius + 1),
+          0,
+          original.height,
+        );
+      for (let y = top; y < bottom; y++)
+        for (let x = left; x < right; x++) {
+          const p = y * original.width + x;
+          g.mask[p] = Math.min(g.mask[p], g.boundary[p]);
+        }
+      g.bounds = [
+        Math.min(g.bounds[0], left),
+        Math.min(g.bounds[1], top),
+        Math.max(g.bounds[2], right),
+        Math.max(g.bounds[3], bottom),
+      ];
+      g.last = point;
+      cursor = point;
+    }
+    function draftStroke() {
+      paintFrame = 0;
+      const g = gesture;
+      if (!g?.painting || g.generation !== generation) return;
+      const crop = cropBrushMask(
+        g.mask,
+        original.width,
+        original.height,
+        g.bounds,
+      );
+      if (!crop) return;
+      let data;
+      if (g.tool === "brush")
+        data = paintBrushLayer(original, after.data, g.wall.mask, {
+          ...crop,
+          ...g.colour,
+          order: editSequence + 1,
+        });
+      else {
+        const brushes = eraseBrushLayers(
+          original.width,
+          original.height,
+          g.wall.brushes || [],
+          g.mask,
+          g.boundary,
+        );
+        data = renderSelectedPreview(
+          original,
+          surfaces.map((s) => (s.id === g.wall.id ? { ...s, brushes } : s)),
+        ).data;
+      }
+      show({ ...original, data });
+      draw();
+    }
+    function commitStroke() {
+      const g = gesture;
+      if (!g?.painting) return;
+      cancelAnimationFrame(paintFrame);
+      paintFrame = 0;
+      gesture = null;
+      if (overlay.hasPointerCapture?.(g.id))
+        overlay.releasePointerCapture(g.id);
+      if (
+        g.generation !== generation ||
+        !selectedSurface() ||
+        selectedSurface().id !== g.wall.id
+      )
+        return;
+      const crop = cropBrushMask(
+        g.mask,
+        original.width,
+        original.height,
+        g.bounds,
+      );
+      if (!crop) {
+        render();
+        return;
+      }
+      let brushes;
+      if (g.tool === "brush") {
+        if (surfaces.reduce((n, s) => n + (s.brushes || []).length, 0) >= 64) {
+          render();
+          report(
+            "The design has 64 brush strokes. Use Undo, Eraser or Reset photo to make room.",
+          );
+          return;
+        }
+        brushes = [
+          ...(g.wall.brushes || []),
+          { ...crop, ...g.colour, order: ++editSequence },
+        ];
+      } else {
+        brushes = eraseBrushLayers(
+          original.width,
+          original.height,
+          g.wall.brushes || [],
+          g.mask,
+          g.boundary,
+        );
+        if (brushes === g.wall.brushes) {
+          render();
+          report(
+            "No brush marks in this area. The wall's base finish is unchanged.",
+          );
+          return;
+        }
+      }
+      remember();
+      surfaces = surfaces.map((s) =>
+        s.id === g.wall.id ? { ...s, brushes } : s,
+      );
+      view = "after";
+      render();
+      report(
+        g.tool === "brush"
+          ? "Brush stroke added inside the selected wall."
+          : "Brush marks erased inside the selected wall.",
+      );
+    }
+    function startPointer(e) {
+      if (!e.isPrimary || e.button !== 0 || !original || !enabled) return;
+      if (mode !== "brush" && mode !== "erase") {
+        gesture = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        return;
+      }
+      if (busy) return;
+      const wall = selectedSurface();
+      if (!wall) return report("Use Select wall before drawing.");
+      if (mode === "brush" && !activeShade)
+        return report("Choose a brush colour on the right.");
+      const boundary = brushBoundary(
+          original.width,
+          original.height,
+          wall.mask,
+          surfaces.filter((s) => s.id !== wall.id).map((s) => s.mask),
+        ),
+        point = photoPoint(e);
+      if (!boundary[pixel(point)])
+        return report(
+          "Brush locked to this wall. Use Select wall to change walls.",
+        );
+      e.preventDefault();
+      view = "after";
+      show(after);
+      gesture = {
+        id: e.pointerId,
+        painting: true,
+        generation,
+        wall,
+        boundary,
+        tool: mode,
+        colour: activeShade ? { ...activeShade } : null,
+        radius:
+          ((brushSize / 2) * overlay.width) /
+          overlay.getBoundingClientRect().width,
+        mask: new Uint8Array(original.width * original.height),
+        rect: overlay.getBoundingClientRect(),
+        last: point,
+        bounds: [original.width, original.height, 0, 0],
+      };
+      overlay.setPointerCapture(e.pointerId);
+      strokeSegment(point);
+      refresh();
+      paintFrame = requestAnimationFrame(draftStroke);
+    }
+    function movePointer(e) {
+      if (!original) return;
+      const point = photoPoint(e);
+      cursor = point;
+      if (gesture?.painting && gesture.id === e.pointerId) {
+        e.preventDefault();
+        const samples = e.getCoalescedEvents?.();
+        for (const sample of samples?.length ? samples : [e])
+          strokeSegment(photoPoint(sample));
+        if (!paintFrame) paintFrame = requestAnimationFrame(draftStroke);
+      } else draw();
+    }
+    function endPointer(e) {
+      if (gesture?.painting && gesture.id === e.pointerId) {
+        strokeSegment(photoPoint(e));
+        commitStroke();
+        return;
+      }
+      const start = gesture;
+      gesture = null;
+      if (
+        start &&
+        start.id === e.pointerId &&
+        Math.hypot(start.x - e.clientX, start.y - e.clientY) < 8
+      )
+        void tap(photoPoint(e));
+    }
     function download() {
       const c = document.createElement("canvas");
       c.width = after.width;
@@ -1855,17 +2418,25 @@
     const action = (event) => {
       const b = event.target.closest("button");
       if (!b || b.disabled) return;
+      if (b.dataset.tool) {
+        setTool(b.dataset.tool);
+        return;
+      }
       switch (b.dataset.action) {
         case "retry":
           if (retryPoint) void tap(retryPoint);
           break;
         case "before":
         case "after":
+          cancelStroke();
           view = b.dataset.action;
           render();
           break;
         case "primer":
           applyPrimer();
+          break;
+        case "undo":
+          api.undo();
           break;
         case "reset":
           api.reset();
@@ -1882,32 +2453,30 @@
     };
     listen(toolbar, "click", action);
     listen(controls, "click", action);
-    listen(overlay, "pointerdown", (e) => {
-      if (e.isPrimary && e.button === 0)
-        gesture = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    listen(find('[aria-label="Brush size"]'), "input", (e) => {
+      brushSize = +e.target.value;
+      find(".ap-brush-options output").textContent = brushSize + " px";
+      draw();
     });
-    listen(overlay, "pointerup", (e) => {
-      const start = gesture;
-      gesture = null;
-      if (
-        start &&
-        start.id === e.pointerId &&
-        Math.hypot(start.x - e.clientX, start.y - e.clientY) < 8
-      )
-        void tap(photoPoint(e));
+    listen(overlay, "pointerdown", startPointer);
+    listen(overlay, "pointermove", movePointer);
+    listen(overlay, "pointerup", endPointer);
+    listen(overlay, "pointercancel", cancelStroke);
+    listen(overlay, "lostpointercapture", () => {
+      if (gesture?.painting) cancelStroke();
     });
-    listen(overlay, "pointercancel", () => {
-      gesture = null;
+    listen(overlay, "pointerleave", () => {
+      if (!gesture?.painting) {
+        cursor = null;
+        draw();
+      }
     });
     listen(overlay, "keydown", (e) => {
-      if (e.key === "Enter") {
+      if (e.key === "Enter" && (mode === "select" || mode === "fill")) {
         e.preventDefault();
         void tap([overlay.width / 2, overlay.height / 2]);
       }
     });
-    /* Undo follows focus across the photo/actions/palette. Text fields keep
-     * their native Undo behaviour, including catalogue-search input history.
-     */
     listen(root || viewport.parentElement, "keydown", (e) => {
       if (
         (e.ctrlKey || e.metaKey) &&
@@ -1917,6 +2486,9 @@
       ) {
         e.preventDefault();
         api.undo();
+      } else if (e.key === "Escape" && gesture?.painting) {
+        cancelStroke();
+        report("Brush stroke cancelled.");
       }
     });
     const api = {
@@ -1924,6 +2496,7 @@
         size(image.width, image.height);
         if (image.data.length !== image.width * image.height * 4)
           throw Error("This photo could not be read.");
+        cancelStroke();
         generation++;
         stopWorker();
         busy = false;
@@ -1942,37 +2515,45 @@
           hex: null,
           name: "",
           code: "",
+          brushes: [],
         }));
         sequence = surfaces.length;
+        editSequence = 0;
         selected = null;
         history = [];
         view = "after";
-        allowedMask = regions.length
-          ? new Uint8Array(image.width * image.height)
-          : null;
-        for (const r of regions)
-          for (let p = 0; p < allowedMask.length; p++)
-            allowedMask[p] = Math.max(allowedMask[p], r.mask[p]);
+        mode = "select";
+        activeShade = null;
+        cursor = null;
+        allowedMask = buildingMask = null;
         retryPoint = null;
+        queuedPoint = null;
         overlay.width = image.width;
         overlay.height = image.height;
         fit();
         render();
         report(
-          "Photo ready. Tap a wall to select it, then optionally apply white primer or choose a colour.",
+          "Photo ready. Select a wall to make it white, paint it, or add a brush design.",
         );
       },
       undo() {
+        if (gesture?.painting) {
+          cancelStroke();
+          report("Brush stroke cancelled.");
+          return;
+        }
         if (busy || !history.length) return;
         const saved = history.pop();
         surfaces = saved.surfaces;
         selected = saved.selected;
+        failed = false;
         view = "after";
         render();
         report("Last change undone.");
       },
       reset() {
         if (!original || busy) return;
+        cancelStroke();
         remember();
         surfaces = regions.map((r, i) => ({
           id: i + 1,
@@ -1981,19 +2562,24 @@
           hex: null,
           name: "",
           code: "",
+          brushes: [],
         }));
         selected = null;
         failed = false;
         retryPoint = null;
+        queuedPoint = null;
         view = "after";
+        mode = "select";
+        activeShade = null;
+        cursor = null;
         render();
-        report(
-          "Original photo restored. Select a wall to start a new combination.",
-        );
+        report("Original photo restored. Select a wall to start again.");
       },
       setEnabled(value) {
         if (!value) {
+          cancelStroke();
           generation++;
+          queuedPoint = null;
           stopWorker();
           busy = false;
         }
@@ -2001,37 +2587,41 @@
         refresh();
       },
       setComparison(value) {
+        cancelStroke();
         view = value ? "before" : "after";
         render();
       },
       shadeChanged() {
-        if (!original || !enabled) return;
-        const value = shade(),
-          wall = selectedSurface();
+        /* Host callbacks synchronize the selected chip only. They must never
+         * turn a brush-colour choice into a full-wall fill or lose duplicate codes.
+         */
+        const value = shade();
         if (
-          wall?.hex?.toLowerCase() === value.hex?.toLowerCase() &&
-          (wall.name === value.name ||
-            value.name === wall.name + " (" + wall.code + ")")
+          activeShade?.hex.toLowerCase() === value.hex?.toLowerCase() &&
+          (activeShade.name === value.name ||
+            value.name === activeShade.name + " (" + activeShade.code + ")")
         )
           return;
-        applyColour(value, false);
+        const record = resolveShade(value);
+        if (record) {
+          activeShade = { ...record };
+          refresh();
+          notify();
+        }
       },
-      applyShade(value) {
-        applyColour(value);
-      },
+      applyShade: chooseColour,
       setSwatches(values) {
         palette = normalize(values);
-        /* Saved CMS changes refresh available choices without resetting a photo
-         * or silently recolouring a customer's existing design.
-         */
         notify();
       },
       destroy() {
+        cancelStroke();
         destroyed = true;
         generation++;
         stopWorker();
         observer?.disconnect();
         cancelAnimationFrame(fitFrame);
+        cancelAnimationFrame(paintFrame);
         listeners.forEach((remove) => remove());
         overlay.remove();
         toolbar.replaceChildren();
@@ -2039,23 +2629,30 @@
         if (ownsToolbar) toolbar.remove();
         stage.style.aspectRatio = "";
         stage.style.width = "";
-        original = after = allowedMask = null;
+        original = after = allowedMask = buildingMask = null;
         surfaces = [];
         history = [];
       },
     };
     palette = normalize(swatches);
+    fit();
     refresh();
     return api;
   }
   globalThis.ArevaPaintStudio = Object.freeze({
-    version: 8,
+    version: 9,
     polygonMask,
     subtractMask,
     connectedMask,
     paintImage,
     validPolygon,
     brushMask,
+    brushBoundary,
+    constrainedBrushMask,
+    cropBrushMask,
+    paintBrushLayer,
+    eraseBrushLayers,
+    constrainDetectedWall,
     composeImage,
     boxCorners,
     moveAreaCorner,

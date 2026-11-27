@@ -32,6 +32,8 @@ type Options = {
     canUndo: boolean;
     colors: PaintedShade[];
     selectedShade?: PaintedShade;
+    activeShade?: PaintedShade;
+    mode?: "select" | "fill" | "brush" | "erase";
   }) => void;
   onBeforeSelect: () => void;
 };
@@ -45,13 +47,13 @@ declare global {
 }
 let pending: Promise<NonNullable<Window["ArevaPaintStudio"]>> | null = null;
 export function loadPhotoPainter() {
-  if (window.ArevaPaintStudio?.version === 8)
+  if (window.ArevaPaintStudio?.version === 9)
     return Promise.resolve(window.ArevaPaintStudio);
   if (!pending) {
-    const path = "/assets/photo-paint-studio.js?v=8";
+    const path = "/assets/photo-paint-studio.js?v=9";
     pending = import(/* @vite-ignore */ path)
       .then(() => {
-        if (window.ArevaPaintStudio?.version !== 8)
+        if (window.ArevaPaintStudio?.version !== 9)
           throw Error("Photo tools could not load. Please refresh the page.");
         return window.ArevaPaintStudio;
       })

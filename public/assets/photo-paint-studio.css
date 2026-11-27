@@ -2,11 +2,7 @@
 #visualizer {
   --ap-sticky-top: 150px;
   --ap-available: calc(100dvh - var(--ap-sticky-top) - 20px);
-  --ap-photo-height: clamp(
-    200px,
-    calc(var(--ap-available) - var(--ap-controls-height, 320px)),
-    570px
-  );
+  --ap-photo-height: clamp(180px, calc(var(--ap-available) * 0.48), 460px);
 }
 #visualizer .colour-studio-grid {
   display: grid !important;
@@ -72,7 +68,7 @@
   height: auto;
   aspect-ratio: 4 / 3;
   max-height: var(--ap-photo-height);
-  min-height: 200px;
+  min-height: 180px;
   overflow: hidden;
   background: #f4f0f7;
   border: 1px solid #e8deef;
@@ -117,7 +113,10 @@ canvas.ap-selection {
   border-top: 0;
 }
 #visualizer .ap-toolbar {
-  min-height: 55px;
+  display: grid;
+  gap: 12px;
+  height: auto;
+  min-height: 0;
 }
 #visualizer .ap-tools {
   border-radius: 0 0 15px 15px;
@@ -131,7 +130,7 @@ canvas.ap-selection {
 .ap-footer,
 .ap-view {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -143,8 +142,9 @@ canvas.ap-selection {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 36px;
-  padding: 7px 10px;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 9px 12px;
   border: 1px solid #e1d2ea;
   border-radius: 9px;
   background: #fff;
@@ -180,13 +180,13 @@ canvas.ap-selection {
   margin: 0;
   color: #5d476b;
   font-size: 12px;
-  height: 34px;
-  line-height: 17px;
+  min-height: 36px;
+  line-height: 18px;
 }
 #visualizer .ap-shade-name {
   color: #65358b;
   font-size: 11px;
-  height: 16px;
+  min-height: 16px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -196,7 +196,8 @@ canvas.ap-selection {
   display: flex;
   gap: 10px;
   align-items: center;
-  min-height: 36px;
+  flex-wrap: wrap;
+  min-height: 40px;
 }
 #visualizer .ap-wall-actions button {
   flex: none;
@@ -213,11 +214,8 @@ canvas.ap-selection {
   font-size: 11px;
   line-height: 1.4;
   color: #806b8c;
-  height: 30px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  min-height: 36px;
+  overflow-wrap: anywhere;
   margin: 7px 0 0;
 }
 .ap-toolbar [hidden],
@@ -355,5 +353,107 @@ html:has(.ap-toolbar) {
   #visualizer .ap-tools button {
     font-size: 10px;
     padding: 7px 8px;
+  }
+}
+
+/* Controls have their own natural flow. A short/zoomed viewport scrolls this
+ * stack instead of shrinking rows until buttons collide with the next panel. */
+#visualizer .ap-control-stack {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  padding-bottom: 8px;
+}
+#visualizer .ap-control-stack > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+#visualizer .ap-control-stack > [hidden] {
+  display: none !important;
+}
+#visualizer .ap-toolbar,
+#visualizer .ap-tools {
+  flex: none;
+  height: auto;
+  padding: 14px;
+}
+#visualizer .ap-tools {
+  padding-top: 12px;
+}
+#visualizer .ap-wall-actions .ap-shade-name {
+  flex: 1 1 120px;
+}
+#visualizer .ap-mode-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+#visualizer .ap-mode-tools button[aria-pressed="true"] {
+  background: #65358b;
+  border-color: #65358b;
+  color: white;
+}
+#visualizer .ap-brush-options {
+  display: grid;
+  grid-template-columns: auto minmax(60px, 1fr) 46px;
+  align-items: center;
+  gap: 10px;
+}
+#visualizer .ap-brush-options label {
+  font-size: 12px;
+  margin: 0;
+}
+#visualizer .ap-brush-options input {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  accent-color: #65358b;
+}
+#visualizer .ap-brush-options output {
+  font-size: 12px;
+  text-align: right;
+}
+#visualizer .ap-active-colour {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 24px;
+  font-size: 12px;
+  color: #65358b;
+  margin: 0;
+}
+#visualizer .ap-active-colour i {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid #d9c9e4;
+  flex: none;
+}
+#visualizer .ap-active-colour span {
+  overflow-wrap: anywhere;
+}
+#visualizer .ap-footer {
+  gap: 8px;
+}
+#visualizer .ap-instruction,
+#visualizer .ap-feedback {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 900px) {
+  #visualizer .ap-control-stack {
+    flex: none;
+    overflow: visible;
+    scrollbar-gutter: auto;
+  }
+  #visualizer .colour-room-panel {
+    height: auto;
   }
 }

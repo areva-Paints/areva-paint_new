@@ -351,8 +351,8 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 #grid .btn{margin-top:6px}
 </style>
 <link rel="stylesheet" href="/assets/landing-theme.css">
-<link rel="stylesheet" href="/assets/photo-paint-studio.css?v=8">
-<script src="/assets/photo-paint-studio.js?v=8"></script>
+<link rel="stylesheet" href="/assets/photo-paint-studio.css?v=9">
+<script src="/assets/photo-paint-studio.js?v=9"></script>
 </head>
 <body>
 <header><div class="topbar"><div class="wrap"><span>Paint your dreams</span><span id="today"></span></div></div><div class="wrap nav">
@@ -400,13 +400,13 @@ header .btn-line,.slide.bright .btn-line{background:transparent;color:#fff;borde
 
 <section id="visualizer"><div class="wrap"><h2>Try colours on a room</h2><p class="lead">Choose a room or upload a photo of your own home, pick a shade and see it on the walls. Select a wall, optionally apply white primer, then choose a colour. Print your before and after preview.</p>
 <div class="two"><div><div id="photoPaintViewport" class="ap-viewport"><div class="room ap-photo-stage" id="roomWrap"><canvas id="cv" aria-label="Photo paint preview"></canvas><canvas id="cv0" aria-hidden="true"></canvas><div id="splitBar" class="split-divider"><div class="split-knob"><span>◀▶</span></div></div><div id="afterTag" class="split-tag split-tag-after">✨ AFTER (Painted)</div><div id="beforeTag" class="split-tag split-tag-before">🏛️ BEFORE (Original)</div></div>
-</div><p class="colour-painting-label" hidden>Painting with: <b id="cn2"></b></p><div class="ap-scenes" role="group" aria-label="Choose a room photo"><h3>Choose a photo</h3><div class="ap-room-presets" id="rooms" role="group" aria-label="Room types"></div></div><div class="ap-upload-actions"><label class="btn btn-main" style="cursor:pointer">Upload my home photo<input class="vh" id="up" type="file" accept="image/*"></label><label class="btn btn-line" style="cursor:pointer">Take a photo<input class="vh" id="camf" type="file" accept="image/*" capture="environment"></label></div>
+</div><div class="ap-control-stack" aria-label="Photo painting controls"><p class="colour-painting-label" hidden>Painting with: <b id="cn2"></b></p><div class="ap-scenes" role="group" aria-label="Choose a room photo"><h3>Choose a photo</h3><div class="ap-room-presets" id="rooms" role="group" aria-label="Room types"></div></div><div class="ap-upload-actions"><label class="btn btn-main" style="cursor:pointer">Upload my home photo<input class="vh" id="up" type="file" accept="image/*"></label><label class="btn btn-line" style="cursor:pointer">Take a photo<input class="vh" id="camf" type="file" accept="image/*" capture="environment"></label></div>
 
 <div class="chips" id="live" hidden><button class="btn btn-main" id="snap" type="button">Capture frame</button><button class="btn btn-line" id="stopcam" type="button">Stop camera</button></div>
 <div id="photoPaintToolbar"></div><div id="photoPaintTools"></div>
 <label class="ap-legacy-compare" hidden style="margin:.6rem 0">Before and after: drag the slider<input id="cmp" type="range" min="0" max="100" value="100"></label>
 
-<label id="cameraRange" style="max-width:340px" hidden>Live camera colour range<input id="tol" type="range" min="8" max="70" value="20"></label><p class="note ap-external-status" id="hm" role="status"></p><div id="ps" hidden></div></div>
+<label id="cameraRange" style="max-width:340px" hidden>Live camera colour range<input id="tol" type="range" min="8" max="70" value="20"></label><p class="note ap-external-status" id="hm" role="status"></p><div id="ps" hidden></div></div></div>
 <div><input id="q" type="search" placeholder="Search colour by name or code" aria-label="Search colours"><div class="sw" id="sw"></div>
 <p><b id="cn"></b><br>Goes well with: <span id="gw"></span></p><div style="display:flex;gap:.6rem;flex-wrap:wrap"><button class="btn btn-main" id="shr">Share my palette</button><button class="btn btn-line" data-r="Customer">View saved</button></div><p class="note">Tap ♡ to save a colour. Shade names and codes are samples.</p></div></div></div></section>
 
