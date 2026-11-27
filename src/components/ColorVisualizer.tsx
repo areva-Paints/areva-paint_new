@@ -1,4 +1,4 @@
-/* Public host for the shared white-base wall painter. Photos are decoded locally;
+/* Public host for the shared selective-primer painter. Photos are decoded locally;
  * generation checks prevent an older room request from replacing a new upload.
  */
 import React, { useEffect, useRef, useState } from "react";
@@ -169,8 +169,8 @@ export const ColorVisualizer: React.FC<ColorVisualizerProps> = ({
         <div className="ap-title">
           <h2>Paint your home</h2>
           <p>
-            Start with white walls. Tap one wall, then choose a colour from your
-            palette.
+            Tap a wall, optionally apply white primer, then choose a colour from
+            your palette.
           </p>
         </div>
         <div className="colour-studio-grid">

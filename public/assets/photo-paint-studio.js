@@ -768,6 +768,30 @@
       if (surface.hex) data = paintImage(base, data, surface.mask, surface.hex);
     return { width: base.width, height: base.height, data };
   }
+  /* Selection never edits pixels. A surface changes only after an explicit
+   * primer or colour action; untouched surfaces retain the exact source pixels.
+   * Every edit uses the immutable original lighting, so recolouring is stable.
+   */
+  function renderSelectedPreview(original, surfaces) {
+    const count = size(original.width, original.height);
+    if (original.data.length !== count * 4)
+      throw Error("This photo could not be read.");
+    if (!Array.isArray(surfaces) || surfaces.length > 16)
+      throw Error("Keep up to sixteen wall surfaces.");
+    let data = new Uint8ClampedArray(original.data);
+    for (const surface of surfaces) {
+      if (surface.mask.length !== original.width * original.height)
+        throw Error("Wall sizes do not match.");
+      if (surface.hex || surface.primed)
+        data = paintImage(
+          original,
+          data,
+          surface.mask,
+          surface.hex || "#ffffff",
+        );
+    }
+    return { width: original.width, height: original.height, data };
+  }
   /* Decode the model's padded 256px logits into original-photo coordinates.
    * Prefer its finest confident surface containing the customer's tap, and use
    * source edges/colour to keep openings and unrelated objects out of the wall.
@@ -1255,11 +1279,8 @@
     return frame;
   }
 
-  /* A deliberately small workflow: white foundation, tap a wall, choose colour.
-   * No brush panels, editable area lists, zoom controls or hidden advanced tools.
-   */
-  /* Both public hosts share one controller: automatic white preparation,
-   * one-wall selection, and immutable recolouring. The CMS owns the palette.
+  /* Both public hosts share one controller: select a wall, optionally apply
+   * white primer, or choose a published colour directly. Photos load unchanged.
    */
   function createEditor({
     canvas,
@@ -1284,9 +1305,9 @@
     controls.classList.add("ap-tools");
     viewport.classList.add("ap-viewport");
     toolbar.innerHTML =
-      '<p class="ap-instruction"></p><p class="ap-shade-name"></p><button type="button" data-action="retry" hidden>Retry white preparation</button>';
+      '<p class="ap-instruction"></p><div class="ap-wall-actions"><button type="button" data-action="primer" aria-label="Apply white primer to selected wall">Apply white primer</button><button type="button" data-action="retry" aria-label="Retry wall selection" hidden>Retry selection</button><p class="ap-shade-name"></p></div>';
     controls.innerHTML =
-      '<div class="ap-footer"><div class="ap-view" role="group" aria-label="Photo comparison"><button type="button" data-action="before">Before</button><button type="button" data-action="after">After</button></div><button type="button" data-action="reset">Reset to white</button><button type="button" data-action="download">Download</button><button type="button" class="ap-print" data-action="print">Print before &amp; after</button></div><p class="ap-feedback" role="status" aria-live="polite"></p>';
+      '<div class="ap-footer"><div class="ap-view" role="group" aria-label="Photo comparison"><button type="button" data-action="before">Before</button><button type="button" data-action="after">After</button></div><button type="button" data-action="reset">Reset photo</button><button type="button" data-action="download">Download</button><button type="button" class="ap-print" data-action="print">Print before &amp; after</button></div><p class="ap-feedback" role="status" aria-live="polite"></p>';
     const overlay = document.createElement("canvas"),
       oc = overlay.getContext("2d");
     overlay.className = "ap-selection";
@@ -1298,9 +1319,8 @@
     stage.append(overlay);
     const find = (s) => toolbar.querySelector(s) || controls.querySelector(s);
     let original = null,
-      base = null,
       after = null,
-      foundation = null,
+      allowedMask = null,
       surfaces = [],
       regions = [],
       selected = null,
@@ -1317,7 +1337,8 @@
       history = [],
       palette = [],
       resized = [1024, 1024],
-      gesture = null;
+      gesture = null,
+      retryPoint = null;
     const requests = new Map(),
       listeners = [];
     const listen = (target, event, fn) => {
@@ -1340,14 +1361,20 @@
       controls.dataset.selectedCode = wall?.code || "";
       onChange({
         canUndo: history.length > 0,
-        colors: surfaces
-          .filter((s) => s.hex)
-          .map((s) => ({ hex: s.hex, name: s.name, code: s.code })),
+        colors: editedColours(),
         selectedShade: wall?.hex
           ? { hex: wall.hex, name: wall.name, code: wall.code }
           : undefined,
       });
     };
+    const editedColours = () =>
+      surfaces
+        .filter((s) => s.hex || s.primed)
+        .map((s) => ({
+          hex: s.hex || "#ffffff",
+          name: s.hex ? s.name : "White primer",
+          code: s.code,
+        }));
     const pixel = (point) =>
       clamp(Math.floor(point[1]), 0, original.height - 1) * original.width +
       clamp(Math.floor(point[0]), 0, original.width - 1);
@@ -1419,11 +1446,10 @@
     listen(window, "resize", fitSoon);
     fit();
     function refresh() {
-      const ready = !!original && enabled,
-        prepared = ready && !!base;
+      const ready = !!original && enabled;
       controls
         .querySelectorAll("button")
-        .forEach((b) => (b.disabled = !prepared || busy));
+        .forEach((b) => (b.disabled = !ready || busy));
       for (const action of ["before", "after"]) {
         const b = find('[data-action="' + action + '"]');
         b.disabled = !ready;
@@ -1432,25 +1458,34 @@
       const retry = find('[data-action="retry"]');
       retry.hidden = !failed;
       retry.disabled = !ready || busy;
+      const wall = selectedSurface(),
+        primer = find('[data-action="primer"]');
+      primer.disabled = !ready || busy || !wall;
+      primer.dataset.applied = String(!!wall?.primed && !wall.hex);
       find(".ap-instruction").textContent = busy
-        ? base
-          ? "Finding the edges of this wall…"
-          : "Preparing your walls in white…"
+        ? "Finding the edges of your selected wall…"
         : failed
-          ? "Your photo is safe. Retry preparation or choose a sample room."
-          : selectedSurface()
-            ? "Wall selected. Choose its colour from the palette."
-            : base
-              ? "Tap one white wall, then choose a colour from the palette."
+          ? "Selection failed. Tap another wall or retry."
+          : wall
+            ? "Wall selected. Apply white primer or choose a palette colour."
+            : ready
+              ? "Tap a wall to select it. White primer is optional."
               : "Choose a room or upload your home photo.";
-      find(".ap-shade-name").textContent = selectedSurface()?.name || "";
+      find(".ap-shade-name").textContent = wall?.hex
+        ? wall.name
+        : wall?.primed
+          ? "White primer applied"
+          : wall
+            ? "Original wall"
+            : "No wall selected";
+      find(".ap-shade-name").hidden = failed;
       overlay.hidden = !ready;
       overlay.dataset.mode = busy
-        ? "preparing"
-        : base
-          ? "colour"
-          : failed
-            ? "error"
+        ? "selecting"
+        : failed
+          ? "error"
+          : ready
+            ? "colour"
             : "loading";
       overlay.setAttribute("aria-busy", String(busy));
       overlay.style.cursor = busy ? "progress" : "pointer";
@@ -1485,7 +1520,7 @@
     }
     function render() {
       if (!original) return;
-      after = base ? renderWhitePreview(base, surfaces) : original;
+      after = renderSelectedPreview(original, surfaces);
       const shown = view === "before" ? original : after;
       ctx.putImageData(
         new ImageData(
@@ -1607,89 +1642,77 @@
         ],
       });
     }
-    async function prepare() {
-      if (!original || !enabled || busy) return;
-      const token = generation;
-      busy = true;
-      failed = false;
-      refresh();
-      report(
-        "Finding paintable walls on your device. Your photo stays private.",
-      );
-      try {
-        await encode();
-        if (token !== generation || destroyed) return;
-        const count = original.width * original.height,
-          body = new Uint8Array(count);
-        /* Multiple prompts reach disconnected faces of a home. They run against
-         * one cached image embedding; photos are never sent to an external API.
-         */
-        for (const [x, y] of [
-          [0.5, 0.4],
-          [0.3, 0.35],
-          [0.7, 0.45],
-        ]) {
-          const point = [x * original.width, y * original.height],
-            result = await selectModel(point);
-          if (token !== generation || destroyed) return;
-          const mask = modelBuildingMask(
-            original,
-            result.masks,
-            result.scores,
-            resized,
-            point,
-          );
-          if (mask)
-            for (let p = 0; p < count; p++)
-              body[p] = Math.max(body[p], mask[p]);
-        }
-        const mask = paintableBuildingMask(original, body);
-        if (mask.reduce((n, v) => n + (v ? 1 : 0), 0) < count * 0.025)
-          throw Error(
-            "We could not identify enough wall surface. Try a clearer, well-lit photo of the building.",
-          );
-        foundation = mask;
-        base = whiteWallBase(original, [{ mask }]);
-        selected = null;
-        surfaces = [];
-        history = [];
-        view = "after";
-        report("White walls ready. Tap one wall, then choose its colour.");
-      } catch (error) {
-        if (token === generation && error.name !== "AbortError") {
-          failed = true;
-          report(error.message);
-        }
-      } finally {
-        if (token === generation && !destroyed) {
-          busy = false;
-          render();
-        }
+    /* Detection is lazy and only computes masks. It never creates a white base
+     * or edits an unselected wall, even while the local model is loading.
+     */
+    async function detectSurfaces(point, token) {
+      const count = original.width * original.height,
+        body = new Uint8Array(count),
+        probes = [
+          point,
+          ...[
+            [0.5, 0.4],
+            [0.3, 0.35],
+            [0.7, 0.45],
+          ].map(([x, y]) => [x * original.width, y * original.height]),
+        ];
+      let tappedResult = null;
+      for (let index = 0; index < probes.length; index++) {
+        const probe = probes[index],
+          result = await selectModel(probe);
+        if (token !== generation || destroyed) return null;
+        if (!index) tappedResult = result;
+        const mask = modelBuildingMask(
+          original,
+          result.masks,
+          result.scores,
+          resized,
+          probe,
+        );
+        if (mask)
+          for (let p = 0; p < count; p++) body[p] = Math.max(body[p], mask[p]);
       }
+      const mask = paintableBuildingMask(original, body);
+      if (mask.reduce((n, v) => n + (v ? 1 : 0), 0) < count * 0.025)
+        throw Error(
+          "We could not identify this wall. Try a clearer, well-lit building photo.",
+        );
+      allowedMask = mask;
+      return tappedResult;
     }
     async function tap(point) {
-      if (!original || !base || !enabled || busy) return;
+      if (!original || !enabled || busy) return;
       const at = pixel(point);
-      if (!foundation[at])
-        return report(
-          "Tap the middle of a white wall. Windows and surroundings are protected.",
-        );
       view = "after";
+      selected = null;
+      failed = false;
+      retryPoint = [...point];
       onBeforeSelect();
       const known = regions.find((r) => r.mask[at] >= 128);
       if (known) {
         selected = surfaces.find((s) => s.mask === known.mask)?.id ?? null;
         render();
-        report("Wall selected. Choose a colour from the palette.");
+        report("Wall selected. Apply white primer or choose a colour.");
+        return;
+      }
+      if (regions.length || (allowedMask && !allowedMask[at])) {
+        render();
+        report("Tap the middle of a wall, away from windows and doors.");
         return;
       }
       const token = generation;
       busy = true;
       refresh();
+      notify();
+      report("Finding your selected wall…");
       try {
         await encode();
         if (token !== generation || destroyed) return;
-        const result = await selectModel(point);
+        let result = allowedMask ? null : await detectSurfaces(point, token);
+        if (token !== generation || destroyed) return;
+        if (!allowedMask[at])
+          throw Error("Tap the middle of a wall, away from windows and doors.");
+        if (!result) result = await selectModel(point);
         if (token !== generation || destroyed) return;
         const mask = modelWallMask(
           original,
@@ -1700,7 +1723,7 @@
         );
         let area = 0;
         for (let p = 0; p < mask.length; p++) {
-          mask[p] = Math.min(mask[p], foundation[p]);
+          mask[p] = Math.min(mask[p], allowedMask[p]);
           if (mask[p]) area++;
         }
         if (area < mask.length * 0.0005)
@@ -1722,23 +1745,65 @@
         else {
           if (surfaces.length >= 16)
             throw Error(
-              "You can colour up to sixteen different surfaces. Reset to try a new pattern.",
+              "You can colour up to sixteen different surfaces. Reset to try a new combination.",
             );
-          remember();
-          const wall = { id: ++sequence, mask, hex: null, name: "", code: "" };
+          const wall = {
+            id: ++sequence,
+            mask,
+            primed: false,
+            hex: null,
+            name: "",
+            code: "",
+          };
           surfaces = [...surfaces, wall];
           selected = wall.id;
         }
-        report("Wall selected. Choose a colour from the palette.");
+        report("Wall selected. Apply white primer or choose a colour.");
       } catch (error) {
-        if (token === generation && error.name !== "AbortError")
+        if (token === generation && error.name !== "AbortError") {
+          failed = true;
           report(error.message);
+        }
       } finally {
         if (token === generation && !destroyed) {
           busy = false;
           render();
         }
       }
+    }
+    /* The latest finish wins inside its selection, including nested trim/wall
+     * masks. Selecting an area alone never changes this edit order or pixels.
+     */
+    function finishWall(wall, finish) {
+      const laterOverlap = surfaces
+        .slice(surfaces.indexOf(wall) + 1)
+        .some(
+          (s) =>
+            (s.hex || s.primed) &&
+            s.mask.some((value, p) => value && wall.mask[p]),
+        );
+      if (
+        ["hex", "primed", "name", "code"].some(
+          (key) => wall[key] !== finish[key],
+        ) ||
+        laterOverlap
+      ) {
+        remember();
+        surfaces = [
+          ...surfaces.filter((s) => s.id !== wall.id),
+          { ...wall, ...finish, mask: wall.mask, id: wall.id },
+        ];
+      }
+      view = "after";
+      render();
+    }
+    function applyPrimer() {
+      const wall = selectedSurface();
+      if (!original || !enabled || busy || !wall) return;
+      finishWall(wall, { primed: true, hex: null, name: "", code: "" });
+      report(
+        "White primer applied to this wall. Choose a palette colour whenever you are ready.",
+      );
     }
     function applyColour(value, notifyHost = true) {
       if (!value || !/^#[0-9a-f]{6}$/i.test(value.hex)) return;
@@ -1750,25 +1815,14 @@
               value.name === s.name + " (" + s.code + ")"),
       );
       if (!record) return report("Choose a published colour from the palette.");
-      if (busy || !base)
-        return report("Please wait for the white walls to be ready.");
+      if (!original || !enabled || busy)
+        return report("Please wait for wall selection to finish.");
       const wall = selectedSurface();
       if (!wall)
         return report(
           "Tap the wall you want to paint, then select this colour.",
         );
-      if (
-        wall.hex !== record.hex ||
-        wall.code !== record.code ||
-        wall.name !== record.name
-      ) {
-        remember();
-        surfaces = surfaces.map((s) =>
-          s.id === wall.id ? { ...s, ...record, mask: s.mask, id: s.id } : s,
-        );
-        view = "after";
-        render();
-      }
+      finishWall(wall, { ...record, primed: wall.primed });
       if (notifyHost) onSelectShade(record);
       report(
         record.name +
@@ -1803,12 +1857,15 @@
       if (!b || b.disabled) return;
       switch (b.dataset.action) {
         case "retry":
-          void prepare();
+          if (retryPoint) void tap(retryPoint);
           break;
         case "before":
         case "after":
           view = b.dataset.action;
           render();
+          break;
+        case "primer":
+          applyPrimer();
           break;
         case "reset":
           api.reset();
@@ -1817,11 +1874,7 @@
           download();
           break;
         case "print":
-          void printComparison(
-            original,
-            after,
-            surfaces.filter((s) => s.hex),
-          ).catch(() =>
+          void printComparison(original, after, editedColours()).catch(() =>
             report("The print view could not open. Please try again."),
           );
           break;
@@ -1847,12 +1900,23 @@
       gesture = null;
     });
     listen(overlay, "keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        api.undo();
-      } else if (e.key === "Enter") {
+      if (e.key === "Enter") {
         e.preventDefault();
         void tap([overlay.width / 2, overlay.height / 2]);
+      }
+    });
+    /* Undo follows focus across the photo/actions/palette. Text fields keep
+     * their native Undo behaviour, including catalogue-search input history.
+     */
+    listen(root || viewport.parentElement, "keydown", (e) => {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        e.key.toLowerCase() === "z" &&
+        !e.target.closest('input,textarea,select,[contenteditable="true"]')
+      ) {
+        e.preventDefault();
+        api.undo();
       }
     });
     const api = {
@@ -1874,6 +1938,7 @@
         surfaces = regions.map((r, i) => ({
           id: i + 1,
           mask: r.mask,
+          primed: false,
           hex: null,
           name: "",
           code: "",
@@ -1882,23 +1947,20 @@
         selected = null;
         history = [];
         view = "after";
-        foundation = new Uint8Array(image.width * image.height);
-        for (const r of regions)
-          for (let p = 0; p < foundation.length; p++)
-            foundation[p] = Math.max(foundation[p], r.mask[p]);
-        base = regions.length
-          ? whiteWallBase(original, [{ mask: foundation }])
+        allowedMask = regions.length
+          ? new Uint8Array(image.width * image.height)
           : null;
+        for (const r of regions)
+          for (let p = 0; p < allowedMask.length; p++)
+            allowedMask[p] = Math.max(allowedMask[p], r.mask[p]);
+        retryPoint = null;
         overlay.width = image.width;
         overlay.height = image.height;
         fit();
         render();
         report(
-          regions.length
-            ? "White walls ready. Tap a wall and choose a colour."
-            : "Preparing your walls automatically…",
+          "Photo ready. Tap a wall to select it, then optionally apply white primer or choose a colour.",
         );
-        if (!regions.length) void prepare();
       },
       undo() {
         if (busy || !history.length) return;
@@ -1910,18 +1972,24 @@
         report("Last change undone.");
       },
       reset() {
-        if (!original || busy || !base) return;
+        if (!original || busy) return;
         remember();
-        surfaces = surfaces.map((s) => ({
-          ...s,
+        surfaces = regions.map((r, i) => ({
+          id: i + 1,
+          mask: r.mask,
+          primed: false,
           hex: null,
           name: "",
           code: "",
         }));
         selected = null;
+        failed = false;
+        retryPoint = null;
         view = "after";
         render();
-        report("All walls restored to the white base.");
+        report(
+          "Original photo restored. Select a wall to start a new combination.",
+        );
       },
       setEnabled(value) {
         if (!value) {
@@ -1931,7 +1999,6 @@
         }
         enabled = value;
         refresh();
-        if (value && original && !base && !failed) void prepare();
       },
       setComparison(value) {
         view = value ? "before" : "after";
@@ -1972,7 +2039,7 @@
         if (ownsToolbar) toolbar.remove();
         stage.style.aspectRatio = "";
         stage.style.width = "";
-        original = base = after = foundation = null;
+        original = after = allowedMask = null;
         surfaces = [];
         history = [];
       },
@@ -1982,7 +2049,7 @@
     return api;
   }
   globalThis.ArevaPaintStudio = Object.freeze({
-    version: 7,
+    version: 8,
     polygonMask,
     subtractMask,
     connectedMask,
@@ -1995,6 +2062,7 @@
     presetWallRegions,
     whiteWallBase,
     renderWhitePreview,
+    renderSelectedPreview,
     cleanWallMask,
     refineWallBoundary,
     modelWallMask,

@@ -45,13 +45,13 @@ declare global {
 }
 let pending: Promise<NonNullable<Window["ArevaPaintStudio"]>> | null = null;
 export function loadPhotoPainter() {
-  if (window.ArevaPaintStudio?.version === 7)
+  if (window.ArevaPaintStudio?.version === 8)
     return Promise.resolve(window.ArevaPaintStudio);
   if (!pending) {
-    const path = "/assets/photo-paint-studio.js?v=7";
+    const path = "/assets/photo-paint-studio.js?v=8";
     pending = import(/* @vite-ignore */ path)
       .then(() => {
-        if (window.ArevaPaintStudio?.version !== 7)
+        if (window.ArevaPaintStudio?.version !== 8)
           throw Error("Photo tools could not load. Please refresh the page.");
         return window.ArevaPaintStudio;
       })

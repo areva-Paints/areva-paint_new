@@ -115,7 +115,7 @@ export function legacyPage() {
   html = html.replace('</head>', '<link rel="stylesheet" href="/assets/shade-library.css"></head>');
   html = html.replace('<input id="q" type="search" placeholder="Search colour by name or code" aria-label="Search colours"><div class="sw" id="sw"></div>', '');
   html = html.replace(/(<section id="visualizer"[\s\S]*?)(<\/section>)/, (_match, body: string, end) => {
-    const heading = '<div class="ap-title"><h2>Paint your home</h2><p>Start with white walls. Tap one wall, then choose a colour from your palette.</p></div>';
+    const heading = '<div class="ap-title"><h2>Paint your home</h2><p>Tap a wall, optionally apply white primer, then choose a colour from your palette.</p></div>';
     const library = slots.add(renderToStaticMarkup(createElement(ShadeLibrary, { shades: c.colours, cards: c.shadeCards, legacy: true, visualizer: true })));
     body = body.replace(/<h2>Try colours on a room<\/h2><p class="lead">[\s\S]*?<\/p>/, () => heading);
     body = body.replace('<div class="two"><div>', '<div class="two colour-studio-grid"><div class="colour-room-panel">');

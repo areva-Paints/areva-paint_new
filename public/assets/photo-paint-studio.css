@@ -192,6 +192,23 @@ canvas.ap-selection {
   text-overflow: ellipsis;
   margin: 3px 0 0;
 }
+#visualizer .ap-wall-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 36px;
+}
+#visualizer .ap-wall-actions button {
+  flex: none;
+}
+#visualizer .ap-wall-actions .ap-shade-name {
+  min-width: 0;
+  margin: 0;
+}
+#visualizer [data-action="primer"][data-applied="true"] {
+  border-color: #65358b;
+  background: #f2eaf8;
+}
 #visualizer .ap-feedback {
   font-size: 11px;
   line-height: 1.4;
